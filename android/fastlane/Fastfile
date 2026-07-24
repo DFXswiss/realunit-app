@@ -41,6 +41,16 @@ def upload_sentry_symbols(marketing_version:, version_code:, symbols_path:, dart
   ENV["SENTRY_RELEASE"] = "swiss.realunit.app@#{marketing_version}+#{version_code}"
   ENV["SENTRY_DIST"] = version_code.to_s
   Dir.chdir("../..") do
+    # The plugin only warns and continues on missing input, which would ship
+    # a release with degraded (or no) crash symbolication silently. Fail the
+    # build instead.
+    if Dir.glob("#{symbols_path}/**/*").select { |f| File.file?(f) }.empty?
+      UI.user_error!("Sentry upload: no native debug symbols found under #{symbols_path}")
+    end
+    unless File.exist?(dart_symbol_map_path)
+      UI.user_error!("Sentry upload: Dart obfuscation map not found at #{dart_symbol_map_path}")
+    end
+
     sh("dart", "run", "sentry_dart_plugin",
        "--sentry-define=symbols_path=#{symbols_path}",
        "--sentry-define=dart_symbol_map_path=#{dart_symbol_map_path}"
