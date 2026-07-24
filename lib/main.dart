@@ -19,6 +19,10 @@ import 'package:realunit_wallet/styles/themes.dart';
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
+  // Preserve before the first await: an async gap ahead of preserve() would
+  // let the native splash auto-dismiss and flash to blank.
+  if (kReleaseMode) FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+
   installErrorHandlers();
   // After installErrorHandlers on purpose: the reporter chains the handlers
   // installed above, while installErrorHandlers overwrites the async hook.
@@ -26,7 +30,6 @@ Future<void> main() async {
 
   // only preserve splash screen for 3 seconds for release version
   if (kReleaseMode) {
-    FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
     await _initializeWithSplashDuration();
     FlutterNativeSplash.remove();
   } else {
