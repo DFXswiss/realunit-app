@@ -9,6 +9,7 @@ import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/setup/error_handling/crash_reporting.dart';
 import 'package:realunit_wallet/setup/error_handling/error_handlers.dart';
 import 'package:realunit_wallet/setup/lifecycle_initializer.dart';
 import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
@@ -19,6 +20,9 @@ Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
   installErrorHandlers();
+  // After installErrorHandlers on purpose: the reporter chains the handlers
+  // installed above, while installErrorHandlers overwrites the async hook.
+  await initCrashReporting();
 
   // only preserve splash screen for 3 seconds for release version
   if (kReleaseMode) {

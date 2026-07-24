@@ -53,6 +53,7 @@ The auto-opened promotion PRs are idempotent — only one is open per branch pai
 - **No third-party APIs**: no direct Ethereum JSON-RPC calls (Infura, Alchemy, public nodes, etc.), no block explorer APIs (Etherscan, …), no price feeds, no analytics endpoints, no third-party SDKs that call out over the network.
 - If a feature needs on-chain data (e.g. native ETH balance, transaction status, token balance), add a new endpoint to [`DFXswiss/api`](https://github.com/DFXswiss/api) and let the app call that endpoint. The API is the single gateway.
 - All network calls must go through `AppStore.httpClient` with `buildUri(_host, …)` — `_host` resolves to the DFX API host via `ApiConfig`. Do not instantiate `http.Client`/`Dio`/`Web3Client` against other hosts.
+- **One scoped exception — crash reporting.** Builds that inject `--dart-define=SENTRY_DSN=...` deliver crash reports to the company-operated crash-reporting service ([`lib/setup/error_handling/crash_reporting.dart`](lib/setup/error_handling/crash_reporting.dart)). This is first-party infrastructure telemetry, not a third-party service: without an injected DSN (all local and test builds) the SDK never starts and produces no network traffic, and the option set is pinned to error events only — no PII, no screenshots, no view hierarchy, no tracing. Widening what is sent (breadcrumbs with request URLs, user context, attachments) is a review-blocking change, not a config tweak.
 
 ## API as Decision Authority — CRITICAL
 
