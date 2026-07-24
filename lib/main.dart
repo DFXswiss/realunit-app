@@ -19,11 +19,10 @@ import 'package:realunit_wallet/styles/themes.dart';
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
+  installErrorHandlers();
   // Preserve before the first await: an async gap ahead of preserve() would
   // let the native splash auto-dismiss and flash to blank.
   if (kReleaseMode) FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
-
-  installErrorHandlers();
   // After installErrorHandlers on purpose: the reporter chains the handlers
   // installed above, while installErrorHandlers overwrites the async hook.
   await initCrashReporting();
