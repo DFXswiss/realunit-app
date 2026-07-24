@@ -67,6 +67,7 @@ final GoRouter routerConfig = GoRouter(
   redirect: (context, state) => appLinkSchemeRedirect(
     state,
     effectiveLocation(routerConfig.routerDelegate.currentConfiguration),
+    routerConfig,
   ),
   onException: appLinkOnException,
   routes: <RouteBase>[
@@ -179,7 +180,9 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       name: AppRoutes.pay,
       path: '/pay',
-      builder: (_, _) => const PayScanPage(),
+      builder: (_, state) => PayScanPage(
+        initialPayload: state.extra is String ? state.extra as String : null,
+      ),
     ),
 
     GoRoute(

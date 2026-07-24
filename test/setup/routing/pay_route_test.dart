@@ -62,4 +62,50 @@ void main() {
     // does not leak the /pay location into any later test.
     addTearDown(() => routerConfig.goNamed(AppRoutes.home));
   });
+
+  testWidgets(
+    'the pay route passes a String extra through as initialPayload',
+    (tester) async {
+      await pumpRouter(tester);
+
+      routerConfig.pushNamed(
+        AppRoutes.pay,
+        extra: 'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD',
+      );
+      // A single pump is not enough for an imperative pushNamed to land in
+      // the tree yet, and pumpAndSettle is unsafe here (PayScanView shows an
+      // indefinitely-animating CupertinoActivityIndicator once initialPayload
+      // is set). Two plain pumps reliably lands the pushed route.
+      await tester.pump();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.widget<PayScanPage>(find.byType(PayScanPage)).initialPayload,
+        'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD',
+      );
+
+      addTearDown(() => routerConfig.goNamed(AppRoutes.home));
+    },
+  );
+
+  testWidgets(
+    'the pay route guards a non-String extra to null (never an unchecked cast)',
+    (tester) async {
+      await pumpRouter(tester);
+
+      routerConfig.pushNamed(AppRoutes.pay, extra: 42);
+      // Same reasoning as the test above: two plain pumps, no pumpAndSettle.
+      await tester.pump();
+      await tester.pump();
+
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.widget<PayScanPage>(find.byType(PayScanPage)).initialPayload,
+        isNull,
+      );
+
+      addTearDown(() => routerConfig.goNamed(AppRoutes.home));
+    },
+  );
 }

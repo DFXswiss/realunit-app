@@ -1,4 +1,5 @@
 import 'package:bloc_test/bloc_test.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -138,6 +139,104 @@ void main() {
 
         expect(find.text(S.current.payScanCameraUnavailable), findsOne);
         expect(find.text(S.current.payScanCameraPermissionDenied), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'an initialPayload feeds the cubit exactly once and skips the live camera',
+      (tester) async {
+        when(() => scanCubit.onCodeDetected(any())).thenReturn(null);
+
+        await tester.pumpApp(
+          BlocProvider<PayScanCubit>.value(
+            value: scanCubit,
+            child: const PayScanView(
+              initialPayload: 'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD',
+            ),
+          ),
+        );
+        // CupertinoActivityIndicator animates indefinitely, so pumpAndSettle
+        // would hang. One extra pump is enough for the deferred post-frame
+        // onCodeDetected callback to fire.
+        await tester.pump();
+
+        verify(
+          () => scanCubit.onCodeDetected(
+            'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD',
+          ),
+        ).called(1);
+        expect(find.byType(MobileScanner), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'an initialPayload with a successful decode dismisses the spinner and navigates to the quote step',
+      (tester) async {
+        when(() => scanCubit.onCodeDetected(any())).thenReturn(null);
+        final link = DecodedPaymentLink(
+          id: 'pl_abc123',
+          lnurlpUrl: Uri.parse('https://api.dfx.swiss/v1/lnurlp/pl_abc123'),
+        );
+        whenListen(
+          scanCubit,
+          Stream<PayScanState>.fromIterable([PayScanDecoded(link)]),
+          initialState: const PayScanScanning(),
+        );
+
+        await tester.pumpApp(
+          BlocProvider<PayScanCubit>.value(
+            value: scanCubit,
+            child: const PayScanView(
+              initialPayload: 'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD',
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Spinner dismissed, quote step pushed and rendered; the cubit is reset.
+        expect(find.byType(CupertinoActivityIndicator), findsNothing);
+        expect(find.byType(PayQuoteView), findsOne);
+        verify(() => scanCubit.reset()).called(1);
+      },
+    );
+
+    testWidgets(
+      'an invalid initialPayload dismisses the spinner and shows the live camera',
+      (tester) async {
+        whenListen(
+          scanCubit,
+          Stream<PayScanState>.fromIterable([
+            const PayScanInvalid('bad code'),
+          ]),
+          initialState: const PayScanScanning(),
+        );
+
+        await tester.pumpApp(
+          BlocProvider<PayScanCubit>.value(
+            value: scanCubit,
+            child: const PayScanView(
+              initialPayload: 'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD',
+            ),
+          ),
+        );
+        // CupertinoActivityIndicator animates indefinitely, so pumpAndSettle
+        // would hang. One extra pump is enough for the listener (invalid →
+        // setState dismissing the spinner) and snackbar to run.
+        await tester.pump();
+
+        expect(find.byType(SnackBar), findsOne);
+        expect(find.byType(MobileScanner), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'no initialPayload never calls onCodeDetected and shows the live camera',
+      (tester) async {
+        await tester.pumpApp(buildSubject());
+        await tester.pumpAndSettle();
+
+        verifyNever(() => scanCubit.onCodeDetected(any()));
+        expect(find.byType(MobileScanner), findsOneWidget);
       },
     );
   });
