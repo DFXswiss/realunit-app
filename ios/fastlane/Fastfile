@@ -13,6 +13,7 @@
 # Uncomment the line if you want fastlane to automatically update itself
 # update_fastlane
 
+require "bundler"
 require "json"
 require "tempfile"
 
@@ -148,14 +149,21 @@ platform :ios do
     )
 
     with_crash_reporting_defines do |defines_file|
-      Dir.chdir("../..") do
-        sh("flutter", "build", "ios",
-           "--config-only",
-           "--release",
-           "--build-name=#{marketing_version}",
-           "--build-number=#{version_code}",
-           "--dart-define-from-file=#{defines_file}"
-        )
+      # Fastlane runs under `bundle exec`, and Bundler exports its environment
+      # (RUBYOPT=-rbundler/setup) to every child process. CocoaPods is not in
+      # this Gemfile, so the `pod` Flutter shells out to aborts with
+      # "cocoapods is not currently included in the bundle" and Flutter fails
+      # the build with "CocoaPods not installed or not in valid state".
+      Bundler.with_unbundled_env do
+        Dir.chdir("../..") do
+          sh("flutter", "build", "ios",
+             "--config-only",
+             "--release",
+             "--build-name=#{marketing_version}",
+             "--build-number=#{version_code}",
+             "--dart-define-from-file=#{defines_file}"
+          )
+        end
       end
       gym(
         workspace: "Runner.xcworkspace",
