@@ -57,7 +57,8 @@ void main() {
     // Signs with a non-default chainId so a hardcoded value cannot pass, and asserts the
     // EIP712Domain member list exactly: the domain typehash covers the names, their types
     // and their order, so any of those drifting changes the digest and the API recovers a
-    // foreign address. Mirrors the chainId-wiring pin in eip712_delegation_bitbox_test.dart.
+    // foreign address. Mirrors the chainId-wiring pin in
+    // test/integration/eip7702_delegation_bitbox_test.dart.
     for (final chainId in const [1, 11155111]) {
       test('signs with the chainId-extended EIP-712 domain (chainId $chainId)', () async {
         when(
@@ -66,9 +67,10 @@ void main() {
 
         await signRegistration(chainId: chainId);
 
-        final captured = verify(
+        // called(1): a second sign would mean a second on-device confirmation prompt.
+        final captured = (verify(
           () => manager.signETHTypedMessage(captureAny(), any(), captureAny()),
-        ).captured;
+        )..called(1)).captured;
         final typedData = jsonDecode(utf8.decode(captured[1] as Uint8List)) as Map<String, dynamic>;
 
         expect(captured[0], chainId);
