@@ -40,6 +40,15 @@ coverage/
 !android/Gemfile.lock
 !ios/Gemfile.lock
 
+# Gem bundle installed when running a store lane with the CI's bundler
+# configuration (`path vendor/bundle`, `deployment true`, as ruby/setup-ruby's
+# bundler-cache does). Mirrors the paths CI uses so a `git status` after a local
+# repro stays clean.
+android/.bundle/
+android/vendor/
+ios/.bundle/
+ios/vendor/
+
 # Symbolication related
 app.*.symbols
 
