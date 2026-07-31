@@ -155,8 +155,7 @@ platform :ios do
       # "cocoapods is not currently included in the bundle" and Flutter fails
       # the build with "CocoaPods not installed or not in valid state".
       # Only the Flutter call is unbundled — it is the one step that shells out
-      # to pod. The xcodebuild gym runs never does; its [CP] phases only diff
-      # Podfile.lock against Manifest.lock.
+      # to pod; the xcodebuild gym runs never does.
       Bundler.with_unbundled_env do
         Dir.chdir("../..") do
           sh("flutter", "build", "ios",
