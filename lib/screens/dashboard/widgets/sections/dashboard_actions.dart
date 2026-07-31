@@ -13,23 +13,49 @@ class DashboardActions extends StatelessWidget {
     return Row(
       spacing: 10,
       children: [
-        ActionButton(
-          icon: Icon(
-            Icons.add_circle_rounded,
-            color: RealUnitColors.basic.white,
-            size: 20,
+        Expanded(
+          child: ActionButton(
+            icon: Icon(
+              Icons.add_circle_rounded,
+              color: RealUnitColors.basic.white,
+              size: 20,
+            ),
+            label: S.of(context).buy,
+            onPressed: () => context.pushNamed(AppRoutes.buy),
           ),
-          label: S.of(context).buy,
-          onPressed: () => context.pushNamed(AppRoutes.buy),
         ),
-        ActionButton(
-          icon: Icon(
-            Icons.do_not_disturb_on_rounded,
-            color: RealUnitColors.basic.white,
-            size: 20,
+        Expanded(
+          child: ActionButton(
+            icon: Icon(
+              Icons.do_not_disturb_on_rounded,
+              color: RealUnitColors.basic.white,
+              size: 20,
+            ),
+            label: S.of(context).sell,
+            onPressed: () => context.pushNamed(AppRoutes.sell),
           ),
-          label: S.of(context).sell,
-          onPressed: () => context.pushNamed(AppRoutes.sell),
+        ),
+        Expanded(
+          child: ActionButton(
+            icon: Icon(
+              Icons.qr_code_scanner_rounded,
+              color: RealUnitColors.basic.white,
+              size: 20,
+            ),
+            label: S.of(context).pay,
+            onPressed: () => context.pushNamed(AppRoutes.pay),
+          ),
+        ),
+        Expanded(
+          child: ActionButton(
+            icon: Icon(
+              Icons.send_rounded,
+              color: RealUnitColors.basic.white,
+              size: 20,
+            ),
+            label: S.of(context).send,
+            onPressed: () => context.pushNamed(AppRoutes.send),
+          ),
         ),
       ],
     );

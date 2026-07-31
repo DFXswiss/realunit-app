@@ -87,7 +87,7 @@ class TransactionRow extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            DateFormat('MMM dd, yyyy | H:mm').format(transaction.timestamp),
+                            DateFormat('MMM dd, yyyy | H:mm').format(transaction.timestamp.toLocal()),
                             style: const TextStyle(
                               fontSize: 12,
                               height: 16 / 12,
@@ -187,7 +187,7 @@ class SavingsTransactionRow extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            DateFormat('MMM dd, yyyy').format(transaction.timestamp),
+                            DateFormat('MMM dd, yyyy').format(transaction.timestamp.toLocal()),
                             style: _secondRowTextStyle,
                           ),
                         ],

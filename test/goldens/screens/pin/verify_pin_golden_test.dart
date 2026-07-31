@@ -211,8 +211,10 @@ void main() {
       },
     );
 
+    // Gate flow (no `bottom`): the button-free lockout copy, since there is no
+    // Forgot-PIN button to point at.
     goldenTest(
-      'permanently locked disables the pad and shows the lockout message',
+      'permanently locked in a gate flow disables the pad and shows the button-free message',
       fileName: 'verify_pin_page_locked',
       constraints: const BoxConstraints.tightFor(width: 390, height: 844),
       builder: () {
@@ -223,6 +225,28 @@ void main() {
           BlocProvider<VerifyPinCubit>.value(
             value: cubit,
             child: VerifyPinView(onAuthenticated: () {}),
+          ),
+        );
+      },
+    );
+
+    // App-lock entry point (`bottom` present): the copy points at the
+    // Forgot-PIN button, which is rendered below the pad.
+    goldenTest(
+      'permanently locked in the app-lock flow offers recovery via the forgot-pin action',
+      fileName: 'verify_pin_page_locked_app_lock',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        final cubit = _MockVerifyPinCubit();
+        when(() => cubit.state).thenReturn(const VerifyPinLocked(failedAttempts: 10));
+        when(() => cubit.checkBiometricAvailability()).thenAnswer((_) async {});
+        return wrapForGolden(
+          BlocProvider<VerifyPinCubit>.value(
+            value: cubit,
+            child: VerifyPinView(
+              onAuthenticated: () {},
+              bottom: const _ForgotPinButton(),
+            ),
           ),
         );
       },

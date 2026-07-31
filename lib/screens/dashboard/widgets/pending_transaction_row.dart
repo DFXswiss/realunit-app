@@ -71,7 +71,7 @@ class PendingTransactionRow extends StatelessWidget {
                   ),
                 if (transaction.date != null)
                   Text(
-                    DateFormat('MMM dd, yyyy').format(transaction.date!),
+                    DateFormat('MMM dd, yyyy').format(transaction.date!.toLocal()),
                     textAlign: .end,
                     maxLines: 1,
                     overflow: .ellipsis,

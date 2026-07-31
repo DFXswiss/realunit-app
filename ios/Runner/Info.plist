@@ -44,7 +44,7 @@
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
 		<key>NSCameraUsageDescription</key>
-		<string>This app needs camera access to verify your identity</string>
+		<string>This app needs camera access to verify your identity and to scan payment codes</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
 		<string>Please provide us with your geolocation data to prove your current location</string>
 		<key>NSMicrophoneUsageDescription</key>

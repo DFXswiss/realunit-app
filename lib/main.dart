@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,7 +9,7 @@ import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/di.dart';
-import 'package:realunit_wallet/setup/error_handling/realunit_error_view.dart';
+import 'package:realunit_wallet/setup/error_handling/error_handlers.dart';
 import 'package:realunit_wallet/setup/lifecycle_initializer.dart';
 import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 import 'package:realunit_wallet/setup/routing/router_config.dart';
@@ -20,7 +18,7 @@ import 'package:realunit_wallet/styles/themes.dart';
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
-  _installErrorHandlers();
+  installErrorHandlers();
 
   // only preserve splash screen for 3 seconds for release version
   if (kReleaseMode) {
@@ -39,25 +37,6 @@ Future<void> _initialize() async {
   runApp(
     const LifecycleInitializer(child: WalletApp()),
   );
-}
-
-/// Defense-in-depth against uncaught build/paint exceptions. Without this, a
-/// single throw inside a widget's `build` (e.g. the empty-BitBox-address
-/// `EthereumAddress.fromHex("")` crash) surfaces in release as a bare grey
-/// [ErrorWidget] with no branding and no signal to the user. We log every such
-/// error and replace the grey box with a minimal on-brand surface.
-void _installErrorHandlers() {
-  final defaultOnError = FlutterError.onError;
-  FlutterError.onError = (details) {
-    developer.log(
-      'uncaught Flutter error: ${details.exceptionAsString()}',
-      name: 'WalletApp',
-      error: details.exception,
-      stackTrace: details.stack,
-    );
-    defaultOnError?.call(details);
-  };
-  ErrorWidget.builder = (details) => RealUnitErrorView(details: details);
 }
 
 Future<void> _initializeWithSplashDuration() async {

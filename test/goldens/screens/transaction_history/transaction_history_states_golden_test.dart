@@ -30,10 +30,11 @@ import '../../../helper/helper.dart';
 // multi-receipt spinner, the receipt-failure SnackBar and the date picker.
 //
 // Determinism note — dates: `TransactionHistoryRow` formats via
-// `DateFormat('MMM dd, yyyy | H:mm').format(transaction.timestamp)`
-// (`transaction_history_row.dart:112`) — no `toLocal()`, no `now()`, no
-// relative time. With fixed UTC instants the rendered text is host- and
-// timezone-independent. `TransactionHistoryView` itself reads `clock.now()`
+// `DateFormat('MMM dd, yyyy | H:mm').format(transaction.timestamp.toLocal())`
+// (`transaction_history_row.dart:112`). The fixed UTC instants are rendered in
+// the runner's local time, so these baselines are timezone-dependent — they are
+// generated and validated on the same Europe/Zurich self-hosted runner (like
+// the chat-bubble goldens). `TransactionHistoryView` itself reads `clock.now()`
 // for the date-picker bounds (`transaction_history_page.dart:36`), so its
 // builders are pinned with `withClock`, matching the base file.
 

@@ -9,6 +9,7 @@ import 'package:realunit_wallet/packages/service/settings_service.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 
 part 'home_event.dart';
 part 'home_state.dart';
@@ -102,6 +103,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       await _walletService.deleteCurrentWallet();
       _settingsService.setTermsAccepted(false);
     }
+    // Drop any stashed payment deeplink so it cannot replay into a re-onboarded
+    // wallet. Covers every DeleteCurrentWalletEvent path (settings delete and
+    // BitBox recovery cancel), including those that never call PinAuthCubit.reset().
+    clearPendingPaymentDeeplink();
     emit(
       HomeState(
         hasWallet: false,

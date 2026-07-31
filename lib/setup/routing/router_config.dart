@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/sell_payment_info.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/buy/buy_page.dart';
 import 'package:realunit_wallet/screens/buy/buy_payment_details_page.dart';
@@ -13,13 +14,14 @@ import 'package:realunit_wallet/screens/kyc/kyc_page_manager.dart';
 import 'package:realunit_wallet/screens/legal/legal_disclaimer_page.dart';
 import 'package:realunit_wallet/screens/legal/subpages/legal_document_page.dart';
 import 'package:realunit_wallet/screens/onboarding/onboarding_completed_page.dart';
+import 'package:realunit_wallet/screens/pay/pay_scan_page.dart';
 import 'package:realunit_wallet/screens/pin/setup_pin_page.dart';
 import 'package:realunit_wallet/screens/pin/verify_pin_page.dart';
 import 'package:realunit_wallet/screens/receive/receive_page.dart';
 import 'package:realunit_wallet/screens/restore_wallet/restore_wallet_page.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/sell_payment_info.dart';
 import 'package:realunit_wallet/screens/sell/sell_page.dart';
 import 'package:realunit_wallet/screens/sell_bitbox/sell_bitbox_page.dart';
+import 'package:realunit_wallet/screens/send/send_recipient_page.dart';
 import 'package:realunit_wallet/screens/settings/settings_page.dart';
 import 'package:realunit_wallet/screens/settings_contact/settings_contact_page.dart';
 import 'package:realunit_wallet/screens/settings_currencies/settings_currencies_page.dart';
@@ -65,6 +67,7 @@ final GoRouter routerConfig = GoRouter(
   redirect: (context, state) => appLinkSchemeRedirect(
     state,
     effectiveLocation(routerConfig.routerDelegate.currentConfiguration),
+    routerConfig,
   ),
   onException: appLinkOnException,
   routes: <RouteBase>[
@@ -172,6 +175,20 @@ final GoRouter routerConfig = GoRouter(
       name: AppRoutes.sellBitbox,
       path: '/sellBitbox',
       builder: (_, state) => SellBitboxPage(paymentInfo: state.extra as SellPaymentInfo),
+    ),
+
+    GoRoute(
+      name: AppRoutes.pay,
+      path: '/pay',
+      builder: (_, state) => PayScanPage(
+        initialPayload: state.extra is String ? state.extra as String : null,
+      ),
+    ),
+
+    GoRoute(
+      name: AppRoutes.send,
+      path: '/send',
+      builder: (_, _) => const SendRecipientPage(),
     ),
 
     GoRoute(

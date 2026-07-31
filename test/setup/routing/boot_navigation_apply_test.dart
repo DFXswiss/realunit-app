@@ -42,6 +42,11 @@ void main() {
         path: '/buyPaymentDetails',
         builder: (_, state) => Text('buy ${state.extra as Object}'),
       ),
+      GoRoute(
+        name: AppRoutes.pay,
+        path: '/pay',
+        builder: (_, state) => Text('pay ${state.extra}'),
+      ),
     ],
   );
 
@@ -201,4 +206,193 @@ void main() {
       expect(effectiveLocation(router.routerDelegate.currentConfiguration), '/kyc');
     },
   );
+
+  group('pendingPaymentDeeplink replay', () {
+    setUp(clearPendingPaymentDeeplink);
+    tearDown(clearPendingPaymentDeeplink);
+
+    testWidgets(
+      'dashboard landing with a stashed payload pushes /pay on top and consumes the stash',
+      (tester) async {
+        final router = buildRouter();
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.pumpAndSettle();
+
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+        applyBootNavAction(
+          const BootNavGoNamed(AppRoutes.dashboard),
+          router,
+          onLoadWallet: () {},
+          onClearResume: () {},
+        );
+        await tester.pumpAndSettle();
+
+        // /pay is pushed ON TOP of /dashboard: once an opaque push settles,
+        // Flutter only keeps the topmost route built, so /dashboard's own
+        // Text is correctly absent from the tree right now (not a bug) —
+        // prove "on top of, not instead of" via the match list + canPop, and
+        // via the AFTER-pop check below where /dashboard is onstage again.
+        expect(find.text('pay lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD'), findsOneWidget);
+        expect(
+          router.routerDelegate.currentConfiguration.matches
+              .map((m) => m.matchedLocation)
+              .toList(),
+          ['/dashboard', '/pay'],
+        );
+        expect(peekPendingPaymentDeeplink(), isNull);
+        expect(router.canPop(), isTrue);
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('dashboard'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'dashboard landing with no stash pushes nothing extra',
+      (tester) async {
+        final router = buildRouter();
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.pumpAndSettle();
+
+        applyBootNavAction(
+          const BootNavGoNamed(AppRoutes.dashboard),
+          router,
+          onLoadWallet: () {},
+          onClearResume: () {},
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('dashboard'), findsOneWidget);
+        expect(router.canPop(), isFalse);
+      },
+    );
+
+    testWidgets(
+      'a non-dashboard gate landing never consumes or replays the stash',
+      (tester) async {
+        final router = buildRouter();
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.pumpAndSettle();
+
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+        applyBootNavAction(
+          const BootNavGoNamed(PinRoutes.verify),
+          router,
+          onLoadWallet: () {},
+          onClearResume: () {},
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('verify'), findsOneWidget);
+        expect(peekPendingPaymentDeeplink(), 'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+      },
+    );
+
+    testWidgets(
+      'warm unlock with stash: resolveAfterRelock(null) lands on dashboard, '
+      'pushes /pay, and consumes the stash',
+      (tester) async {
+        final router = buildRouter();
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.pumpAndSettle();
+
+        // Full gate-ladder path (not a bare BootNavGoNamed): after a plain
+        // PIN unlock with no captured resume location, resolveBootNavigation
+        // returns BootNavGoNamed(dashboard), which replays the stash.
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+        applyBootNavAction(
+          resolveAfterRelock(null),
+          router,
+          onLoadWallet: () {},
+          onClearResume: () {},
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('pay lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD'), findsOneWidget);
+        expect(
+          router.routerDelegate.currentConfiguration.matches
+              .map((m) => m.matchedLocation)
+              .toList(),
+          ['/dashboard', '/pay'],
+        );
+        expect(peekPendingPaymentDeeplink(), isNull);
+        expect(router.canPop(), isTrue);
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('dashboard'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'BootNavRestore replays a stashed pendingPaymentDeeplink, pushing /pay '
+      'on top of the restored location',
+      (tester) async {
+        final router = buildRouter();
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.pumpAndSettle();
+
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+        applyBootNavAction(
+          resolveAfterRelock('/kyc'),
+          router,
+          onLoadWallet: () {},
+          onClearResume: () {},
+        );
+        await tester.pumpAndSettle();
+
+        // /pay is pushed ON TOP of the restored stack (dashboard base + /kyc):
+        // prove via the match list + canPop, and via the AFTER-pop check
+        // where /kyc is onstage again.
+        expect(find.text('pay lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD'), findsOneWidget);
+        expect(
+          router.routerDelegate.currentConfiguration.matches
+              .map((m) => m.matchedLocation)
+              .toList(),
+          ['/dashboard', '/kyc', '/pay'],
+        );
+        expect(peekPendingPaymentDeeplink(), isNull);
+        expect(router.canPop(), isTrue);
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('kyc'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'BootNavStay replays a stashed pendingPaymentDeeplink, pushing /pay on '
+      'top of the current location',
+      (tester) async {
+        final router = buildRouter();
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.pumpAndSettle();
+
+        // BootNavStay itself never navigates — put the router on a real
+        // non-gate location first so /pay has something to land on top of.
+        router.go('/dashboard');
+        await tester.pumpAndSettle();
+
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+        applyBootNavAction(
+          const BootNavStay(),
+          router,
+          onLoadWallet: () {},
+          onClearResume: () {},
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('pay lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD'), findsOneWidget);
+        expect(
+          router.routerDelegate.currentConfiguration.matches
+              .map((m) => m.matchedLocation)
+              .toList(),
+          ['/dashboard', '/pay'],
+        );
+        expect(peekPendingPaymentDeeplink(), isNull);
+        expect(router.canPop(), isTrue);
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.text('dashboard'), findsOneWidget);
+      },
+    );
+  });
 }

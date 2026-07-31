@@ -131,7 +131,7 @@ void main() {
       expect(tester.widget<NumberPad>(find.byType(NumberPad)).inputEnabled, isFalse);
     });
 
-    testWidgets('shows error message and locks permanently when pin is reaches threshold', (
+    testWidgets('permanently locked in a gate flow shows the button-free lockout message', (
       tester,
     ) async {
       when(() => verifyPinCubit.state).thenReturn(const VerifyPinLocked(failedAttempts: 9));
@@ -140,8 +140,30 @@ void main() {
         buildSubject(VerifyPinView(onAuthenticated: onAuthenticated)),
       );
 
-      expect(find.text(S.current.pinVerifyLocked), findsOne);
+      // No `bottom` (no Forgot-PIN button) → the gate-variant text is shown,
+      // not the one pointing at a button that isn't there.
+      expect(find.text(S.current.pinVerifyLockedGate), findsOne);
+      expect(find.text(S.current.pinVerifyLocked), findsNothing);
       expect(tester.widget<NumberPad>(find.byType(NumberPad)).inputEnabled, isFalse);
+    });
+
+    testWidgets('permanently locked in the app-lock flow references the forgot-PIN reset', (
+      tester,
+    ) async {
+      when(() => verifyPinCubit.state).thenReturn(const VerifyPinLocked(failedAttempts: 9));
+
+      await tester.pumpApp(
+        buildSubject(
+          VerifyPinView(
+            onAuthenticated: onAuthenticated,
+            bottom: const SizedBox(),
+          ),
+        ),
+      );
+
+      // A `bottom` widget (the Forgot-PIN button lives here) → the text that
+      // points at it is valid.
+      expect(find.text(S.current.pinVerifyLocked), findsOne);
     });
 
     testWidgets('shows a loading indicator and hides the number pad while verifying', (

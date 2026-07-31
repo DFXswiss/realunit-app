@@ -65,6 +65,7 @@ dependencies:
   http: ^1.1.0
   intl: any
   local_auth: ^3.0.0
+  mobile_scanner: ^7.4.0
   no_screenshot: ^1.1.0
   open_file: ^3.5.11
   path: ^1.9.0
@@ -99,6 +100,7 @@ dev_dependencies:
   # Used by test/packages/config/legal_documents_config_test.dart to swap in a
   # recording fake for url_launcher without touching the platform channel.
   plugin_platform_interface: ^2.1.8
+  sentry_dart_plugin: 3.4.0
   url_launcher_platform_interface: ^2.3.2
 
 dependency_overrides:
@@ -109,6 +111,17 @@ dependency_overrides:
     git:
       url: https://github.com/cake-tech/web3dart.git
       ref: aa3f932dbf54eda651b7bd01ad00204acf998bd0
+
+sentry:
+  upload_debug_symbols: true
+  upload_source_maps: false
+  upload_sources: false
+  project: realunitchapp
+  org: sentry
+  url: https://sentry.dfxserve.com/
+  wait_for_processing: true
+  log_level: error
+  commits: false
 
 hooks:
   user_defines:

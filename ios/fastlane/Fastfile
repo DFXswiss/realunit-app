@@ -13,7 +13,44 @@
 # Uncomment the line if you want fastlane to automatically update itself
 # update_fastlane
 
+require "json"
+require "tempfile"
+
 default_platform(:ios)
+
+# Keeps the DSN out of the process arguments Fastlane prints. Flutter writes
+# the encoded defines into Generated.xcconfig before gym invokes xcodebuild.
+def with_crash_reporting_defines
+  dsn = ENV.fetch("SENTRY_DSN", "")
+  UI.user_error!("SENTRY_DSN is required for store release builds") if dsn.empty?
+
+  environment = ENV.fetch("SENTRY_ENVIRONMENT", "production")
+  file = Tempfile.new(["sentry-defines", ".json"])
+  File.chmod(0o600, file.path)
+  file.write(JSON.generate({
+    "SENTRY_DSN" => dsn,
+    "SENTRY_ENVIRONMENT" => environment,
+  }))
+  file.flush
+  yield file.path
+ensure
+  file&.close!
+end
+
+def upload_sentry_symbols(marketing_version:, version_code:)
+  ENV["SENTRY_RELEASE"] = "swiss.realunit.app@#{marketing_version}+#{version_code}"
+  ENV["SENTRY_DIST"] = version_code.to_s
+  Dir.chdir("../..") do
+    # The plugin only warns and continues on missing input, which would ship
+    # a release with degraded (or no) crash symbolication silently. Fail the
+    # build instead.
+    if Dir.glob("build/ios/archive/**/*.dSYM").empty?
+      UI.user_error!("Sentry upload: no dSYMs found under build/ios/archive")
+    end
+
+    sh("dart", "run", "sentry_dart_plugin")
+  end
+end
 
 def get_api_key
   app_store_connect_api_key(
@@ -110,13 +147,29 @@ platform :ios do
       xcodeproj: "Runner.xcodeproj"
     )
 
-    gym(
-      workspace: "Runner.xcworkspace",
-      scheme: "Runner",
-      output_name: "realunit-#{tag_name}.ipa",
-      xcargs: "-verbose",
-      verbose: true
-    )
+    with_crash_reporting_defines do |defines_file|
+      Dir.chdir("../..") do
+        sh("flutter", "build", "ios",
+           "--config-only",
+           "--release",
+           "--build-name=#{marketing_version}",
+           "--build-number=#{version_code}",
+           "--dart-define-from-file=#{defines_file}"
+        )
+      end
+      gym(
+        workspace: "Runner.xcworkspace",
+        scheme: "Runner",
+        archive_path: File.expand_path("../../build/ios/archive/Runner.xcarchive", __dir__),
+        output_name: "realunit-#{tag_name}.ipa",
+        xcargs: "-verbose",
+        verbose: true
+      )
+      upload_sentry_symbols(
+        marketing_version: marketing_version,
+        version_code: version_code
+      )
+    end
 
     upload_to_testflight(
       api_key: get_api_key,

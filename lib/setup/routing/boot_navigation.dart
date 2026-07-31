@@ -151,6 +151,47 @@ BootNavAction resolveBootNavigation({
   return const BootNavGoNamed(AppRoutes.dashboard);
 }
 
+/// Payment-deeplink payload captured by `appLinkSchemeRedirect`
+/// (app_link_entry.dart) on a COLD start, or on a warm resume while the app is
+/// still on a PIN/unlock gate, before the boot/unlock gate ladder has cleared.
+/// Held here until [applyBootNavAction] replays it as an imperative `/pay`
+/// push at the first post-unlock terminal landing — dashboard, restore, or
+/// stay — i.e. strictly after the same PIN/unlock gate ladder a normal `/pay`
+/// navigation passes, so the replay can never bypass it. A warm-resume
+/// payment deeplink while already unlocked normally pushes straight away,
+/// unless a re-lock is detected at the deferred execution-time check, in
+/// which case it stashes here for post-unlock replay (same path as the
+/// warm-locked branch). Pre-unlock gate waypoints (e.g.
+/// [BootNavGoNamed] for PIN verify) never consume or replay the stash; every
+/// post-unlock terminal landing (dashboard / restore / stay) replays and
+/// consumes it, so the stash can never survive past the first of those.
+///
+/// Last-write-wins on the stash — a newer deeplink deliberately supersedes an
+/// older un-replayed one; no queueing.
+String? _pendingPaymentDeeplink;
+
+/// Stashes [payload] for post-unlock replay via [applyBootNavAction].
+/// Last-write-wins: a newer deeplink deliberately supersedes an older
+/// un-replayed one; no queueing.
+void stashPendingPaymentDeeplink(String payload) {
+  _pendingPaymentDeeplink = payload;
+}
+
+/// Returns the current stashed payload and clears it in the same call.
+String? takePendingPaymentDeeplink() {
+  final payload = _pendingPaymentDeeplink;
+  _pendingPaymentDeeplink = null;
+  return payload;
+}
+
+/// Clears any stashed payment deeplink without returning it.
+void clearPendingPaymentDeeplink() {
+  _pendingPaymentDeeplink = null;
+}
+
+/// Returns the current stashed payload without clearing it (read-only).
+String? peekPendingPaymentDeeplink() => _pendingPaymentDeeplink;
+
 /// Executes a [resolveBootNavigation] decision against [router]. Split out from
 /// `main.dart`'s `_navigate` so the routing side effects can be driven against a
 /// real [GoRouter] in a widget test (the decision itself is covered by the pure
@@ -171,8 +212,24 @@ void applyBootNavAction(
       return;
     case BootNavGoNamed(:final routeName):
       // Reaching the dashboard is the final landing — drop any stale resume
-      // capture so a later benign emission can't bounce the user around.
-      if (routeName == AppRoutes.dashboard) onClearResume();
+      // capture so a later benign emission can't bounce the user around, and
+      // replay a cold-start / locked-warm-resume payment deeplink now that the
+      // same gate ladder a normal /pay navigation passes has just been cleared
+      // (see takePendingPaymentDeeplink / stashPendingPaymentDeeplink).
+      if (routeName == AppRoutes.dashboard) {
+        onClearResume();
+        final payload = takePendingPaymentDeeplink();
+        if (payload != null) {
+          router.goNamed(routeName);
+          unawaited(router.pushNamed(AppRoutes.pay, extra: payload));
+          return;
+        }
+      }
+      // Non-dashboard named navigation (PIN/setup/onboarding gates, …) is an
+      // intermediate step of the same boot ladder: the stash must survive
+      // through to the eventual dashboard landing so cold-start and
+      // locked-warm-resume payment deeplinks can still replay. Do NOT clear
+      // the pending-payment stash here.
       router.goNamed(routeName);
       return;
     case BootNavRestore(:final location):
@@ -181,7 +238,11 @@ void applyBootNavAction(
       // real entry shape — dashboard as base, flow pushed on top — so the
       // flow's pop-based exits (Close buttons, AppBar auto-back) keep working;
       // a bare `go` would strand the restored route as the only match with
-      // nothing underneath to pop back to.
+      // nothing underneath to pop back to. onClearResume drops the spent
+      // capture so a later emission can't re-restore. Then, if a payment
+      // deeplink was stashed while locked, replay it as an imperative /pay
+      // push on top of the restored location (same post-unlock terminal
+      // consumption as the dashboard branch).
       onClearResume();
       if (Uri.parse(location).path == '/dashboard') {
         router.go(location);
@@ -189,10 +250,22 @@ void applyBootNavAction(
         router.goNamed(AppRoutes.dashboard);
         unawaited(router.push(location));
       }
+      final payload = takePendingPaymentDeeplink();
+      if (payload != null) {
+        unawaited(router.pushNamed(AppRoutes.pay, extra: payload));
+      }
       return;
     case BootNavStay():
-      // Already on a valid non-gate route — discard any stale capture.
+      // Already on a valid non-gate route — discard any stale resume capture.
+      // This is a post-unlock terminal landing: if a payment deeplink was
+      // stashed while locked, replay it as an imperative /pay push on top of
+      // the current location (the only navigation this branch performs when
+      // a stash exists).
       onClearResume();
+      final payload = takePendingPaymentDeeplink();
+      if (payload != null) {
+        unawaited(router.pushNamed(AppRoutes.pay, extra: payload));
+      }
       return;
   }
 }

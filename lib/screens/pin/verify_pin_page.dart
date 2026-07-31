@@ -167,11 +167,14 @@ class _VerifyPinViewState extends State<VerifyPinView> {
                                         .pinVerifyLockedTemporarily(
                                           _formatRemaining(s.lockedUntil),
                                         ),
-                                  VerifyPinLocked _ => S.of(context).pinVerifyLocked,
                                   // The 'Forgot PIN?' button only exists in
-                                  // the appLock variant (bottom != null);
-                                  // gate flows get a text without that
-                                  // dangling button reference.
+                                  // the appLock variant (bottom != null); gate
+                                  // flows get a text without that dangling
+                                  // button reference — both the permanent-lock
+                                  // and the unverifiable messages branch on it.
+                                  VerifyPinLocked _ => widget.bottom != null
+                                      ? S.of(context).pinVerifyLocked
+                                      : S.of(context).pinVerifyLockedGate,
                                   VerifyPinUnverifiable _ => widget.bottom != null
                                       ? S.of(context).pinVerifyUnverifiable
                                       : S.of(context).pinVerifyUnverifiableGate,

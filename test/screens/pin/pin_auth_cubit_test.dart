@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/pin/constants/pin_constants.dart';
+import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 
 class _MockSecureStorage extends Mock implements SecureStorage {}
 
@@ -226,6 +227,22 @@ void main() {
       await cubit.reset();
       expect(cubit.peekResumeLocation(), isNull);
     });
+
+    test(
+      'reset clears a pending payment deeplink stash (no replay into a reset/re-onboarded wallet)',
+      () async {
+        when(() => storage.deletePinHash()).thenAnswer((_) async {});
+        when(() => storage.deleteBiometricEnabled()).thenAnswer((_) async {});
+        when(() => storage.resetPinLockout()).thenAnswer((_) async {});
+        addTearDown(clearPendingPaymentDeeplink);
+
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+        final cubit = build();
+        await cubit.reset();
+
+        expect(peekPendingPaymentDeeplink(), isNull);
+      },
+    );
   });
 
   group('reset', () {

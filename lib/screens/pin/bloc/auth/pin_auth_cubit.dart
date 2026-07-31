@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/screens/pin/constants/pin_constants.dart';
+import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 
 part 'pin_auth_state.dart';
 
@@ -79,6 +80,9 @@ class PinAuthCubit extends Cubit<PinAuthState> {
       _secureStorage.resetPinLockout(),
     ]);
     _resumeLocation = null;
+    // A stashed payment deeplink must not survive into a freshly reset /
+    // re-onboarded wallet (Forgot PIN / Delete Wallet).
+    clearPendingPaymentDeeplink();
     emit(const PinAuthState());
   }
 }

@@ -2,11 +2,29 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_link_entry.dart';
+import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
+
+class _MockPinAuthCubit extends Mock implements PinAuthCubit {}
 
 void main() {
+  late _MockPinAuthCubit pinAuthCubit;
+
+  setUp(() {
+    pinAuthCubit = _MockPinAuthCubit();
+    GetIt.instance.registerSingleton<PinAuthCubit>(pinAuthCubit);
+    when(() => pinAuthCubit.state).thenReturn(
+      const PinAuthState(isPinVerified: true, isPinSetup: true),
+    );
+  });
+
+  tearDown(() => GetIt.instance.reset());
+
   // A minimal router wired to the *production* scheme handling — the
   // [appLinkSchemeRedirect] + [appLinkOnException] pair with the push-aware
   // [effectiveLocation], exactly as router_config.dart wires it. `/home` is the
@@ -19,6 +37,7 @@ void main() {
       redirect: (context, state) => appLinkSchemeRedirect(
         state,
         effectiveLocation(router.routerDelegate.currentConfiguration),
+        router,
       ),
       onException: appLinkOnException,
       routes: [
@@ -41,6 +60,28 @@ void main() {
           builder: (_, state) =>
               Scaffold(body: Text(state.extra! as String, key: const Key('details'))),
         ),
+        // Gate routes from `gateLocations` — needed so warm-resume tests can
+        // land on a real lock path and prove /pay is NOT pushed over it.
+        GoRoute(
+          path: '/verifyPin',
+          builder: (_, _) =>
+              const Scaffold(body: Text('VERIFY', key: Key('verifyPin'))),
+        ),
+        GoRoute(
+          path: '/pinGate',
+          builder: (_, _) =>
+              const Scaffold(body: Text('PINGATE', key: Key('pinGate'))),
+        ),
+        GoRoute(
+          path: '/setupPin',
+          builder: (_, _) =>
+              const Scaffold(body: Text('SETUP', key: Key('setupPin'))),
+        ),
+        GoRoute(
+          name: AppRoutes.pay,
+          path: '/pay',
+          builder: (_, state) => Scaffold(body: Text('PAY:${state.extra}', key: const Key('pay'))),
+        ),
       ],
     );
     return router;
@@ -60,6 +101,48 @@ void main() {
     expect(appLinkScheme, 'realunit-wallet');
     expect(appLinkUrl, 'realunit-wallet://open');
     expect(appLinkColdStartLocation, '/home');
+  });
+
+  group('extractPaymentDeeplinkPayload', () {
+    const sampleLnurl =
+        'LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD9E3K7MF0V9CXJTMKXP6XCEF';
+
+    test('single-colon lightning form extracts the lightning payload', () {
+      expect(
+        extractPaymentDeeplinkPayload('realunit-wallet:lightning:$sampleLnurl'),
+        'lightning:$sampleLnurl',
+      );
+    });
+
+    test('bare LNURL form extracts the LNURL verbatim', () {
+      expect(
+        extractPaymentDeeplinkPayload('realunit-wallet:$sampleLnurl'),
+        sampleLnurl,
+      );
+    });
+
+    test('https lnurlp form extracts the URL verbatim', () {
+      const url = 'https://api.dfx.swiss/v1/lnurlp/pl_abc123';
+      expect(
+        extractPaymentDeeplinkPayload('realunit-wallet:$url'),
+        url,
+      );
+    });
+
+    test('canonical path-less open returns null', () {
+      expect(extractPaymentDeeplinkPayload(appLinkUrl), isNull);
+    });
+
+    test('path-carrying scheme URL returns null', () {
+      expect(
+        extractPaymentDeeplinkPayload('realunit-wallet://open/settings'),
+        isNull,
+      );
+    });
+
+    test('non-scheme string returns null', () {
+      expect(extractPaymentDeeplinkPayload('https://example.com'), isNull);
+    });
   });
 
   testWidgets('warm resume: a scheme open keeps the user on /dashboard', (
@@ -130,6 +213,164 @@ void main() {
     },
   );
 
+  testWidgets(
+    'warm resume: a payment deeplink pushes /pay with the payload as extra '
+    'on top of the current stack (pushed route not clobbered)',
+    (tester) async {
+      const sampleLnurl =
+          'LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD9E3K7MF0V9CXJTMKXP6XCEF';
+      final router = await pump(tester);
+      router.go('/dashboard');
+      await tester.pumpAndSettle();
+
+      // Mirror the KYC-pattern test: push a route so the stack is non-trivial.
+      unawaited(router.push('/settings'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings')), findsOneWidget);
+
+      // Single-colon form — the double-slash form throws in Uri.parse / go.
+      router.go('realunit-wallet:lightning:$sampleLnurl');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('pay')), findsOneWidget);
+      expect(find.text('PAY:lightning:$sampleLnurl'), findsOneWidget);
+
+      // The push sits ON TOP of the existing stack — nothing was replaced.
+      expect(router.canPop(), isTrue);
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('settings')), findsOneWidget);
+      expect(router.canPop(), isTrue);
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('dashboard')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'warm resume: a re-lock landing before the deferred push runs is honored — '
+    'no /pay push, payload stashed for post-unlock replay',
+    (tester) async {
+      addTearDown(clearPendingPaymentDeeplink);
+      const sampleLnurl =
+          'LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD9E3K7MF0V9CXJTMKXP6XCEF';
+      final router = await pump(tester);
+      router.go('/dashboard');
+      await tester.pumpAndSettle();
+
+      // Keep setUp's unlocked stub (isPinVerified && isPinSetup) so the
+      // decision-time check schedules the deferred push callback.
+      router.go('realunit-wallet:lightning:$sampleLnurl');
+      // Flip the mock AFTER router.go and BEFORE pumpAndSettle so the
+      // decision-time check reads unlocked (schedules the deferred callback)
+      // while the execution-time re-check reads locked — this is what makes
+      // the test non-vacuous (it would fail if the postFrame re-check were
+      // deleted, since the deferred callback would then unconditionally push).
+      // Simulates a re-lock (AppLifecycleState.resumed -> onAppResumed())
+      // landing between decision and deferred frame.
+      when(() => pinAuthCubit.state).thenReturn(const PinAuthState(isPinVerified: false));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('pay')), findsNothing);
+      expect(currentPath(router), '/dashboard');
+      expect(peekPendingPaymentDeeplink(), 'lightning:$sampleLnurl');
+    },
+  );
+
+  testWidgets(
+    'warm resume: the canonical no-payload open never pushes /pay',
+    (tester) async {
+      final router = await pump(tester);
+      router.go('/dashboard');
+      await tester.pumpAndSettle();
+
+      router.go(appLinkUrl);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('pay')), findsNothing);
+      expect(find.byKey(const Key('dashboard')), findsOneWidget);
+    },
+  );
+
+  // Genuinely-locked warm-resume: a payment deeplink while isPinVerified is
+  // false (real PIN/unlock gates) must stash and stay — never push /pay over
+  // the lock screen. Step-up gates (e.g. /pinGate while already unlocked) take
+  // the deferred-push path instead; see the /pinGate test below.
+  testWidgets(
+    'warm resume on /verifyPin while locked: payment deeplink stashes and does not push /pay',
+    (tester) async {
+      addTearDown(clearPendingPaymentDeeplink);
+      when(() => pinAuthCubit.state).thenReturn(const PinAuthState(isPinVerified: false));
+      const sampleLnurl =
+          'LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD9E3K7MF0V9CXJTMKXP6XCEF';
+      final router = await pump(tester);
+      router.go('/verifyPin');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('verifyPin')), findsOneWidget);
+
+      router.go('realunit-wallet:lightning:$sampleLnurl');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('pay')), findsNothing);
+      expect(find.byKey(const Key('verifyPin')), findsOneWidget);
+      expect(currentPath(router), '/verifyPin');
+      expect(peekPendingPaymentDeeplink(), 'lightning:$sampleLnurl');
+    },
+  );
+
+  // /setupPin runtime state from PinAuthCubit.initialize() is
+  // isPinSetup=false, isPinVerified=true (vacuous auto-pass before any PIN is
+  // configured). Classifying unlock by isPinVerified alone would deferred-push
+  // /pay and bypass the mandatory PIN-setup gate — this regression guard uses
+  // the real pair state.
+  testWidgets(
+    'warm resume on /setupPin (vacuous isPinVerified before any PIN is configured): '
+    'payment deeplink stashes and does not push /pay',
+    (tester) async {
+      addTearDown(clearPendingPaymentDeeplink);
+      when(() => pinAuthCubit.state).thenReturn(
+        const PinAuthState(isPinSetup: false, isPinVerified: true),
+      );
+      const sampleLnurl =
+          'LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD9E3K7MF0V9CXJTMKXP6XCEF';
+      final router = await pump(tester);
+      router.go('/setupPin');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('setupPin')), findsOneWidget);
+
+      router.go('realunit-wallet:lightning:$sampleLnurl');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('pay')), findsNothing);
+      expect(find.byKey(const Key('setupPin')), findsOneWidget);
+      expect(currentPath(router), '/setupPin');
+      expect(peekPendingPaymentDeeplink(), 'lightning:$sampleLnurl');
+    },
+  );
+
+  testWidgets(
+    'warm resume on /pinGate while unlocked (step-up): payment deeplink '
+    'deferred-pushes /pay and does not stash',
+    (tester) async {
+      addTearDown(clearPendingPaymentDeeplink);
+      // Already unlocked — e.g. /pinGate reached from settings seed-view /
+      // change-PIN. setUp already stubs isPinVerified && isPinSetup.
+      const sampleLnurl =
+          'LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD9E3K7MF0V9CXJTMKXP6XCEF';
+      final router = await pump(tester);
+      router.go('/pinGate');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('pinGate')), findsOneWidget);
+
+      router.go('realunit-wallet:lightning:$sampleLnurl');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('pay')), findsOneWidget);
+      expect(find.text('PAY:lightning:$sampleLnurl'), findsOneWidget);
+      expect(peekPendingPaymentDeeplink(), isNull);
+    },
+  );
+
   testWidgets('cold start on the scheme URL boots to the normal entry', (
     tester,
   ) async {
@@ -140,6 +381,24 @@ void main() {
     expect(currentPath(router), appLinkColdStartLocation);
     expect(find.byKey(const Key('home')), findsOneWidget);
   });
+
+  testWidgets(
+    'cold start on a payment deeplink boots to /home and stashes the payload',
+    (tester) async {
+      addTearDown(clearPendingPaymentDeeplink);
+      const sampleLnurl =
+          'LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD9E3K7MF0V9CXJTMKXP6XCEF';
+
+      final router = await pump(
+        tester,
+        initial: 'realunit-wallet:lightning:$sampleLnurl',
+      );
+
+      expect(currentPath(router), appLinkColdStartLocation);
+      expect(find.byKey(const Key('home')), findsOneWidget);
+      expect(peekPendingPaymentDeeplink(), 'lightning:$sampleLnurl');
+    },
+  );
 
   testWidgets(
     'cold start on any scheme host/path boots without an error screen',
