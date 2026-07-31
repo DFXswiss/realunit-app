@@ -29,7 +29,7 @@ class Eip712Signer {
     // hardware wallets sign with the chainId-extended domain. Software wallets
     // keep the legacy chainId-less domain until Aktionariat has confirmed its
     // signature re-verification accepts the extended variant — the API
-    // accepts both (pair PR DFXswiss/api#4354).
+    // accepts both (pair PR DFXswiss/api#4542).
     final includeChainIdInDomain = credentials is BitboxCredentials;
 
     final Map<String, dynamic> typedDataMap = {

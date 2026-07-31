@@ -24,9 +24,9 @@ void main() {
   BitboxCredentials connected() =>
       BitboxCredentials('0x000000000000000000000000000000000000dead')..setBitbox(manager);
 
-  Future<String> signRegistration() => Eip712Signer.signRegistration(
+  Future<String> signRegistration({int chainId = 1}) => Eip712Signer.signRegistration(
     credentials: connected(),
-    chainId: 1,
+    chainId: chainId,
     email: 'jk@dfx.swiss',
     name: 'Joshua',
     type: 'human',
@@ -54,22 +54,32 @@ void main() {
     // registrations must sign the chainId-extended domain. The software-wallet
     // path keeps the legacy domain (pinned by the golden signature in
     // eip712_signer_test.dart).
-    test('signs with the chainId-extended EIP-712 domain', () async {
-      when(
-        () => manager.signETHTypedMessage(any(), any(), any()),
-      ).thenAnswer((_) async => Uint8List.fromList([0x01]));
+    // Signs with a non-default chainId so a hardcoded value cannot pass, and asserts the
+    // EIP712Domain member list exactly: the domain typehash covers the names, their types
+    // and their order, so any of those drifting changes the digest and the API recovers a
+    // foreign address. Mirrors the chainId-wiring pin in eip712_delegation_bitbox_test.dart.
+    for (final chainId in const [1, 11155111]) {
+      test('signs with the chainId-extended EIP-712 domain (chainId $chainId)', () async {
+        when(
+          () => manager.signETHTypedMessage(any(), any(), any()),
+        ).thenAnswer((_) async => Uint8List.fromList([0x01]));
 
-      await signRegistration();
+        await signRegistration(chainId: chainId);
 
-      final jsonMessage =
-          verify(() => manager.signETHTypedMessage(any(), any(), captureAny())).captured.single as Uint8List;
-      final typedData = jsonDecode(utf8.decode(jsonMessage)) as Map<String, dynamic>;
-      expect(typedData['domain']['chainId'], 1);
-      expect(
-        (typedData['types']['EIP712Domain'] as List).map((e) => e['name']),
-        containsAll(['name', 'version', 'chainId']),
-      );
-    });
+        final captured = verify(
+          () => manager.signETHTypedMessage(captureAny(), any(), captureAny()),
+        ).captured;
+        final typedData = jsonDecode(utf8.decode(captured[1] as Uint8List)) as Map<String, dynamic>;
+
+        expect(captured[0], chainId);
+        expect(typedData['domain']['chainId'], chainId);
+        expect(typedData['types']['EIP712Domain'], [
+          {'name': 'name', 'type': 'string'},
+          {'name': 'version', 'type': 'string'},
+          {'name': 'chainId', 'type': 'uint256'},
+        ]);
+      });
+    }
 
     test('throws SigningCancelledException on empty signature', () async {
       when(
