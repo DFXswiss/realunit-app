@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 
 import 'package:bitbox_flutter/bitbox_flutter.dart';
 import 'package:realunit_wallet/packages/hardware_wallet/bitbox_credentials.dart';
+import 'package:realunit_wallet/packages/hardware_wallet/bitbox_firmware.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_address_unavailable_exception.dart';
 
 class BitboxService {
@@ -28,6 +29,20 @@ class BitboxService {
   final Map<String, BitboxCredentials> _credentialsByAddress = {};
   Timer? _connectionStatusObserver;
   Future<void>? _pendingDisconnect;
+  String? _firmwareVersion;
+
+  /// The paired device's main firmware version, e.g. `"v9.26.4"`, captured at
+  /// pairing. Null before pairing, and on the USB transport, which cannot
+  /// report one — see [BitboxFirmware.refusesChainIdLessTypedData] for why the
+  /// two are not equivalent.
+  String? get firmwareVersion => _firmwareVersion;
+
+  /// Whether the paired device will refuse the registration signature.
+  ///
+  /// Read from the cached version rather than the device, so the KYC flow can
+  /// gate without holding a live connection.
+  bool get refusesRegistrationSignature =>
+      BitboxFirmware.refusesChainIdLessTypedData(_firmwareVersion);
 
   /// Normalises an address into the form used as the map key. Lowercase is
   /// the cheapest robust choice — EIP-55 checksum differs in casing only, so
@@ -59,6 +74,17 @@ class BitboxService {
     final didInit = await bitboxManager.initBitBox();
     if (!didInit) throw Exception('Failed to init');
     _isConnected = true;
+    // Captured once per pairing. On Bluetooth the version rides on the product
+    // characteristic, which the peripheral publishes on connect, so this costs
+    // no device round-trip. Swallow failures: a version we could not read must
+    // never be the reason pairing fails — the firmware gate downstream decides
+    // what an unknown version means.
+    try {
+      _firmwareVersion = await bitboxManager.getFirmwareVersion();
+    } on Exception catch (e) {
+      developer.log('BitboxService: firmware version unavailable: $e');
+      _firmwareVersion = null;
+    }
     // Re-attach the manager to every active credentials instance so existing
     // wallets heal automatically on reconnect. The previous derivationPath is
     // preserved inside setBitbox().

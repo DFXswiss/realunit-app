@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:realunit_wallet/packages/hardware_wallet/bitbox.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
@@ -25,6 +26,7 @@ class KycCubit extends Cubit<KycState> {
   final RealUnitRegistrationService _registrationService;
   final RealUnitLegalService _legalService;
   final AppStore _appStore;
+  final BitboxService _bitboxService;
 
   /// Offline fallback ONLY. The legal disclaimer gate is server-driven via
   /// `_legalService.getLegalInfo()`; this per-session flag is used solely when
@@ -54,10 +56,12 @@ class KycCubit extends Cubit<KycState> {
     RealUnitRegistrationService registrationService,
     RealUnitLegalService legalService,
     AppStore appStore,
+    BitboxService bitboxService,
   ) : _kycService = kycService,
       _registrationService = registrationService,
       _legalService = legalService,
       _appStore = appStore,
+      _bitboxService = bitboxService,
       super(const KycInitial());
 
   Future<void> checkKyc({String? context}) async {
@@ -154,6 +158,22 @@ class KycCubit extends Cubit<KycState> {
           (registrationInfo.state == RealUnitRegistrationState.newRegistration ||
               registrationInfo.state == RealUnitRegistrationState.addWallet)) {
         emit(const KycSignatureUnsupportedFailure());
+        return;
+      }
+
+      // Same class of gate, one step narrower: a BitBox can sign in general,
+      // but firmware up to v9.26.4 refuses this registration envelope
+      // specifically, because its EIP-712 domain carries no chainId. Measured
+      // on hardware — see [BitboxFirmware]. Gate on the same two states as the
+      // debug-wallet check above, so a user who is already registered and needs
+      // no signature is never stopped.
+      if (_appStore.wallet.walletType == WalletType.bitbox &&
+          _bitboxService.refusesRegistrationSignature &&
+          (registrationInfo.state == RealUnitRegistrationState.newRegistration ||
+              registrationInfo.state == RealUnitRegistrationState.addWallet)) {
+        emit(KycBitboxFirmwareUnsupportedFailure(
+          version: _bitboxService.firmwareVersion,
+        ));
         return;
       }
 

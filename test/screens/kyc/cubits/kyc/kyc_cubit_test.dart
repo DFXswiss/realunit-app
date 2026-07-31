@@ -4,6 +4,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/packages/hardware_wallet/bitbox.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
@@ -34,6 +35,8 @@ class _MockRealUnitLegalService extends Mock implements RealUnitLegalService {}
 class _MockAppStore extends Mock implements AppStore {}
 
 class _MockAWallet extends Mock implements AWallet {}
+
+class _MockBitboxService extends Mock implements BitboxService {}
 
 UserKycDto _kycHeader({KycLevel level = KycLevel.level0}) =>
     UserKycDto(hash: 'h', level: level, dataComplete: false);
@@ -150,6 +153,7 @@ void main() {
   late RealUnitLegalService legalService;
   late AppStore appStore;
   late AWallet wallet;
+  late BitboxService bitboxService;
 
   setUpAll(() {
     registerFallbackValue(<RealUnitLegalAgreement>[]);
@@ -161,7 +165,11 @@ void main() {
     legalService = _MockRealUnitLegalService();
     appStore = _MockAppStore();
     wallet = _MockAWallet();
+    bitboxService = _MockBitboxService();
     when(() => appStore.wallet).thenReturn(wallet);
+    // Default: no firmware gate. Only the BitBox firmware tests override it.
+    when(() => bitboxService.refusesRegistrationSignature).thenReturn(false);
+    when(() => bitboxService.firmwareVersion).thenReturn(null);
     // Default: software wallet — most tests don't care about the signing
     // capability gate.
     when(() => wallet.walletType).thenReturn(WalletType.software);
@@ -176,7 +184,8 @@ void main() {
     when(() => legalService.getLegalInfo()).thenAnswer((_) async => _legalInfo());
   });
 
-  KycCubit buildCubit() => KycCubit(kycService, registrationService, legalService, appStore);
+  KycCubit buildCubit() =>
+      KycCubit(kycService, registrationService, legalService, appStore, bitboxService);
 
   group('$KycCubit checkKyc', () {
     blocTest<KycCubit, KycState>(
@@ -407,6 +416,122 @@ void main() {
       expect: () => [
         const KycLoading(),
         const KycSignatureUnsupportedFailure(),
+      ],
+    );
+
+    // BitBox firmware gate. Same shape as the debug-wallet gate above, one
+    // step narrower: the device CAN sign, but firmware <= v9.26.4 refuses the
+    // registration envelope because its EIP-712 domain carries no chainId
+    // (measured on hardware — see BitboxFirmware). Must fire only for states
+    // that need a signature, and must never fire for a non-BitBox wallet or a
+    // transport that cannot report a version.
+    blocTest<KycCubit, KycState>(
+      'emits KycBitboxFirmwareUnsupportedFailure when bitbox + affected '
+      'firmware + NewRegistration',
+      setUp: () {
+        when(() => wallet.walletType).thenReturn(WalletType.bitbox);
+        when(() => bitboxService.refusesRegistrationSignature).thenReturn(true);
+        when(() => bitboxService.firmwareVersion).thenReturn('v9.26.4');
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level20),
+        );
+        when(() => kycService.getUser()).thenAnswer((_) async => _user());
+        when(() => registrationService.getRegistrationInfo()).thenAnswer(
+          (_) async => _walletStatus(
+            RealUnitRegistrationState.newRegistration,
+            userData: _fixtureUserData,
+          ),
+        );
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        const KycBitboxFirmwareUnsupportedFailure(version: 'v9.26.4'),
+      ],
+    );
+
+    blocTest<KycCubit, KycState>(
+      'emits KycBitboxFirmwareUnsupportedFailure when bitbox + affected '
+      'firmware + AddWallet',
+      setUp: () {
+        when(() => wallet.walletType).thenReturn(WalletType.bitbox);
+        when(() => bitboxService.refusesRegistrationSignature).thenReturn(true);
+        when(() => bitboxService.firmwareVersion).thenReturn('v9.26.4');
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level20),
+        );
+        when(() => kycService.getUser()).thenAnswer((_) async => _user());
+        when(() => registrationService.getRegistrationInfo()).thenAnswer(
+          (_) async => _walletStatus(
+            RealUnitRegistrationState.addWallet,
+            userData: _fixtureUserData,
+          ),
+        );
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        const KycBitboxFirmwareUnsupportedFailure(version: 'v9.26.4'),
+      ],
+    );
+
+    blocTest<KycCubit, KycState>(
+      'does not gate a bitbox on fixed firmware',
+      setUp: () {
+        when(() => wallet.walletType).thenReturn(WalletType.bitbox);
+        when(() => bitboxService.refusesRegistrationSignature).thenReturn(false);
+        when(() => bitboxService.firmwareVersion).thenReturn('v9.26.5');
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level20),
+        );
+        when(() => kycService.getUser()).thenAnswer((_) async => _user());
+        when(() => registrationService.getRegistrationInfo()).thenAnswer(
+          (_) async => _walletStatus(
+            RealUnitRegistrationState.newRegistration,
+            userData: _fixtureUserData,
+          ),
+        );
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        isA<KycState>().having(
+          (state) => state is KycBitboxFirmwareUnsupportedFailure,
+          'is not the firmware gate',
+          isFalse,
+        ),
+      ],
+    );
+
+    blocTest<KycCubit, KycState>(
+      'does not gate a software wallet even if the service reports affected',
+      setUp: () {
+        when(() => wallet.walletType).thenReturn(WalletType.software);
+        // Stale/irrelevant service state must not leak across wallet types.
+        when(() => bitboxService.refusesRegistrationSignature).thenReturn(true);
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level20),
+        );
+        when(() => kycService.getUser()).thenAnswer((_) async => _user());
+        when(() => registrationService.getRegistrationInfo()).thenAnswer(
+          (_) async => _walletStatus(
+            RealUnitRegistrationState.newRegistration,
+            userData: _fixtureUserData,
+          ),
+        );
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        isA<KycState>().having(
+          (state) => state is KycBitboxFirmwareUnsupportedFailure,
+          'is not the firmware gate',
+          isFalse,
+        ),
       ],
     );
 
@@ -1149,7 +1274,8 @@ void main() {
 
         // Server reports all agreements accepted (default stub), so the
         // disclaimer gate passes and both runs reach the completed state.
-        final cubit = KycCubit(kycService, registrationService, legalService, appStore);
+        final cubit =
+            KycCubit(kycService, registrationService, legalService, appStore, bitboxService);
 
         final states = <KycState>[];
         final sub = cubit.stream.listen(states.add);

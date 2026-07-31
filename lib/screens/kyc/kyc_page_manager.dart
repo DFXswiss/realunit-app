@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
+import 'package:realunit_wallet/packages/hardware_wallet/bitbox.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
@@ -11,6 +12,7 @@ import 'package:realunit_wallet/screens/kyc/steps/2fa/kyc_2fa_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/confirm_email/kyc_confirm_email_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/email/kyc_email_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/financial_data/kyc_financial_data_page.dart';
+import 'package:realunit_wallet/screens/kyc/steps/firmware_unsupported/kyc_bitbox_firmware_unsupported_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/ident/kyc_ident_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/link_wallet/kyc_link_wallet_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/nationality/kyc_nationality_page.dart';
@@ -39,6 +41,7 @@ class KycPageManager extends StatelessWidget {
         getIt<RealUnitRegistrationService>(),
         getIt<RealUnitLegalService>(),
         getIt<AppStore>(),
+        getIt<BitboxService>(),
       )..checkKyc(context: kycContext),
       child: const KycViewManager(),
     );
@@ -55,6 +58,8 @@ class KycViewManager extends StatelessWidget {
         KycLoading() => const KycLoadingPage(),
         KycFailure(:final message) => KycFailurePage(message: message),
         KycSignatureUnsupportedFailure() => const KycSignatureUnsupportedPage(),
+        KycBitboxFirmwareUnsupportedFailure(:final version) =>
+          KycBitboxFirmwareUnsupportedPage(version: version),
         KycUnsupportedStepFailure(:final stepName) => KycFailurePage(
           message: S.of(context).kycUnsupportedStepDescription(stepName?.value ?? '-'),
         ),

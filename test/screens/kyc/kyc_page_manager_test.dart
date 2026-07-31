@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/packages/hardware_wallet/bitbox.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/dto/kyc_level_dto.dart';
@@ -37,6 +38,8 @@ class _MockAppStore extends Mock implements AppStore {}
 class _MockAWallet extends Mock implements AWallet {}
 
 class _MockKycCubit extends MockCubit<KycState> implements KycCubit {}
+
+class _MockBitboxService extends Mock implements BitboxService {}
 
 UserKycDto _kycHeader({KycLevel level = KycLevel.level0}) =>
     UserKycDto(hash: 'h', level: level, dataComplete: false);
@@ -122,7 +125,11 @@ void main() {
         ),
       );
 
-      final cubit = KycCubit(kycService, registrationService, legalService, appStore);
+      final bitboxService = _MockBitboxService();
+      when(() => bitboxService.refusesRegistrationSignature).thenReturn(false);
+      when(() => bitboxService.firmwareVersion).thenReturn(null);
+      final cubit =
+          KycCubit(kycService, registrationService, legalService, appStore, bitboxService);
       await tester.pumpApp(
         BlocProvider<KycCubit>.value(
           value: cubit,
@@ -162,6 +169,10 @@ void main() {
       getIt.registerSingleton<RealUnitRegistrationService>(registrationService);
       getIt.registerSingleton<RealUnitLegalService>(legalService);
       getIt.registerSingleton<AppStore>(appStore);
+      final bitboxService = _MockBitboxService();
+      when(() => bitboxService.refusesRegistrationSignature).thenReturn(false);
+      when(() => bitboxService.firmwareVersion).thenReturn(null);
+      getIt.registerSingleton<BitboxService>(bitboxService);
       addTearDown(() async => getIt.reset());
 
       // Fail fast so the created cubit settles into KycFailure without leaving a

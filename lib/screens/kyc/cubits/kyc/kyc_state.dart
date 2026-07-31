@@ -110,3 +110,20 @@ class KycFailure extends KycState {
 class KycSignatureUnsupportedFailure extends KycState {
   const KycSignatureUnsupportedFailure();
 }
+
+/// The paired BitBox can sign in general, but its firmware refuses the
+/// registration envelope specifically — its EIP-712 domain carries no chainId,
+/// and confirming the resulting device warning answers with a NACK over
+/// Bluetooth. Emitted only when the registration state actually needs a
+/// signature. See `BitboxFirmware` for the measurements and affected range.
+///
+/// [version] is what the device reported, e.g. `"v9.26.4"`, or null when it
+/// could not be read; carried so the screen can name it.
+class KycBitboxFirmwareUnsupportedFailure extends KycState {
+  const KycBitboxFirmwareUnsupportedFailure({this.version});
+
+  final String? version;
+
+  @override
+  List<Object?> get props => [version];
+}

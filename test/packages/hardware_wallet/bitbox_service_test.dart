@@ -54,6 +54,66 @@ void main() {
   }
 
   group('$BitboxService', () {
+    // Firmware capture. The version rides on the BLE product characteristic,
+    // so it is cached once at pairing and read from cache thereafter — the KYC
+    // gate must not need a live device.
+    test('caches the firmware version at pairing and reports it affected', () {
+      fakeAsync((async) {
+        platform = installSimulatedBitboxPlatform(firmwareVersion: 'v9.26.4');
+        final service = pairedServiceSync(async);
+
+        expect(service.firmwareVersion, 'v9.26.4');
+        expect(service.refusesRegistrationSignature, isTrue);
+      });
+    });
+
+    test('reports fixed firmware as unaffected', () {
+      fakeAsync((async) {
+        platform = installSimulatedBitboxPlatform(firmwareVersion: 'v9.26.5');
+        final service = pairedServiceSync(async);
+
+        expect(service.firmwareVersion, 'v9.26.5');
+        expect(service.refusesRegistrationSignature, isFalse);
+      });
+    });
+
+    test('a transport that reports no version is not gated', () {
+      // USB. Every USB operation was verified working on hardware, so a null
+      // version must never gate — otherwise every Android user is blocked.
+      fakeAsync((async) {
+        platform = installSimulatedBitboxPlatform(firmwareVersion: null);
+        final service = pairedServiceSync(async);
+
+        expect(service.firmwareVersion, isNull);
+        expect(service.refusesRegistrationSignature, isFalse);
+      });
+    });
+
+    test('a failed version read does not fail pairing', () {
+      // Reading the version is best-effort: it is diagnostic for a gate, never
+      // a reason to refuse a device the user just paired.
+      fakeAsync((async) {
+        platform = installSimulatedBitboxPlatform(
+          errors: {
+            SimulatedBitboxMethod.getFirmwareVersion: Exception('unavailable'),
+          },
+        );
+        final service = pairedServiceSync(async);
+
+        expect(service.firmwareVersion, isNull);
+        expect(service.refusesRegistrationSignature, isFalse);
+        // Pairing still completed: credentials are live.
+        expect(service.getCredentials(knownAddress).isConnected, isTrue);
+      });
+    });
+
+    test('firmware version is null before pairing', () {
+      final service = BitboxService(connectionStatusInterval: fastInterval);
+
+      expect(service.firmwareVersion, isNull);
+      expect(service.refusesRegistrationSignature, isFalse);
+    });
+
     test('getCredentials before init returns disconnected credentials', () {
       final service = BitboxService(connectionStatusInterval: fastInterval);
       final credentials = service.getCredentials(knownAddress);
