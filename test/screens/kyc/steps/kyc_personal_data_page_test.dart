@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_country_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
@@ -169,15 +172,75 @@ void main() {
       expect(find.text('Winterthur'), findsOne);
     });
 
-    testWidgets('does not seed a phone whose prefix the field cannot decompose', (tester) async {
+    // A stored number with a dial code the field does not offer must still leave an editable field:
+    // PhoneNumberField falls back to its first prefix rather than leaving `prefix` null, which would
+    // render a blank dropdown and make it silently drop every edit the user makes.
+    testWidgets('stays editable when the stored phone has an unsupported prefix', (tester) async {
       final dto = userDataDto(phone: '+33612345678');
       await tester.pumpApp(buildSubject(KycPersonalDataView(url: url, initialUserData: dto)));
       await tester.pumpAndSettle();
 
-      // Left unseeded, so PhoneNumberField falls back to its first prefix and stays editable. Seeding
-      // it would leave `prefix` null — the dropdown blank — and the field would then never write the
-      // user's edits back to the controller.
-      expect(find.text(phoneNumberPrefixes.first), findsOne);
+      expect(find.text('+41'), findsOne);
+    });
+
+    // The country lookup is fire-and-forget; without a catch a failing GET escapes as an uncaught
+    // async error instead of degrading to an empty picker.
+    testWidgets('survives a failing country lookup', (tester) async {
+      final getIt = GetIt.instance;
+      await getIt.reset();
+      getIt.registerSingleton<DfxKycService>(MockDfxKycService());
+      getIt.registerSingleton<DfxCountryService>(failingCountryService());
+      addTearDown(() async {
+        await getIt.reset();
+        setupDependencyInjection();
+      });
+
+      await tester.pumpApp(
+        buildSubject(KycPersonalDataView(url: url, initialUserData: userDataDto())),
+      );
+      await tester.pumpAndSettle();
+
+      // the rest of the form still rendered
+      expect(find.text('Erika'), findsOne);
+    });
+
+    // Two independent country lookups race — this page's and CountryField's own. If this one is the
+    // slower, it must not overwrite a country the user has already chosen in the meantime.
+    testWidgets('does not overwrite a country the user already picked', (tester) async {
+      final gate = Completer<void>();
+      var served = 0;
+      final getIt = GetIt.instance;
+      await getIt.reset();
+      getIt.registerSingleton<DfxKycService>(MockDfxKycService());
+      getIt.registerSingleton<DfxCountryService>(
+        countryServiceWithClient(
+          MockClient((_) async {
+            // hold only the first caller (this page); let CountryField's own load through
+            if (served++ == 0) await gate.future;
+            return countriesFixtureResponse();
+          }),
+        ),
+      );
+      addTearDown(() async {
+        await getIt.reset();
+        setupDependencyInjection();
+      });
+
+      await tester.pumpApp(
+        buildSubject(KycPersonalDataView(url: url, initialUserData: userDataDto())),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(CountryField));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Germany').last);
+      await tester.pumpAndSettle();
+
+      gate.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Germany'), findsOne);
+      expect(find.text('Switzerland'), findsNothing);
     });
 
     // Pins the url plumbing: the step's session url is what the submit PUTs to.

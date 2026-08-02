@@ -38,8 +38,7 @@ class KycPersonalDataPage extends StatelessWidget {
     // The form can only express a personal account: submitting it sets `accountType` on the
     // account, and the API nulls every organization field whenever that value is `Personal`. So an
     // organization or sole-proprietorship account must never be offered this form — it would destroy
-    // its organization data and drop the org-only steps from its required set. Without a payload the
-    // type is unknown, which is the same refusal case.
+    // its organization data and drop the org-only steps from its required set.
     final userData = initialUserData;
     if (userData == null) {
       // Transient: the registration row carries no signed payload yet. Offer a retry rather than a
@@ -92,10 +91,7 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
     final kycData = widget.initialUserData.kycData;
     firstNameCtrl.text = kycData.firstName;
     lastNameCtrl.text = kycData.lastName;
-    // Only seed a number PhoneNumberField can decompose: it matches the stored value against its
-    // own prefix list and leaves `prefix` null otherwise, in which case it never writes edits back.
-    // An unseeded field defaults to the first prefix and stays editable.
-    if (phoneNumberPrefixes.any(kycData.phone.startsWith)) phoneCtrl.value = kycData.phone;
+    phoneCtrl.value = kycData.phone;
     streetCtrl.text = kycData.address.street;
     houseNumberCtrl.text = kycData.address.houseNumber ?? '';
     zipCtrl.text = kycData.address.zip;

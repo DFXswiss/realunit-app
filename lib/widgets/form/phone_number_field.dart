@@ -3,11 +3,6 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/widgets/form/dropdown_field.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
 
-/// The dial prefixes the field can decompose a stored number into. A seeded value that starts with
-/// none of these leaves `prefix` null, and the field then never writes edits back to the controller —
-/// so callers that pre-fill the controller must check against this list first.
-const phoneNumberPrefixes = ['+41', '+49'];
-
 class PhoneNumberField extends StatefulWidget {
   final ValueNotifier<String?> controller;
 
@@ -18,7 +13,7 @@ class PhoneNumberField extends StatefulWidget {
 }
 
 class _PhoneNumberFieldState extends State<PhoneNumberField> {
-  final prefixes = phoneNumberPrefixes;
+  final prefixes = ['+41', '+49'];
   String? prefix;
   String? number;
 
@@ -26,17 +21,20 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
   void initState() {
     super.initState();
     final value = widget.controller.value;
-    if (value != null) {
-      for (var p in prefixes) {
-        if (value.startsWith(p)) {
-          prefix = p;
-          number = value.substring(p.length);
-          break;
-        }
+    for (final p in prefixes) {
+      if (value != null && value.startsWith(p)) {
+        prefix = p;
+        number = value.substring(p.length);
+        break;
       }
-    } else {
-      prefix = prefixes.first;
     }
+
+    // A seeded value this field cannot decompose (empty, or a dial code it does not offer) must not
+    // leave `prefix` null: the dropdown carries no validator, so `Form.validate()` would pass while
+    // `updatePhoneNumber()` silently refused to write, and the stale value would be submitted
+    // instead of what the user typed. Fall back to the first prefix; the number field starts empty,
+    // so the validator still blocks submit until it is re-entered.
+    prefix ??= prefixes.first;
   }
 
   void updatePhoneNumber() {
