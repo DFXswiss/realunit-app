@@ -4,6 +4,7 @@ enum KycStep {
   email,
   confirmEmail,
   registration,
+  personalData,
   linkWallet,
   legalDisclaimer,
   nationality,

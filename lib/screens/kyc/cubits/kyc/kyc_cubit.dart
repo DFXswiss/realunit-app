@@ -344,6 +344,7 @@ class KycCubit extends Cubit<KycState> {
 
   KycStep? _mapStepName(KycStepName name) => switch (name) {
     KycStepName.contactData => KycStep.registration,
+    KycStepName.personalData => KycStep.personalData,
     KycStepName.nationalityData => KycStep.nationality,
     KycStepName.ident => KycStep.ident,
     KycStepName.financialData => KycStep.financialData,

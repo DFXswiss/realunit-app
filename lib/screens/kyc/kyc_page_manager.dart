@@ -14,6 +14,7 @@ import 'package:realunit_wallet/screens/kyc/steps/financial_data/kyc_financial_d
 import 'package:realunit_wallet/screens/kyc/steps/ident/kyc_ident_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/link_wallet/kyc_link_wallet_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/nationality/kyc_nationality_page.dart';
+import 'package:realunit_wallet/screens/kyc/steps/personal_data/kyc_personal_data_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/kyc_registration_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/signature_unsupported/kyc_signature_unsupported_page.dart';
 import 'package:realunit_wallet/screens/kyc/subpages/kyc_account_merge_page.dart';
@@ -75,6 +76,7 @@ class KycViewManager extends StatelessWidget {
               },
             ),
             KycStep.registration => KycRegistrationPage(initialUserData: realUnitUserData),
+            KycStep.personalData => KycPersonalDataPage(url: urlOrToken ?? ''),
             KycStep.linkWallet => KycLinkWalletPage(userData: realUnitUserData),
             KycStep.nationality => KycNationalityPage(url: urlOrToken ?? ''),
             KycStep.twoFa => const Kyc2FaPage(),
