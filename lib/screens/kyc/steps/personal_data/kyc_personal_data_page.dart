@@ -19,6 +19,7 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/form/country_field.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
 import 'package:realunit_wallet/widgets/form/phone_number_field.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 /// The PersonalData KYC step.
 ///
@@ -39,8 +40,13 @@ class KycPersonalDataPage extends StatelessWidget {
     // organization or sole-proprietorship account must never be offered this form — it would destroy
     // its organization data and drop the org-only steps from its required set. Without a payload the
     // type is unknown, which is the same refusal case.
-    final accountType = initialUserData?.kycData.accountType;
-    if (accountType != KycAccountType.personal) {
+    final userData = initialUserData;
+    if (userData == null) {
+      // Transient: the registration row carries no signed payload yet. Offer a retry rather than a
+      // terminal screen, mirroring KycLinkWalletPage's missing-payload surface.
+      return const _PersonalDataMissingUserDataPage();
+    }
+    if (userData.kycData.accountType != KycAccountType.personal) {
       return KycFailurePage(
         message: S.of(context).kycUnsupportedStepDescription(KycStepName.personalData.value),
       );
@@ -48,7 +54,7 @@ class KycPersonalDataPage extends StatelessWidget {
 
     return BlocProvider(
       create: (_) => KycPersonalDataCubit(getIt<DfxKycService>()),
-      child: KycPersonalDataView(url: url, initialUserData: initialUserData!),
+      child: KycPersonalDataView(url: url, initialUserData: userData),
     );
   }
 }
@@ -86,7 +92,10 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
     final kycData = widget.initialUserData.kycData;
     firstNameCtrl.text = kycData.firstName;
     lastNameCtrl.text = kycData.lastName;
-    phoneCtrl.value = kycData.phone;
+    // Only seed a number PhoneNumberField can decompose: it matches the stored value against its
+    // own prefix list and leaves `prefix` null otherwise, in which case it never writes edits back.
+    // An unseeded field defaults to the first prefix and stays editable.
+    if (phoneNumberPrefixes.any(kycData.phone.startsWith)) phoneCtrl.value = kycData.phone;
     streetCtrl.text = kycData.address.street;
     houseNumberCtrl.text = kycData.address.houseNumber ?? '';
     zipCtrl.text = kycData.address.zip;
@@ -98,14 +107,20 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
   }
 
   Future<void> _resolveInitialCountry(int countryId) async {
-    final countries = await getIt<DfxCountryService>().getAllCountries();
-    if (!mounted) return;
+    try {
+      final countries = await getIt<DfxCountryService>().getAllCountries();
+      if (!mounted) return;
 
-    final country = countries.where((c) => c.id == countryId).firstOrNull;
-    if (country == null) return;
+      final country = countries.where((c) => c.id == countryId).firstOrNull;
+      // Never clobber a pick the user already made: CountryField runs its own lookup, and if that one
+      // resolves first the field is live before this seed arrives.
+      if (country == null || countryCtrl.value != null) return;
 
-    setState(() => _initialCountry = country);
-    countryCtrl.value = country;
+      setState(() => _initialCountry = country);
+      countryCtrl.value = country;
+    } catch (_) {
+      // Degrade to an empty picker — CountryField renders its own error and retry.
+    }
   }
 
   String? _required(String? value) {
@@ -116,12 +131,14 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
 
   void _submit() {
     FocusManager.instance.primaryFocus?.unfocus();
-    // CountryField and PhoneNumberField both register validators with the enclosing Form, so a
-    // successful validate() already guarantees both notifiers are set.
+    // CountryField registers a validator with the enclosing Form, so a successful validate()
+    // guarantees countryCtrl is set. phoneCtrl is guaranteed by PhoneNumberField itself: it defaults
+    // to its first prefix when unseeded and only accepts a seeded value it can decompose.
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     context.read<KycPersonalDataCubit>().submit(
       url: widget.url,
+      accountType: widget.initialUserData.kycData.accountType,
       firstName: firstNameCtrl.text,
       lastName: lastNameCtrl.text,
       phone: phoneCtrl.value!,
@@ -286,5 +303,37 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
     cityCtrl.dispose();
     countryCtrl.dispose();
     super.dispose();
+  }
+}
+
+/// Shown when the step is actionable but the registration row carries no signed payload to seed the
+/// form from. Transient, so it offers a refresh rather than dead-ending.
+class _PersonalDataMissingUserDataPage extends StatelessWidget {
+  const _PersonalDataMissingUserDataPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(S.of(context).personalData)),
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20.0),
+        child: SafeArea(
+          child: ScrollableActionsLayout(
+            centerBody: true,
+            body: Text(
+              S.of(context).kycFailure,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              AppFilledButton(
+                onPressed: () => context.read<KycCubit>().checkKyc(),
+                label: S.of(context).refresh,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

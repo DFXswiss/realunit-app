@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/screens/kyc/steps/personal_data/cubit/kyc_personal_data/kyc_personal_data_cubit.dart';
 
 class _MockKycService extends Mock implements DfxKycService {}
@@ -29,6 +30,7 @@ void main() {
 
   Future<void> submit(KycPersonalDataCubit c) => c.submit(
     url: 'https://kyc/data/personal/1',
+    accountType: KycAccountType.personal,
     firstName: 'Erika',
     lastName: 'Mueller',
     phone: '+41790000000',

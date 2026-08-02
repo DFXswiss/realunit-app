@@ -32,12 +32,14 @@ void main() {
   late KycCubit kycCubit;
   const url = 'https://example.com/kyc/data/personal/1';
 
-  RealUnitUserDataDto userDataDto({KycAccountType accountType = KycAccountType.personal}) =>
-      RealUnitUserDataDto(
+  RealUnitUserDataDto userDataDto({
+    KycAccountType accountType = KycAccountType.personal,
+    String phone = '+41790000000',
+  }) => RealUnitUserDataDto(
         email: 'erika@example.com',
         name: 'Erika Mueller',
         type: 'HUMAN',
-        phoneNumber: '+41790000000',
+        phoneNumber: phone,
         birthday: '1990-01-01',
         nationality: 'CH',
         addressStreet: 'Bahnhofstrasse 1',
@@ -50,7 +52,7 @@ void main() {
           accountType: accountType,
           firstName: 'Erika',
           lastName: 'Mueller',
-          phone: '+41790000000',
+          phone: phone,
           address: const KycAddress(
             street: 'Bahnhofstrasse',
             houseNumber: '1',
@@ -82,6 +84,7 @@ void main() {
     registerFallbackValue(
       const Country(id: 41, symbol: 'CH', name: 'Switzerland', kycAllowed: true),
     );
+    registerFallbackValue(KycAccountType.personal);
   });
 
   tearDownAll(() async => await GetIt.instance.reset());
@@ -119,11 +122,23 @@ void main() {
       });
     }
 
-    testWidgets('refuses the form when the account type is unknown', (tester) async {
-      await tester.pumpApp(const KycPersonalDataPage(url: url));
+    // A missing payload is transient (the registration row has no signed payload yet), so it gets a
+    // refresh rather than the terminal screen an unsupported account type gets.
+    testWidgets('offers a retry, not a dead end, when the payload is missing', (tester) async {
+      await tester.pumpApp(
+        BlocProvider<KycCubit>.value(
+          value: kycCubit,
+          child: const KycPersonalDataPage(url: url),
+        ),
+      );
 
       expect(find.byType(KycPersonalDataView), findsNothing);
-      expect(find.byType(KycFailurePage), findsOne);
+      expect(find.byType(KycFailurePage), findsNothing);
+
+      await tester.tap(find.byType(FilledButton));
+      await tester.pump();
+
+      verify(() => kycCubit.checkKyc()).called(1);
     });
   });
 
@@ -154,10 +169,22 @@ void main() {
       expect(find.text('Winterthur'), findsOne);
     });
 
+    testWidgets('does not seed a phone whose prefix the field cannot decompose', (tester) async {
+      final dto = userDataDto(phone: '+33612345678');
+      await tester.pumpApp(buildSubject(KycPersonalDataView(url: url, initialUserData: dto)));
+      await tester.pumpAndSettle();
+
+      // Left unseeded, so PhoneNumberField falls back to its first prefix and stays editable. Seeding
+      // it would leave `prefix` null — the dropdown blank — and the field would then never write the
+      // user's edits back to the controller.
+      expect(find.text(phoneNumberPrefixes.first), findsOne);
+    });
+
     // Pins the url plumbing: the step's session url is what the submit PUTs to.
     testWidgets('submits the seeded values to the step url', (tester) async {
       when(() => personalDataCubit.submit(
         url: any(named: 'url'),
+        accountType: any(named: 'accountType'),
         firstName: any(named: 'firstName'),
         lastName: any(named: 'lastName'),
         phone: any(named: 'phone'),
@@ -180,6 +207,7 @@ void main() {
 
       verify(() => personalDataCubit.submit(
         url: url,
+        accountType: KycAccountType.personal,
         firstName: 'Erika',
         lastName: 'Mueller',
         phone: '+41790000000',
@@ -207,6 +235,7 @@ void main() {
 
       verifyNever(() => personalDataCubit.submit(
         url: any(named: 'url'),
+        accountType: any(named: 'accountType'),
         firstName: any(named: 'firstName'),
         lastName: any(named: 'lastName'),
         phone: any(named: 'phone'),

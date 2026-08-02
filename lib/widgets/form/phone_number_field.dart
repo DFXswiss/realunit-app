@@ -3,6 +3,11 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/widgets/form/dropdown_field.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
 
+/// The dial prefixes the field can decompose a stored number into. A seeded value that starts with
+/// none of these leaves `prefix` null, and the field then never writes edits back to the controller —
+/// so callers that pre-fill the controller must check against this list first.
+const phoneNumberPrefixes = ['+41', '+49'];
+
 class PhoneNumberField extends StatefulWidget {
   final ValueNotifier<String?> controller;
 
@@ -13,7 +18,7 @@ class PhoneNumberField extends StatefulWidget {
 }
 
 class _PhoneNumberFieldState extends State<PhoneNumberField> {
-  final prefixes = ['+41', '+49'];
+  final prefixes = phoneNumberPrefixes;
   String? prefix;
   String? number;
 

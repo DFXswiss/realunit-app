@@ -15,6 +15,7 @@ class KycPersonalDataCubit extends Cubit<KycPersonalDataState> {
 
   Future<void> submit({
     required String url,
+    required KycAccountType accountType,
     required String firstName,
     required String lastName,
     required String phone,
@@ -29,9 +30,9 @@ class KycPersonalDataCubit extends Cubit<KycPersonalDataState> {
       await _kycService.setData(
         url,
         KycPersonalData(
-          // The registration form offers `human` alone, so an account that reached this step through
-          // the app is always personal.
-          accountType: KycAccountType.personal,
+          // Passed in, never assumed: the page refuses to render for anything but a personal
+          // account, and sending the same value it checked keeps the two from drifting apart.
+          accountType: accountType,
           firstName: firstName,
           lastName: lastName,
           phone: phone,
