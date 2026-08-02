@@ -134,7 +134,6 @@
   "kycPersonalDataFailed": "Persönliche Daten konnten nicht gespeichert werden:\n${message}",
   "kycSignatureUnsupportedDescription": "Dieses Feature erfordert eine EIP-712-Signatur. Im Debug-Modus (Adresse + Signatur) ist dies technisch nicht möglich. Bitte verwenden Sie eine Software-Wallet oder BitBox, um RealUnit zu nutzen.",
   "kycSignatureUnsupportedTitle": "Signatur nicht verfügbar",
-  "kycUnsupportedStepContactSupport": "Support kontaktieren",
   "kycUnsupportedStepDescription": "Der nächste Schritt Ihrer Verifizierung kann in dieser App nicht abgeschlossen werden. Aktualisieren Sie, um zu prüfen, ob er weitergelaufen ist, oder wenden Sie sich an unser Support-Team, das dann übernimmt.",
   "kycUnsupportedStepTitle": "Dieser Schritt wird anderswo fortgesetzt",
   "label": "Bezeichnung",

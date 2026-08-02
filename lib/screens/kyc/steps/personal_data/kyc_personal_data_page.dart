@@ -40,8 +40,9 @@ class KycPersonalDataPage extends StatelessWidget {
     // its organization data and drop the org-only steps from its required set.
     final userData = initialUserData;
     if (userData == null) {
-      // Transient: the registration row carries no signed payload yet. Offer a retry rather than a
-      // terminal screen, mirroring KycLinkWalletPage's missing-payload surface.
+      // Transient: the registration row carries no signed payload yet. Gets the dedicated
+      // missing-payload surface, mirroring KycLinkWalletPage — distinct from the shared handoff an
+      // unsupported account type gets below.
       return const _PersonalDataMissingUserDataPage();
     }
     if (userData.kycData.accountType != KycAccountType.personal) {

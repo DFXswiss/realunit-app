@@ -125,8 +125,8 @@ void main() {
       });
     }
 
-    // A missing payload is transient (the registration row has no signed payload yet), so it gets a
-    // refresh rather than the terminal screen an unsupported account type gets.
+    // A missing payload is transient (the registration row has no signed payload yet), so it gets
+    // its own refresh surface rather than the shared handoff an unsupported account type gets.
     testWidgets('offers a retry, not a dead end, when the payload is missing', (tester) async {
       await tester.pumpApp(
         BlocProvider<KycCubit>.value(

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
+import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/setup/routing/routes/support_routes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/buttons/app_text_button.dart';
@@ -36,13 +37,15 @@ class KycUnsupportedStepPage extends StatelessWidget {
               children: [
                 Text(
                   S.of(context).kycUnsupportedStepTitle,
-                  style: Theme.of(context).textTheme.titleMedium,
+                  style: Theme.of(context).textTheme.headlineMedium,
                   textAlign: TextAlign.center,
                 ),
                 Text(
                   S.of(context).kycUnsupportedStepDescription,
-                  style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: RealUnitColors.neutral500,
+                  ),
                 ),
               ],
             ),
@@ -53,7 +56,7 @@ class KycUnsupportedStepPage extends StatelessWidget {
               ),
               AppTextButton(
                 onPressed: () => context.pushNamed(SupportRoutes.support),
-                label: S.of(context).kycUnsupportedStepContactSupport,
+                label: S.of(context).contactSupport,
               ),
             ],
           ),

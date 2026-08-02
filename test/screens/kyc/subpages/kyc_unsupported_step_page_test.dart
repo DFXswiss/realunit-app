@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:realunit_wallet/generated/i18n.dart';
+import 'package:realunit_wallet/setup/routing/routes/support_routes.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/subpages/kyc_unsupported_step_page.dart';
@@ -16,15 +20,36 @@ class _MockKycCubit extends MockCubit<KycState> implements KycCubit {}
 void main() {
   late _MockKycCubit kycCubit;
 
+  // Hosting a router is what makes the support handoff assertable: without one the CTA's
+  // `pushNamed` throws, so a test that only checks the button exists proves nothing about where it
+  // goes. Mirrors settings_contact_page_test.
+  late List<String> pushedRoutes;
+
   setUp(() {
     kycCubit = _MockKycCubit();
     when(() => kycCubit.state).thenReturn(const KycInitial());
     when(() => kycCubit.checkKyc()).thenAnswer((_) => Future.value());
+    pushedRoutes = [];
   });
 
   Widget subject() => BlocProvider<KycCubit>.value(
     value: kycCubit,
     child: const KycUnsupportedStepPage(),
+  );
+
+  GoRouter buildRouter() => GoRouter(
+    initialLocation: '/',
+    routes: [
+      GoRoute(path: '/', builder: (_, _) => subject()),
+      GoRoute(
+        name: SupportRoutes.support,
+        path: '/support',
+        builder: (_, _) {
+          pushedRoutes.add(SupportRoutes.support);
+          return const Scaffold(body: Text('SUPPORT'));
+        },
+      ),
+    ],
   );
 
   group('$KycUnsupportedStepPage', () {
@@ -33,6 +58,23 @@ void main() {
 
       expect(find.byType(AppFilledButton), findsOne);
       expect(find.byType(AppTextButton), findsOne);
+    });
+
+    testWidgets('the support action navigates to the support screen', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp.router(
+          // pumpApp cannot host a router, so the delegates it normally supplies are repeated here
+          localizationsDelegates: [S.delegate, GlobalMaterialLocalizations.delegate],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: buildRouter(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(AppTextButton));
+      await tester.pumpAndSettle();
+
+      expect(pushedRoutes, [SupportRoutes.support]);
     });
 
     // The whole point of the page: the previous screen was a dead end with no actions at all.
