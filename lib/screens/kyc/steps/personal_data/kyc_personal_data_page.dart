@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
+import 'package:realunit_wallet/packages/service/dfx/dfx_country_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
 import 'package:realunit_wallet/packages/utils/swiss_payment_text.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/personal_data/cubit/kyc_personal_data/kyc_personal_data_cubit.dart';
+import 'package:realunit_wallet/screens/kyc/subpages/kyc_failure_page.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
@@ -21,22 +28,36 @@ import 'package:realunit_wallet/widgets/form/phone_number_field.dart';
 /// page existed the API asked for a step the app could not render, and onboarding dead-ended.
 class KycPersonalDataPage extends StatelessWidget {
   final String url;
+  final RealUnitUserDataDto? initialUserData;
 
-  const KycPersonalDataPage({super.key, required this.url});
+  const KycPersonalDataPage({super.key, required this.url, this.initialUserData});
 
   @override
   Widget build(BuildContext context) {
+    // The form can only express a personal account: submitting it sets `accountType` on the
+    // account, and the API nulls every organization field whenever that value is `Personal`. So an
+    // organization or sole-proprietorship account must never be offered this form — it would destroy
+    // its organization data and drop the org-only steps from its required set. Without a payload the
+    // type is unknown, which is the same refusal case.
+    final accountType = initialUserData?.kycData.accountType;
+    if (accountType != KycAccountType.personal) {
+      return KycFailurePage(
+        message: S.of(context).kycUnsupportedStepDescription(KycStepName.personalData.value),
+      );
+    }
+
     return BlocProvider(
       create: (_) => KycPersonalDataCubit(getIt<DfxKycService>()),
-      child: KycPersonalDataView(url: url),
+      child: KycPersonalDataView(url: url, initialUserData: initialUserData!),
     );
   }
 }
 
 class KycPersonalDataView extends StatefulWidget {
   final String url;
+  final RealUnitUserDataDto initialUserData;
 
-  const KycPersonalDataView({super.key, required this.url});
+  const KycPersonalDataView({super.key, required this.url, required this.initialUserData});
 
   @override
   State<KycPersonalDataView> createState() => _KycPersonalDataViewState();
@@ -52,6 +73,40 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
   final zipCtrl = TextEditingController();
   final cityCtrl = TextEditingController();
   final countryCtrl = ValueNotifier<Country?>(null);
+  Country? _initialCountry;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // This is a correction form, not a fresh capture: the copy asks the user to check their details,
+    // and every submit rewrites all of them, so shipping it empty would force a from-memory re-entry
+    // and let a typo overwrite data that was already correct. Seeded from the payload the parent
+    // cubit already fetched — no extra round-trip. Same shape as KycRegistrationView.initState.
+    final kycData = widget.initialUserData.kycData;
+    firstNameCtrl.text = kycData.firstName;
+    lastNameCtrl.text = kycData.lastName;
+    phoneCtrl.value = kycData.phone;
+    streetCtrl.text = kycData.address.street;
+    houseNumberCtrl.text = kycData.address.houseNumber ?? '';
+    zipCtrl.text = kycData.address.zip;
+    cityCtrl.text = kycData.address.city;
+
+    // The DTO carries only the country id, so the field populates when the lookup resolves; the
+    // form renders immediately either way.
+    unawaited(_resolveInitialCountry(kycData.address.country));
+  }
+
+  Future<void> _resolveInitialCountry(int countryId) async {
+    final countries = await getIt<DfxCountryService>().getAllCountries();
+    if (!mounted) return;
+
+    final country = countries.where((c) => c.id == countryId).firstOrNull;
+    if (country == null) return;
+
+    setState(() => _initialCountry = country);
+    countryCtrl.value = country;
+  }
 
   String? _required(String? value) {
     if (value == null || value.isEmpty) return '';
@@ -61,31 +116,27 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
 
   void _submit() {
     FocusManager.instance.primaryFocus?.unfocus();
+    // CountryField and PhoneNumberField both register validators with the enclosing Form, so a
+    // successful validate() already guarantees both notifiers are set.
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
-    // The country field and the phone field validate themselves, but neither writes into the Form,
-    // so an untouched one leaves its notifier null and would submit an incomplete body.
-    final country = countryCtrl.value;
-    final phone = phoneCtrl.value;
-    if (country == null || phone == null || phone.isEmpty) return;
 
     context.read<KycPersonalDataCubit>().submit(
       url: widget.url,
       firstName: firstNameCtrl.text,
       lastName: lastNameCtrl.text,
-      phone: phone,
+      phone: phoneCtrl.value!,
       street: streetCtrl.text,
       houseNumber: houseNumberCtrl.text,
       zip: zipCtrl.text,
       city: cityCtrl.text,
-      country: country,
+      country: countryCtrl.value!,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(S.of(context).kycPersonalDataTitle)),
+      appBar: AppBar(title: Text(S.of(context).personalData)),
       body: BlocListener<KycPersonalDataCubit, KycPersonalDataState>(
         listener: (context, state) {
           if (state is KycPersonalDataSuccess) {
@@ -199,6 +250,7 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
                     CountryField(
                       label: S.of(context).country,
                       purpose: CountryFieldPurpose.residence,
+                      initialValue: _initialCountry,
                       onChanged: (country) => countryCtrl.value = country,
                     ),
                     Padding(

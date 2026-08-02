@@ -132,7 +132,6 @@
   "kycPendingDescription": "Ihr folgender Schritt ist gerade noch unter Prüfung: ${step}. Bitte haben Sie noch ein wenig Geduld und schauen Sie zu einem späteren Zeitpunkt nochmal rein.",
   "kycPersonalDataDescription": "Bitte überprüfen Sie Ihre Angaben und korrigieren Sie alles, was nicht mit Ihrem Ausweisdokument übereinstimmt.",
   "kycPersonalDataFailed": "Persönliche Daten konnten nicht gespeichert werden:\n${message}",
-  "kycPersonalDataTitle": "Persönliche Daten",
   "kycSignatureUnsupportedDescription": "Dieses Feature erfordert eine EIP-712-Signatur. Im Debug-Modus (Adresse + Signatur) ist dies technisch nicht möglich. Bitte verwenden Sie eine Software-Wallet oder BitBox, um RealUnit zu nutzen.",
   "kycSignatureUnsupportedTitle": "Signatur nicht verfügbar",
   "kycUnsupportedStepDescription": "Der aktuelle KYC-Schritt (${step}) kann in dieser App nicht abgeschlossen werden. Bitte kontaktieren Sie den Support.",

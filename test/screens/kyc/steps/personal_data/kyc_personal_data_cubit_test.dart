@@ -27,13 +27,13 @@ void main() {
 
   KycPersonalDataCubit build() => KycPersonalDataCubit(service);
 
-  Future<void> submit(KycPersonalDataCubit c, {String houseNumber = '13'}) => c.submit(
+  Future<void> submit(KycPersonalDataCubit c) => c.submit(
     url: 'https://kyc/data/personal/1',
     firstName: 'Erika',
     lastName: 'Mueller',
     phone: '+41790000000',
     street: 'Bahnhofstrasse',
-    houseNumber: houseNumber,
+    houseNumber: '13',
     zip: '8001',
     city: 'Zurich',
     country: _switzerland,
@@ -61,31 +61,6 @@ void main() {
           'address': {
             'street': 'Bahnhofstrasse',
             'houseNumber': '13',
-            'zip': '8001',
-            'city': 'Zurich',
-            'country': {'id': 41},
-          },
-        }),
-      ).called(1),
-    );
-
-    // The API joins houseNumber onto street, so an empty one must be omitted rather than sent
-    // blank — otherwise the stored address gains a trailing space and stops matching the signed
-    // registration data.
-    blocTest<KycPersonalDataCubit, KycPersonalDataState>(
-      'omits houseNumber entirely when it is empty',
-      setUp: () => when(() => service.setData(any(), any())).thenAnswer((_) async {}),
-      build: build,
-      act: (c) => submit(c, houseNumber: ''),
-      expect: () => const [KycPersonalDataLoading(), KycPersonalDataSuccess()],
-      verify: (_) => verify(
-        () => service.setData('https://kyc/data/personal/1', {
-          'accountType': 'Personal',
-          'firstName': 'Erika',
-          'lastName': 'Mueller',
-          'phone': '+41790000000',
-          'address': {
-            'street': 'Bahnhofstrasse',
             'zip': '8001',
             'city': 'Zurich',
             'country': {'id': 41},

@@ -256,7 +256,7 @@ class KycCubit extends Cubit<KycState> {
           emit(KycPending(step));
           return;
         case KycProcessStatus.inProgress:
-          await _continueKyc(generation);
+          await _continueKyc(generation, registrationInfo.realUnitUserDataDto);
           return;
         case KycProcessStatus.mergeProcessing:
           // The user confirmed a merge and the backend is still processing it.
@@ -311,7 +311,7 @@ class KycCubit extends Cubit<KycState> {
   }
 
   /// should only be called after realunit registration was completed
-  Future<void> _continueKyc(int generation) async {
+  Future<void> _continueKyc(int generation, [RealUnitUserDataDto? realUnitUserData]) async {
     final kycStatus = await _kycService.continueKyc(context: _kycContext);
     if (isClosed || generation != _runGeneration) return;
 
@@ -338,6 +338,7 @@ class KycCubit extends Cubit<KycState> {
       KycSuccess(
         currentStep: kycStep,
         urlOrToken: currentStep.session.url,
+        realUnitUserData: realUnitUserData,
       ),
     );
   }

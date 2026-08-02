@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 
 part 'kyc_personal_data_state.dart';
 
@@ -25,23 +26,26 @@ class KycPersonalDataCubit extends Cubit<KycPersonalDataState> {
   }) async {
     try {
       emit(const KycPersonalDataLoading());
-      await _kycService.setData(url, {
-        // The step only ever opens for accounts the app registered itself, and the type dropdown
-        // offers `human` alone, so the account type is not re-asked here.
-        'accountType': 'Personal',
-        'firstName': firstName,
-        'lastName': lastName,
-        'phone': phone,
-        'address': {
-          'street': street,
-          // Omitted rather than sent empty: the API treats houseNumber as optional and joins it onto
-          // street, so a blank one would produce a trailing space in the stored address.
-          if (houseNumber.isNotEmpty) 'houseNumber': houseNumber,
-          'zip': zip,
-          'city': city,
-          'country': {'id': country.id},
-        },
-      });
+      await _kycService.setData(
+        url,
+        KycPersonalData(
+          // The registration form offers `human` alone, so an account that reached this step through
+          // the app is always personal.
+          accountType: KycAccountType.personal,
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone,
+          address: KycAddress(
+            street: street,
+            // Always sent. The form requires it, and an omitted key would leave the stored value
+            // unchanged rather than clearing it — wrong for a form whose purpose is correction.
+            houseNumber: houseNumber,
+            zip: zip,
+            city: city,
+            country: country.id,
+          ),
+        ).toJson(),
+      );
       emit(const KycPersonalDataSuccess());
     } catch (e) {
       emit(KycPersonalDataFailure(e.toString()));
