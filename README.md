@@ -94,7 +94,7 @@ The transport is USB on Android and Bluetooth on iOS; the original BitBox 02 has
 | KYC: Financial data | always | mvp | widget (`kyc_financial_data_page_test.dart`) + golden (`kyc/kyc_financial_data_golden_test.dart`, `kyc/kyc_financial_data_failure_golden_test.dart`, `kyc/kyc_financial_data_loading_golden_test.dart`, `kyc/kyc_financial_data_questions_golden_test.dart`) |
 | KYC: Ident | always | mvp | widget (`kyc_ident_page_test.dart`) + golden (`kyc/kyc_ident_golden_test.dart`) |
 | KYC: Pending / Completed / Failure | always | mvp | widget (`kyc/subpages/kyc_*_page_test.dart`) + golden (`kyc/kyc_pending_golden_test.dart`, `kyc/kyc_completed_golden_test.dart`, `kyc/kyc_failure_golden_test.dart`, `kyc/kyc_loading_golden_test.dart`) |
-| KYC: AccountMergeRequested / UnsupportedStepFailure | always | mvp | golden (`kyc/kyc_account_merge_golden_test.dart`); cubit paths added via [#319](https://github.com/RealUnitCH/app/pull/319) |
+| KYC: AccountMergeRequested / UnsupportedStepFailure | always | mvp | widget (`kyc/subpages/kyc_unsupported_step_page_test.dart`) + golden (`kyc/kyc_account_merge_golden_test.dart`, `kyc/kyc_unsupported_step_golden_test.dart`); cubit paths added via [#319](https://github.com/RealUnitCH/app/pull/319) |
 | `DFXAuthService` (lazy auth + 401 retry) | always | mvp | — (unit tests added via [#319](https://github.com/RealUnitCH/app/pull/319) + [#321](https://github.com/RealUnitCH/app/pull/321)) |
 | `balance_service` (balance fetch + cache) | always | mvp | unit (`balance_service_test.dart`) |
 | `format_fixed` / `parse_fixed` (decimal helpers) | always | mvp | unit (`format_fixed_test.dart`, `parse_fixed_test.dart`) |

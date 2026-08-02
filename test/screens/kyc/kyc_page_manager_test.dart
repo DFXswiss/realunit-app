@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/screens/kyc/subpages/kyc_unsupported_step_page.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_country_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
@@ -270,19 +271,22 @@ void main() {
     },
   );
 
-  // The KycUnsupportedStepFailure arm renders a KycFailurePage with the
-  // unsupported step name — a state no page test drives directly.
+  // The KycUnsupportedStepFailure arm renders the actionable handoff, never the generic failure page
+  // (which carries no actions) and never the raw wire identifier of the step.
   testWidgets(
-    'KycViewManager renders KycFailurePage for KycUnsupportedStepFailure',
+    'KycViewManager renders KycUnsupportedStepPage for KycUnsupportedStepFailure',
     (tester) async {
       final cubit = _MockKycCubit();
       when(() => cubit.state).thenReturn(
-        const KycUnsupportedStepFailure(KycStepName.personalData),
+        const KycUnsupportedStepFailure(KycStepName.statutes),
       );
 
       await tester.pumpApp(viewWithState(cubit));
 
-      expect(find.byType(KycFailurePage), findsOneWidget);
+      expect(find.byType(KycUnsupportedStepPage), findsOneWidget);
+      expect(find.byType(KycFailurePage), findsNothing);
+      // the internal step name must not leak into the UI
+      expect(find.textContaining(KycStepName.statutes.value), findsNothing);
     },
   );
 

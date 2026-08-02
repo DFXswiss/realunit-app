@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
@@ -24,6 +22,7 @@ import 'package:realunit_wallet/screens/kyc/subpages/kyc_loading_page.dart';
 import 'package:realunit_wallet/screens/kyc/subpages/kyc_manual_review_page.dart';
 import 'package:realunit_wallet/screens/kyc/subpages/kyc_merge_processing_page.dart';
 import 'package:realunit_wallet/screens/kyc/subpages/kyc_pending_page.dart';
+import 'package:realunit_wallet/screens/kyc/subpages/kyc_unsupported_step_page.dart';
 import 'package:realunit_wallet/screens/legal/legal_disclaimer_page.dart';
 import 'package:realunit_wallet/setup/di.dart';
 
@@ -56,9 +55,7 @@ class KycViewManager extends StatelessWidget {
         KycLoading() => const KycLoadingPage(),
         KycFailure(:final message) => KycFailurePage(message: message),
         KycSignatureUnsupportedFailure() => const KycSignatureUnsupportedPage(),
-        KycUnsupportedStepFailure(:final stepName) => KycFailurePage(
-          message: S.of(context).kycUnsupportedStepDescription(stepName?.value ?? '-'),
-        ),
+        KycUnsupportedStepFailure() => const KycUnsupportedStepPage(),
         KycAccountMergeRequested() => const KycAccountMergePage(),
         KycMergeProcessing() => const KycMergeProcessingPage(),
         KycManualReview() => const KycManualReviewPage(),

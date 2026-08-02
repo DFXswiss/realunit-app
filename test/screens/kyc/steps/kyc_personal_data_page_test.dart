@@ -12,7 +12,7 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
-import 'package:realunit_wallet/screens/kyc/subpages/kyc_failure_page.dart';
+import 'package:realunit_wallet/screens/kyc/subpages/kyc_unsupported_step_page.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/personal_data/cubit/kyc_personal_data/kyc_personal_data_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/personal_data/kyc_personal_data_page.dart';
@@ -121,7 +121,7 @@ void main() {
         );
 
         expect(find.byType(KycPersonalDataView), findsNothing);
-        expect(find.byType(KycFailurePage), findsOne);
+        expect(find.byType(KycUnsupportedStepPage), findsOne);
       });
     }
 
@@ -136,7 +136,7 @@ void main() {
       );
 
       expect(find.byType(KycPersonalDataView), findsNothing);
-      expect(find.byType(KycFailurePage), findsNothing);
+      expect(find.byType(KycUnsupportedStepPage), findsNothing);
 
       await tester.tap(find.byType(FilledButton));
       await tester.pump();

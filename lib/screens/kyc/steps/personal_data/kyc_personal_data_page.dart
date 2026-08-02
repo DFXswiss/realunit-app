@@ -6,13 +6,12 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_country_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
 import 'package:realunit_wallet/packages/utils/swiss_payment_text.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/personal_data/cubit/kyc_personal_data/kyc_personal_data_cubit.dart';
-import 'package:realunit_wallet/screens/kyc/subpages/kyc_failure_page.dart';
+import 'package:realunit_wallet/screens/kyc/subpages/kyc_unsupported_step_page.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
@@ -46,9 +45,9 @@ class KycPersonalDataPage extends StatelessWidget {
       return const _PersonalDataMissingUserDataPage();
     }
     if (userData.kycData.accountType != KycAccountType.personal) {
-      return KycFailurePage(
-        message: S.of(context).kycUnsupportedStepDescription(KycStepName.personalData.value),
-      );
+      // Same answer the app gives for any step it cannot render: an actionable handoff rather than a
+      // dead end, and no internal step identifier surfaced to the user.
+      return const KycUnsupportedStepPage();
     }
 
     return BlocProvider(
