@@ -64,6 +64,20 @@ void main() {
   tearDownAll(() async => GetIt.instance.reset());
 
   group('$KycPersonalDataView', () {
+    // initialUserData == null → the page short-circuits to its defensive refresh surface. No cubit is
+    // created, so drive the page directly with only the parent KycCubit in scope for the handler.
+    goldenTest(
+      'missing user data — defensive refresh page',
+      fileName: 'kyc_personal_data_page_missing_user_data',
+      constraints: phoneConstraints,
+      builder: () => wrapForGolden(
+        BlocProvider<KycCubit>.value(
+          value: kycCubit,
+          child: const KycPersonalDataPage(url: 'https://example.com'),
+        ),
+      ),
+    );
+
     goldenTest(
       'seeded from the registration payload',
       fileName: 'kyc_personal_data_page_default',
