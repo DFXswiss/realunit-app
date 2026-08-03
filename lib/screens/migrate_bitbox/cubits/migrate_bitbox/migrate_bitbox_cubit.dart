@@ -286,7 +286,10 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
     }
     // After setCurrentWallet, before the view's HomeBloc reload, so any sync
     // triggered by the reload is already authenticated as the new wallet.
-    _appStore.sessionCache.setAuthToken(_newJwt!);
+    _appStore.sessionCache.setAuthToken(
+      _newJwt!,
+      persisted.currentAccount.primaryAddress.address.hexEip55,
+    );
     _pendingRetry = null;
     emit(MigrateBitboxSuccess(persisted));
   }

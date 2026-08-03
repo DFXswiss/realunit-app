@@ -55,13 +55,19 @@ void main() {
     });
 
     test('isAvailable=true once an auth token is set', () {
-      sessionCache.setAuthToken('jwt-1');
+      sessionCache.setAuthToken(
+        'jwt-1',
+        wallet.currentAccount.primaryAddress.address.hexEip55,
+      );
 
       expect(DfxWidgetService(appStore, walletService).isAvailable, isTrue);
     });
 
     test('isAvailable flips back to false after clearAuthToken', () {
-      sessionCache.setAuthToken('jwt-1');
+      sessionCache.setAuthToken(
+        'jwt-1',
+        wallet.currentAccount.primaryAddress.address.hexEip55,
+      );
       final service = DfxWidgetService(appStore, walletService);
       expect(service.isAvailable, isTrue);
 

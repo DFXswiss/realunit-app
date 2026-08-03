@@ -12,6 +12,7 @@ import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 
 class _MockAppStore extends Mock implements AppStore {}
 
@@ -23,6 +24,7 @@ class _MockWalletService extends Mock implements WalletService {}
 
 const _wallet = '0x000000000000000000000000000000000000beef';
 const _other = '0x0000000000000000000000000000000000001234';
+const _authMnemonic = 'test test test test test test test test test test test junk';
 
 Map<String, dynamic> _txJson({
   int id = 1,
@@ -49,14 +51,17 @@ void main() {
   late _MockWalletService walletService;
   late SessionCache sessionCache;
   late _MockTransactionRepository txRepo;
+  late SoftwareWallet authWallet;
 
   setUp(() {
     appStore = _MockAppStore();
     walletService = _MockWalletService();
     sessionCache = SessionCache(_MockCacheRepository());
     txRepo = _MockTransactionRepository();
+    authWallet = SoftwareWallet(1, 'Auth', _authMnemonic);
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+    when(() => appStore.wallet).thenReturn(authWallet);
     when(() => appStore.primaryAddress).thenReturn(_wallet);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
@@ -76,7 +81,10 @@ void main() {
       // in `dfx_auth_service_test.dart`.
 
       test('GETs /v1/transaction/detail with the Bearer JWT', () async {
-        sessionCache.setAuthToken('jwt-1');
+        sessionCache.setAuthToken(
+          'jwt-1',
+          authWallet.currentAccount.primaryAddress.address.hexEip55,
+        );
         String? auth;
         String? path;
         final client = MockClient((request) async {
@@ -92,7 +100,10 @@ void main() {
       });
 
       test('returns [] on non-200 (does not throw)', () async {
-        sessionCache.setAuthToken('jwt-1');
+        sessionCache.setAuthToken(
+          'jwt-1',
+          authWallet.currentAccount.primaryAddress.address.hexEip55,
+        );
         final client = MockClient((_) async => http.Response('boom', 500));
 
         final list = await build(client).fetchPendingTransactions();
@@ -101,7 +112,10 @@ void main() {
       });
 
       test('filters out completed transactions (isPending=false)', () async {
-        sessionCache.setAuthToken('jwt-1');
+        sessionCache.setAuthToken(
+          'jwt-1',
+          authWallet.currentAccount.primaryAddress.address.hexEip55,
+        );
         final client = MockClient(
           (_) async => http.Response(
             jsonEncode([
@@ -121,7 +135,10 @@ void main() {
       });
 
       test('filters out transactions that do not belong to the current wallet', () async {
-        sessionCache.setAuthToken('jwt-1');
+        sessionCache.setAuthToken(
+          'jwt-1',
+          authWallet.currentAccount.primaryAddress.address.hexEip55,
+        );
         final client = MockClient(
           (_) async => http.Response(
             jsonEncode([
@@ -140,7 +157,10 @@ void main() {
       });
 
       test('wallet match is case-insensitive', () async {
-        sessionCache.setAuthToken('jwt-1');
+        sessionCache.setAuthToken(
+          'jwt-1',
+          authWallet.currentAccount.primaryAddress.address.hexEip55,
+        );
         when(() => appStore.primaryAddress).thenReturn(_wallet.toUpperCase());
         final client = MockClient(
           (_) async => http.Response(

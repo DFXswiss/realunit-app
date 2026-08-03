@@ -85,14 +85,15 @@ void main() {
     account = _MockAccount();
     walletService = _MockWalletService();
     session = SessionCache(_MockCacheRepository());
-    session.setAuthToken('jwt-1');
     // signDelay zero keeps the ceremony synchronous-ish for tight assertions.
     credentials = FakeBitboxCredentials(signDelay: Duration.zero);
+    session.setAuthToken('jwt-1', credentials.address.hexEip55);
 
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
     when(() => appStore.sessionCache).thenReturn(session);
     when(() => appStore.wallet).thenReturn(wallet);
     when(() => wallet.primaryAccount).thenReturn(account);
+    when(() => wallet.currentAccount).thenReturn(account);
     when(() => account.primaryAddress).thenReturn(credentials);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});

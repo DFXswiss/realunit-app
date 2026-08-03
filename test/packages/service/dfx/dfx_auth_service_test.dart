@@ -135,6 +135,26 @@ class _SignatureTestAuthService extends DFXAuthService {
   String get walletAddress => _address;
 }
 
+class _LateCommitAuthService extends DFXAuthService {
+  _LateCommitAuthService(super.appStore, super.walletService, this.currentAddress);
+
+  String currentAddress;
+  final authResponses = <Completer<Map<String, dynamic>>>[];
+
+  @override
+  AWalletAccount get wallet => throw UnimplementedError();
+
+  @override
+  String get walletAddress => currentAddress;
+
+  @override
+  Future<Map<String, dynamic>> getAuthResponse([bool sendWalletName = true]) {
+    final completer = Completer<Map<String, dynamic>>();
+    authResponses.add(completer);
+    return completer.future;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers — authenticated request retry-on-401 surface.
 // ---------------------------------------------------------------------------
@@ -200,12 +220,17 @@ void main() {
       walletService = _MockWalletService();
 
       when(() => appStore.sessionCache).thenReturn(sessionCache);
+      when(() => appStore.apiConfig).thenReturn(
+        const ApiConfig(networkMode: NetworkMode.mainnet),
+      );
       when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
       when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
       when(() => sessionCache.signature).thenReturn(null);
       when(() => sessionCache.signatureAddress).thenReturn(null);
+      when(() => sessionCache.signedMessage).thenReturn(null);
       when(() => sessionCache.authToken).thenReturn(null);
-      when(() => sessionCache.saveSignature(any(), any())).thenAnswer((_) async {});
+      when(() => sessionCache.authTokenAddress).thenReturn(null);
+      when(() => sessionCache.saveSignature(any(), any(), any())).thenAnswer((_) async {});
     });
 
     _SignatureTestAuthService buildService() =>
@@ -215,12 +240,13 @@ void main() {
       test('returns the cached signature when address matches (no re-sign)', () async {
         when(() => sessionCache.signature).thenReturn(validSig);
         when(() => sessionCache.signatureAddress).thenReturn(address);
+        when(() => sessionCache.signedMessage).thenReturn('msg');
 
         final result = await buildService().getSignature('msg');
 
         expect(result, validSig);
         expect(walletAccount.signCallCount, 0);
-        verifyNever(() => sessionCache.saveSignature(any(), any()));
+        verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
       });
 
       test('signs and caches when no cached signature exists', () async {
@@ -228,7 +254,7 @@ void main() {
 
         expect(result, validSig);
         expect(walletAccount.signCallCount, 1);
-        verify(() => sessionCache.saveSignature(address, validSig)).called(1);
+        verify(() => sessionCache.saveSignature(address, validSig, 'msg')).called(1);
       });
 
       test('signs again when the cached signature belongs to a different address', () async {
@@ -241,6 +267,39 @@ void main() {
 
         expect(result, validSig);
         expect(walletAccount.signCallCount, 1);
+      });
+
+      test('testnet legacy cache without the exact message scope re-signs', () async {
+        when(() => appStore.apiConfig).thenReturn(
+          const ApiConfig(networkMode: NetworkMode.testnet),
+        );
+        when(() => sessionCache.signature).thenReturn(validSig);
+        when(() => sessionCache.signatureAddress).thenReturn(address);
+        when(() => sessionCache.signedMessage).thenReturn(null);
+        final service = buildService();
+        final message = service.buildSignMessage(address);
+
+        final result = await service.getSignature(message);
+
+        expect(result, validSig);
+        expect(walletAccount.signCallCount, 1);
+        verify(() => sessionCache.saveSignature(address, validSig, message)).called(1);
+      });
+
+      test('testnet cache with a different scoped message re-signs', () async {
+        when(() => appStore.apiConfig).thenReturn(
+          const ApiConfig(networkMode: NetworkMode.testnet),
+        );
+        when(() => sessionCache.signature).thenReturn(validSig);
+        when(() => sessionCache.signatureAddress).thenReturn(address);
+        when(() => sessionCache.signedMessage).thenReturn('mainnet-message');
+        final service = buildService();
+        final message = service.buildSignMessage(address);
+
+        await service.getSignature(message);
+
+        expect(walletAccount.signCallCount, 1);
+        verify(() => sessionCache.saveSignature(address, validSig, message)).called(1);
       });
 
       for (final emptySignature in const ['', '0x']) {
@@ -501,7 +560,8 @@ void main() {
       when(() => sessionCache.loadSignature()).thenAnswer((_) async {});
       when(() => sessionCache.signature).thenReturn(null);
       when(() => sessionCache.signatureAddress).thenReturn(null);
-      when(() => sessionCache.saveSignature(any(), any())).thenAnswer((_) async {});
+      when(() => sessionCache.signedMessage).thenReturn(null);
+      when(() => sessionCache.saveSignature(any(), any(), any())).thenAnswer((_) async {});
       when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
       when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
     });
@@ -519,12 +579,16 @@ void main() {
     test('short-circuits when the cache already holds the address signature', () async {
       when(() => sessionCache.signature).thenReturn(stubSignature);
       when(() => sessionCache.signatureAddress).thenReturn(accountAddressEip55);
+      final service = buildService();
+      when(() => sessionCache.signedMessage).thenReturn(
+        service.buildSignMessage(accountAddressEip55),
+      );
 
-      await buildService().ensureSignatureFor(account);
+      await service.ensureSignatureFor(account);
 
       // No sign ceremony, no save — the cached entry already matches.
       expect(account.signCallCount, 0);
-      verifyNever(() => sessionCache.saveSignature(any(), any()));
+      verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
     });
 
     test('builds the sign message locally, signs, and persists when the cache is cold', () async {
@@ -535,14 +599,21 @@ void main() {
       });
       when(() => appStore.httpClient).thenReturn(client);
 
-      await buildService().ensureSignatureFor(account);
+      final service = buildService();
+      await service.ensureSignatureFor(account);
 
       // No /v1/auth/signMessage round-trip — the message is derived locally
       // from the account address (EIP-55 checksummed), the BitBox-pairing
       // entry point.
       expect(httpCalled, isFalse);
       expect(account.signCallCount, 1);
-      verify(() => sessionCache.saveSignature(accountAddressEip55, stubSignature)).called(1);
+      verify(
+        () => sessionCache.saveSignature(
+          accountAddressEip55,
+          stubSignature,
+          service.buildSignMessage(accountAddressEip55),
+        ),
+      ).called(1);
     });
 
     test('signs again when the cached entry belongs to a different address', () async {
@@ -556,10 +627,17 @@ void main() {
         ),
       );
 
-      await buildService().ensureSignatureFor(account);
+      final service = buildService();
+      await service.ensureSignatureFor(account);
 
       expect(account.signCallCount, 1);
-      verify(() => sessionCache.saveSignature(accountAddressEip55, stubSignature)).called(1);
+      verify(
+        () => sessionCache.saveSignature(
+          accountAddressEip55,
+          stubSignature,
+          service.buildSignMessage(accountAddressEip55),
+        ),
+      ).called(1);
     });
 
     for (final empty in const ['', '0x']) {
@@ -803,19 +881,61 @@ void main() {
         expect(second, 'jwt-1');
         expect(authCalls, 1);
         expect(sessionCache.authToken, 'jwt-1');
+        expect(sessionCache.authTokenAddress, walletAddress);
       },
     );
 
+    test('getAuthToken treats a token for another address as a cache miss', () async {
+      sessionCache.setAuthToken(
+        'jwt-for-old-wallet',
+        '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+      );
+      var authCalls = 0;
+      final client = MockClient((_) async {
+        authCalls++;
+        return http.Response(jsonEncode({'accessToken': 'jwt-for-current-wallet'}), 201);
+      });
+
+      final token = await buildService(client).getAuthToken();
+
+      expect(token, 'jwt-for-current-wallet');
+      expect(authCalls, 1);
+      expect(sessionCache.authTokenAddress, walletAddress);
+    });
+
+    test('late auth response cannot commit after the wallet address changes', () async {
+      const oldAddress = '0x1111111111111111111111111111111111111111';
+      const newAddress = '0x2222222222222222222222222222222222222222';
+      final service = _LateCommitAuthService(appStore, walletService, oldAddress);
+
+      final tokenFuture = service.getAuthToken();
+      await Future<void>.delayed(Duration.zero);
+      expect(service.authResponses, hasLength(1));
+
+      service.currentAddress = newAddress;
+      service.authResponses.single.complete({'accessToken': 'jwt-old'});
+      await Future<void>.delayed(Duration.zero);
+
+      expect(sessionCache.authToken, isNull);
+      expect(service.authResponses, hasLength(2));
+      service.authResponses.last.complete({'accessToken': 'jwt-new'});
+
+      expect(await tokenFuture, 'jwt-new');
+      expect(sessionCache.authToken, 'jwt-new');
+      expect(sessionCache.authTokenAddress, newAddress);
+    });
+
     test('invalidateAuthToken clears the cached JWT', () {
-      sessionCache.setAuthToken('to-be-cleared');
+      sessionCache.setAuthToken('to-be-cleared', walletAddress);
 
       buildService(MockClient((_) async => http.Response('', 200))).invalidateAuthToken();
 
       expect(sessionCache.authToken, isNull);
+      expect(sessionCache.authTokenAddress, isNull);
     });
 
     test('refreshAuthToken clears the cache and forces a fresh /v1/auth round-trip', () async {
-      sessionCache.setAuthToken('stale-jwt');
+      sessionCache.setAuthToken('stale-jwt', walletAddress);
       var authCalls = 0;
       final client = MockClient((request) async {
         authCalls++;
@@ -829,6 +949,7 @@ void main() {
       // Cache was cleared → exactly one auth round-trip.
       expect(authCalls, 1);
       expect(sessionCache.authToken, 'jwt-fresh');
+      expect(sessionCache.authTokenAddress, walletAddress);
     });
   });
 
@@ -893,7 +1014,8 @@ void main() {
       when(() => sessionCache.loadSignature()).thenAnswer((_) async {});
       when(() => sessionCache.signature).thenReturn(null);
       when(() => sessionCache.signatureAddress).thenReturn(null);
-      when(() => sessionCache.saveSignature(any(), any())).thenAnswer((_) async {});
+      when(() => sessionCache.signedMessage).thenReturn(null);
+      when(() => sessionCache.saveSignature(any(), any(), any())).thenAnswer((_) async {});
       when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
       when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
     });
@@ -937,10 +1059,17 @@ void main() {
         expect(sentBody!['address'], accountAddressEip55);
         expect(sentBody!['signature'], stubSignature);
         expect(account.signCallCount, 1);
-        verify(() => sessionCache.saveSignature(accountAddressEip55, stubSignature)).called(1);
+        final service = buildService(client);
+        verify(
+          () => sessionCache.saveSignature(
+            accountAddressEip55,
+            stubSignature,
+            service.buildSignMessage(accountAddressEip55),
+          ),
+        ).called(1);
         // Returned token must NOT be written to the session cache — the
         // caller owns the identity switch.
-        verifyNever(() => sessionCache.setAuthToken(any()));
+        verifyNever(() => sessionCache.setAuthToken(any(), any()));
       },
     );
 
@@ -953,7 +1082,11 @@ void main() {
         return http.Response(jsonEncode({'accessToken': 'jwt-linked'}), 201);
       });
 
-      final token = await buildService(client).authenticateLinkedAccount(
+      final service = buildService(client);
+      when(() => sessionCache.signedMessage).thenReturn(
+        service.buildSignMessage(accountAddressEip55),
+      );
+      final token = await service.authenticateLinkedAccount(
         account,
         linkBearerToken,
       );
@@ -961,7 +1094,28 @@ void main() {
       expect(token, 'jwt-linked');
       expect(account.signCallCount, 0);
       expect(sentBody!['signature'], stubSignature);
-      verifyNever(() => sessionCache.saveSignature(any(), any()));
+      verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
+    });
+
+    test('cache message mismatch re-signs before authenticating the linked account', () async {
+      when(() => sessionCache.signature).thenReturn(stubSignature);
+      when(() => sessionCache.signatureAddress).thenReturn(accountAddressEip55);
+      when(() => sessionCache.signedMessage).thenReturn('wrong-environment-message');
+      final client = MockClient(
+        (_) async => http.Response(jsonEncode({'accessToken': 'jwt-linked'}), 201),
+      );
+      final service = buildService(client);
+
+      await service.authenticateLinkedAccount(account, linkBearerToken);
+
+      expect(account.signCallCount, 1);
+      verify(
+        () => sessionCache.saveSignature(
+          accountAddressEip55,
+          stubSignature,
+          service.buildSignMessage(accountAddressEip55),
+        ),
+      ).called(1);
     });
 
     for (final empty in const ['', '0x']) {
@@ -1029,7 +1183,8 @@ void main() {
         when(() => appStore.sessionCache).thenReturn(sessionCache);
         when(() => sessionCache.signature).thenReturn(null);
         when(() => sessionCache.signatureAddress).thenReturn(null);
-        when(() => sessionCache.saveSignature(any(), any())).thenAnswer((_) async {});
+        when(() => sessionCache.signedMessage).thenReturn(null);
+        when(() => sessionCache.saveSignature(any(), any(), any())).thenAnswer((_) async {});
         when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
         when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
 

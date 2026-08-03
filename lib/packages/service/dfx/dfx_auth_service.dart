@@ -98,17 +98,21 @@ abstract class DFXAuthService {
     await appStore.sessionCache.loadSignature();
     final cachedSignature = appStore.sessionCache.signature;
     final signatureAddress = appStore.sessionCache.signatureAddress;
+    final message = buildSignMessage(address);
     late final String signature;
-    if (cachedSignature != null && signatureAddress == address) {
+    // Legacy entries without a message scope intentionally miss here: the
+    // environment-prefixed sign-message change made those signatures unsafe
+    // to reuse across dev and production.
+    if (cachedSignature != null &&
+        signatureAddress == address &&
+        appStore.sessionCache.signedMessage == message) {
       signature = cachedSignature;
     } else {
-      signature = await account
-          .signMessage(buildSignMessage(address))
-          .timeout(_signMessageTimeout);
+      signature = await account.signMessage(message).timeout(_signMessageTimeout);
       if (signature.isEmpty || signature == '0x') {
         throw const SigningCancelledException();
       }
-      await appStore.sessionCache.saveSignature(address, signature);
+      await appStore.sessionCache.saveSignature(address, signature, message);
     }
 
     final requestBody = jsonEncode({
@@ -150,18 +154,19 @@ abstract class DFXAuthService {
   /// No-op if a signature for this address is already in the cache.
   Future<void> ensureSignatureFor(AWalletAccount account) async {
     final address = account.primaryAddress.address.hexEip55;
+    final message = buildSignMessage(address);
     await appStore.sessionCache.loadSignature();
     if (appStore.sessionCache.signature != null &&
-        appStore.sessionCache.signatureAddress == address) {
+        appStore.sessionCache.signatureAddress == address &&
+        appStore.sessionCache.signedMessage == message) {
       return;
     }
 
-    final message = buildSignMessage(address);
     final signature = await account.signMessage(message).timeout(_signMessageTimeout);
     if (signature.isEmpty || signature == '0x') {
       throw const SigningCancelledException();
     }
-    await appStore.sessionCache.saveSignature(address, signature);
+    await appStore.sessionCache.saveSignature(address, signature, message);
   }
 
   // Exceptions this method can throw on the BitBox path:
@@ -173,7 +178,9 @@ abstract class DFXAuthService {
   Future<String> getSignature(String message) async {
     final cached = appStore.sessionCache.signature;
     final cachedAddress = appStore.sessionCache.signatureAddress;
-    if (cached != null && cachedAddress == walletAddress) {
+    if (cached != null &&
+        cachedAddress == walletAddress &&
+        appStore.sessionCache.signedMessage == message) {
       return cached;
     }
 
@@ -189,7 +196,7 @@ abstract class DFXAuthService {
       if (signature.isEmpty || signature == '0x') {
         throw const SigningCancelledException();
       }
-      await appStore.sessionCache.saveSignature(walletAddress, signature);
+      await appStore.sessionCache.saveSignature(walletAddress, signature, message);
       return signature;
     } finally {
       await walletService.lockCurrentWallet();
@@ -234,12 +241,26 @@ abstract class DFXAuthService {
   // empty-signature guard in `getSignature` covers the cancel/disconnect
   // case gracefully, and the SDK no longer panics on NACK.
   Future<String?> getAuthToken() async {
-    if (appStore.sessionCache.authToken == null) {
+    while (true) {
+      final addressBeforeAuth = walletAddress;
+      final cachedToken = appStore.sessionCache.authToken;
+      if (cachedToken != null &&
+          appStore.sessionCache.authTokenAddress == addressBeforeAuth) {
+        return cachedToken;
+      }
+
       await appStore.sessionCache.loadSignature();
       final response = await getAuthResponse();
-      appStore.sessionCache.setAuthToken(response['accessToken'] as String);
+
+      // Close the late-commit race when the active wallet identity changes
+      // while /v1/auth is in flight. Discard the old identity's response and
+      // retry against the now-current wallet context.
+      if (walletAddress != addressBeforeAuth) continue;
+
+      final token = response['accessToken'] as String;
+      appStore.sessionCache.setAuthToken(token, addressBeforeAuth);
+      return token;
     }
-    return appStore.sessionCache.authToken;
   }
 
   void invalidateAuthToken() => appStore.sessionCache.clearAuthToken();

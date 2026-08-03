@@ -131,10 +131,9 @@ void main() {
     account = _MockWalletAccount();
     walletService = _MockWalletService();
     session = SessionCache(_MockCacheRepository());
-    // Pre-seed an auth token so the service skips its sign-message round-trip.
-    session.setAuthToken('jwt-test');
-
     creds = FakeBitboxCredentials(signDelay: Duration.zero);
+    // Pre-seed an auth token so the service skips its sign-message round-trip.
+    session.setAuthToken('jwt-test', creds.address.hexEip55);
 
     when(() => appStore.wallet).thenReturn(wallet);
     when(

@@ -100,6 +100,9 @@ void main() {
       Uri? sentUri;
       Map<String, dynamic>? body;
       final client = MockClient((request) async {
+        if (request.url.path.endsWith('/signMessage')) {
+          return http.Response(jsonEncode({'message': 'Sign me exactly'}), 200);
+        }
         sentUri = request.url;
         body = jsonDecode(request.body) as Map<String, dynamic>;
         return http.Response(
@@ -113,8 +116,10 @@ void main() {
       const addressLower = '0x9f5713deacb8e9cab6c2d3fae1afc2715f8d2d71';
       const checksum = '0x9F5713DEacB8e9CAB6c2d3FaE1AFc2715F8D2D71';
       const signature = '0xdeadbeef';
+      const signMessage = 'Sign me exactly';
 
       final svc = await build(client);
+      await svc.fetchSignMessage(addressLower);
       await svc.authenticate(addressLower, signature);
 
       expect(sentUri!.path, '/v1/auth');
@@ -124,21 +129,38 @@ void main() {
 
       // Auth token lands in the session cache.
       expect(session.authToken, 'jwt-OK');
+      expect(session.authTokenAddress, checksum);
       // Signature lands under the EIP-55 checksum address.
       expect(session.signatureAddress, checksum);
+      expect(session.signedMessage, signMessage);
       // The raw address + signature persist to SharedPreferences.
       expect(svc.savedAddress, addressLower);
       expect(svc.savedSignature, signature);
     });
 
     test('non-201 → throws Exception with the status code', () async {
-      final client = MockClient((_) async => http.Response('boom', 500));
+      final client = MockClient(
+        (request) async => request.url.path.endsWith('/signMessage')
+            ? http.Response(jsonEncode({'message': 'Sign me'}), 200)
+            : http.Response('boom', 500),
+      );
+      final service = await build(client);
+      await service.fetchSignMessage('0xabc');
 
       expect(
-        () async => (await build(client)).authenticate('0xabc', '0xsig'),
+        () async => service.authenticate('0xabc', '0xsig'),
         throwsA(
           predicate((e) => e.toString().contains('500')),
         ),
+      );
+    });
+
+    test('requires a sign message fetched for the same address', () async {
+      final service = await build(MockClient((_) async => http.Response('{}', 500)));
+
+      await expectLater(
+        service.authenticate('0xabc', '0xsig'),
+        throwsA(isA<StateError>()),
       );
     });
   });

@@ -12,15 +12,15 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.da
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/buy_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/registration_rejected_exception.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/registration/registration.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_email_status.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_status.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_user_type.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_state.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/registration/registration.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
@@ -51,12 +51,15 @@ void main() {
     account = _MockAccount();
     walletService = _MockWalletService();
     session = SessionCache(_MockCacheRepository());
-    session.setAuthToken('jwt-1');
+    final credentials = FakeBitboxCredentials();
+    session.setAuthToken('jwt-1', credentials.address.hexEip55);
 
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
     when(() => appStore.sessionCache).thenReturn(session);
     when(() => appStore.wallet).thenReturn(wallet);
     when(() => wallet.primaryAccount).thenReturn(account);
+    when(() => wallet.currentAccount).thenReturn(account);
+    when(() => account.primaryAddress).thenReturn(credentials);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });
@@ -288,7 +291,8 @@ void main() {
       final repo = _MockCacheRepository();
       when(() => repo.read(any())).thenAnswer((_) async => null);
       when(() => repo.write(any(), any())).thenAnswer((_) async => 1);
-      session = SessionCache(repo)..setAuthToken('jwt-1');
+      session = SessionCache(repo)
+        ..setAuthToken('jwt-1', account.primaryAddress.address.hexEip55);
       when(() => appStore.sessionCache).thenReturn(session);
 
       final client = MockClient((request) async {

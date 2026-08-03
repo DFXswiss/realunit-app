@@ -68,7 +68,10 @@ void main() {
     account = _MockAccount();
     walletService = _MockWalletService();
     session = SessionCache(_MockCacheRepository());
-    session.setAuthToken('jwt-1');
+    session.setAuthToken(
+      'jwt-1',
+      EthereumAddress.fromHex('0x0000000000000000000000000000000000000001').hexEip55,
+    );
 
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
     when(() => appStore.sessionCache).thenReturn(session);

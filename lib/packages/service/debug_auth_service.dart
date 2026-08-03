@@ -11,6 +11,8 @@ const _signatureKey = 'debugAuthSignature';
 class DebugAuthService {
   final AppStore _appStore;
   final SharedPreferences _prefs;
+  String? _fetchedSignMessage;
+  String? _fetchedSignMessageAddress;
 
   DebugAuthService(this._appStore, this._prefs);
 
@@ -31,12 +33,20 @@ class DebugAuthService {
 
     if (response.statusCode == 200) {
       final body = jsonDecode(response.body);
-      return body['message'] as String;
+      final message = body['message'] as String;
+      _fetchedSignMessage = message;
+      _fetchedSignMessageAddress = address;
+      return message;
     }
     throw Exception('Failed to fetch sign message (${response.statusCode})');
   }
 
   Future<void> authenticate(String address, String signature) async {
+    final signedMessage = _fetchedSignMessageAddress == address ? _fetchedSignMessage : null;
+    if (signedMessage == null) {
+      throw StateError('No fetched sign message for address $address');
+    }
+
     final uri = buildUri(_appStore.apiConfig.apiHost, '/v1/auth');
     final response = await _appStore.httpClient.post(
       uri,
@@ -51,8 +61,12 @@ class DebugAuthService {
     if (response.statusCode == 201) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final checksumAddress = EthereumAddress.fromHex(address).hexEip55;
-      _appStore.sessionCache.setAuthToken(body['accessToken'] as String);
-      await _appStore.sessionCache.saveSignature(checksumAddress, signature);
+      _appStore.sessionCache.setAuthToken(body['accessToken'] as String, checksumAddress);
+      await _appStore.sessionCache.saveSignature(
+        checksumAddress,
+        signature,
+        signedMessage,
+      );
       await _prefs.setString(_addressKey, address);
       await _prefs.setString(_signatureKey, signature);
     } else {

@@ -86,6 +86,9 @@ class WalletService {
     return commitGeneratedWallet(draft);
   }
 
+  // @no-integration-test: no BitBox firmware/transport harness is wired into
+  //   the repo yet; the BitboxService.getEthAddress boundary is covered by unit
+  //   tests with mocked transport (see wallet_service_test.dart).
   Future<BitboxWallet> createBitboxWallet(String name) async {
     // [BitboxService.getEthAddress] already retries the transient empty read
     // the SDK produces when it coerces a native `null` into `""` (its
@@ -110,6 +113,9 @@ class WalletService {
   /// aborted wizard leaves no orphan wallet row behind.
   /// Throws [BitboxAddressUnavailableException] on an unusable address (same
   /// guard as [createBitboxWallet]).
+  // @no-integration-test: no BitBox firmware/transport harness is wired into
+  //   the repo yet; the BitboxService.getEthAddress boundary is covered by unit
+  //   tests with mocked transport (see wallet_service_test.dart).
   Future<BitboxWallet> acquireUncommittedBitboxWallet(String name) async {
     final address = await _bitboxService.getEthAddress();
     if (!_isValidEthAddress(address)) {

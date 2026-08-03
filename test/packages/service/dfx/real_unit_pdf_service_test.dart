@@ -12,6 +12,7 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.da
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/styles/language.dart';
 
@@ -22,21 +23,28 @@ class _MockCacheRepository extends Mock implements CacheRepository {}
 class _MockWalletService extends Mock implements WalletService {}
 
 const _address = '0x000000000000000000000000000000000000beef';
+const _authMnemonic = 'test test test test test test test test test test test junk';
 
 void main() {
   late _MockAppStore appStore;
   late _MockWalletService walletService;
   late SessionCache sessionCache;
+  late SoftwareWallet authWallet;
 
   setUp(() {
     appStore = _MockAppStore();
     walletService = _MockWalletService();
     sessionCache = SessionCache(_MockCacheRepository());
+    authWallet = SoftwareWallet(1, 'Auth', _authMnemonic);
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig)
         .thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+    when(() => appStore.wallet).thenReturn(authWallet);
     when(() => appStore.primaryAddress).thenReturn(_address);
-    sessionCache.setAuthToken('jwt-pdf');
+    sessionCache.setAuthToken(
+      'jwt-pdf',
+      authWallet.currentAccount.primaryAddress.address.hexEip55,
+    );
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });

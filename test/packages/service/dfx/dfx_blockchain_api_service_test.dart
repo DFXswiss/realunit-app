@@ -12,6 +12,7 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_blockchain_api_service.
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 
 class _MockAppStore extends Mock implements AppStore {}
 
@@ -20,19 +21,23 @@ class _MockCacheRepository extends Mock implements CacheRepository {}
 class _MockWalletService extends Mock implements WalletService {}
 
 const _testAddress = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd';
+const _authMnemonic = 'test test test test test test test test test test test junk';
 
 void main() {
   late _MockAppStore appStore;
   late _MockWalletService walletService;
   late SessionCache sessionCache;
+  late SoftwareWallet authWallet;
 
   setUp(() {
     appStore = _MockAppStore();
     walletService = _MockWalletService();
     sessionCache = SessionCache(_MockCacheRepository());
+    authWallet = SoftwareWallet(1, 'Auth', _authMnemonic);
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig)
         .thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+    when(() => appStore.wallet).thenReturn(authWallet);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });
