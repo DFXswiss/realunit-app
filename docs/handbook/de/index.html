@@ -1003,6 +1003,9 @@
               <a href="#spec-78"><span class="spec-num">78</span>Telefonnummer-Eingabe</a>
             </li>
             <li>
+              <a href="#spec-79"><span class="spec-num">79</span>Insider-Freischaltung — Bezahlen &amp; Senden</a>
+            </li>
+            <li>
               <a href="#spec-web"><span class="spec-num">W</span>Web · realunit.app</a>
             </li>
             <li>
@@ -7935,6 +7938,105 @@
               </div>
               <div class="desc">
                 Zeigt den <b>Ausgangszustand</b> des Telefonnummer-Felds: die Überschrift <b>Telefonnummer</b>, links das Vorwahl-Dropdown mit der Standardvorwahl <b>+41</b> (Schweiz, alternativ <b>+49</b> für Deutschland) und rechts das noch leere Rufnummernfeld mit dem Platzhalter <b>1231234567</b>. So sehen Nutzer das Feld, bevor sie eine Nummer eingeben; die Länge der Nummer wird erst serverseitig geprüft.
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <hr class="sep" />
+
+        <details id="spec-79" class="spec" open>
+          <summary>
+            <div class="spec-head">
+              <div class="lhs">
+                <h2><span class="num">79</span>Insider-Freischaltung — Bezahlen &amp; Senden</h2>
+                <div class="file">test/goldens/screens/dashboard/</div>
+              </div>
+              <div class="rhs">
+                <b>2 Screens</b>
+                <div class="links">
+                  <a
+                    href="https://github.com/RealUnitCH/app/tree/develop/test/goldens/screens/dashboard"
+                    >Goldens ↗</a
+                  >
+                </div>
+              </div>
+            </div>
+          </summary>
+          <p class="spec-intro">
+            Die Funktionen <b>Bezahlen</b> (OpenCryptoPay) und <b>Senden</b> (REALU-Transfer
+            an eine andere Wallet) sind bewusst versteckt (Soft-Launch) und erscheinen erst
+            nach einer einmaligen Freischaltung auf dem Gerät.
+          </p>
+
+          <div class="tests cols-2">
+            <div class="test" id="insider-unlock">
+              <div class="head">
+                <a class="name permalink" href="#insider-unlock">insider-unlock</a>
+                <button class="copy-link" type="button" data-target="insider-unlock" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              </div>
+              <div class="img">
+                <div>
+                  <img
+                    src="../screenshots/12-settings.png"
+                    alt="Einstellungen mit Versionsnummer unten"
+                  />
+                  <p><em>Einstellungen — die Versionsnummer ganz unten ist der Tap-Auslöser.</em></p>
+                </div>
+                <div>
+                  <img
+                    src="../screenshots/35-dashboard-with-balance.png"
+                    alt="Dashboard vor der Freischaltung — nur Kaufen und Verkaufen"
+                  />
+                  <p><em>Vorher: nur „Kaufen" und „Verkaufen".</em></p>
+                </div>
+                <div>
+                  <img
+                    src="../screenshots/269-dashboard-insider-unlocked.png"
+                    alt="Dashboard nach der Freischaltung — alle vier Aktionen"
+                  />
+                  <p><em>Nachher: alle vier Aktionen.</em></p>
+                </div>
+              </div>
+              <div class="desc">
+                <p>Anleitung:</p>
+                <ol>
+                  <li>Einstellungen öffnen (Hamburger-Icon rechts oben im Dashboard).</li>
+                  <li>Ganz nach unten scrollen bis zur Versionsnummer.</li>
+                  <li>Siebenmal kurz hintereinander auf die Versionsnummer tippen.</li>
+                  <li>Es erscheint die Bestätigung „Insider-Funktionen freigeschaltet".</li>
+                  <li>
+                    Zurück im Dashboard stehen neben <b>Kaufen</b> und <b>Verkaufen</b> neu
+                    <b>Bezahlen</b> und <b>Senden</b>.
+                  </li>
+                </ol>
+                <p>
+                  Die Freischaltung bleibt dauerhaft auf dem Gerät erhalten (auch nach
+                  App-Neustart) — sie wird lokal per <code>SharedPreferences</code>
+                  gespeichert. Eine Neuinstallation der App setzt sie zurück.
+                  OpenCryptoPay-Zahlungslinks funktionieren unabhängig von der
+                  Freischaltung — der Deeplink bleibt bewusst immer offen. Tippen auf die
+                  Versionsnummer nach erfolgter Freischaltung hat keine Wirkung mehr.
+                </p>
+              </div>
+            </div>
+            <div class="test" id="269-dashboard-insider-unlocked">
+              <div class="head">
+                <a class="name permalink" href="#269-dashboard-insider-unlocked">269-dashboard-insider-unlocked</a>
+                <button class="copy-link" type="button" data-target="269-dashboard-insider-unlocked" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">screens/dashboard/goldens/macos/dashboard_insider_unlocked.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/269-dashboard-insider-unlocked.png"
+                  alt="Dashboard mit freigeschalteten Insider-Aktionen"
+                />
+              </div>
+              <div class="desc">
+                Dashboard mit freigeschalteter Insider-Ansicht: neben <b>Kaufen</b> und
+                <b>Verkaufen</b> erscheinen zusätzlich <b>Bezahlen</b> und <b>Senden</b>.
+                Golden-Quelle: <code>dashboard_insider_unlocked.png</code> aus
+                <code>dashboard_golden_test.dart</code>.
               </div>
             </div>
           </div>
