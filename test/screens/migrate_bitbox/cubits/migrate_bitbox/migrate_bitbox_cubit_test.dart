@@ -132,9 +132,10 @@ void main() {
     final draftCredentials = EthPrivateKey.fromHex(
       'fb1ace12f9801e85f3db1b3935dd47d9f064f98152466f47c701b5e12680e612',
     );
-    final persistedCredentials = EthPrivateKey.fromHex(
-      '7d1d0f68f145b214e49c1a5c6c31a5570358ec80025c5d25f6a56f21fbe6342f',
-    );
+    // persistBitboxWallet reuses the draft's address for the persisted row —
+    // modelling them with different keys would let a signature captured for
+    // the draft be saved under a foreign address without the test noticing.
+    final persistedCredentials = draftCredentials;
     draftAddress = draftCredentials.address.hexEip55;
     persistedAddress = persistedCredentials.address.hexEip55;
     when(() => draft.id).thenReturn(0);
@@ -154,7 +155,9 @@ void main() {
     when(() => sessionCache.setAuthToken(any(), any())).thenReturn(null);
 
     when(() => authService.refreshAuthToken()).thenAnswer((_) async => refreshedJwt);
-    when(() => authService.buildSignMessage(any())).thenReturn(signMessage);
+    // Exact-argument stub: a wrong address handed to buildSignMessage must
+    // surface as a missing-stub error instead of silently matching.
+    when(() => authService.buildSignMessage(persistedAddress)).thenReturn(signMessage);
     when(
       () => authService.authenticateLinkedAccount(any(), any()),
     ).thenAnswer((_) async => newJwt);
