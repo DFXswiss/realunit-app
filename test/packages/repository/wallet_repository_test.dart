@@ -77,7 +77,10 @@ void main() {
       'getBitboxWalletIdByAddress normalizes legacy rows and ignores malformed candidates',
       () async {
         await repo.createViewWallet('MalformedHardware', WalletType.bitbox, '');
-        final normalizedAddress = EthereumAddress.fromHex(address).hexEip55;
+        // The file-wide fixture is deliberately case-mangled (not EIP-55
+        // conformant), which fromHex rejects for mixed case — lowercase it
+        // first; uniform-case input skips the checksum validation.
+        final normalizedAddress = EthereumAddress.fromHex(address.toLowerCase()).hexEip55;
         final bitboxId = await repo.createViewWallet(
           'Hardware',
           WalletType.bitbox,
