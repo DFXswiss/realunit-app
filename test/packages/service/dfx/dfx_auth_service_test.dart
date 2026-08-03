@@ -311,6 +311,77 @@ void main() {
         verify(() => sessionCache.saveSignature(address, validSig, message)).called(1);
       });
 
+      test(
+        'identity change mid-unlock retries with a fresh snapshot and signs with the new account',
+        () async {
+          final accountA = _LockedSnapshotWalletAccount(
+            address: '0x1111111111111111111111111111111111111111',
+          );
+          final accountB = _StubWalletAccount(
+            '0xsignature-b',
+            address: '0x2222222222222222222222222222222222222222',
+          );
+          late _MutableIdentityAuthService service;
+          var unlockCalls = 0;
+          when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {
+            unlockCalls++;
+            if (unlockCalls == 1) service.currentAccount = accountB;
+          });
+          service = _MutableIdentityAuthService(
+            appStore,
+            walletService,
+            accountA,
+          );
+
+          final signature = await service.getSignature('msg');
+
+          expect(signature, '0xsignature-b');
+          expect(accountB.signCallCount, 1);
+          expect(unlockCalls, 2);
+          verify(() => walletService.lockCurrentWallet()).called(2);
+        },
+      );
+
+      test('permanent flapping identity fails loudly after three attempts', () async {
+        final accountA = _StubWalletAccount(
+          '0xsignature-a',
+          address: '0x1111111111111111111111111111111111111111',
+        );
+        final accountB = _StubWalletAccount(
+          '0xsignature-b',
+          address: '0x2222222222222222222222222222222222222222',
+        );
+        late _MutableIdentityAuthService service;
+        var unlockCalls = 0;
+        when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {
+          unlockCalls++;
+          service.currentAccount = identical(service.currentAccount, accountA)
+              ? accountB
+              : accountA;
+        });
+        service = _MutableIdentityAuthService(
+          appStore,
+          walletService,
+          accountA,
+        );
+
+        await expectLater(
+          service.getSignature('msg'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString()',
+              contains('wallet identity changed during authentication'),
+            ),
+          ),
+        );
+
+        expect(unlockCalls, 3);
+        expect(accountA.signCallCount, 0);
+        expect(accountB.signCallCount, 0);
+        verify(() => walletService.lockCurrentWallet()).called(3);
+      });
+
       for (final emptySignature in const ['', '0x']) {
         test(
           'throws SigningCancelledException when the wallet returns "$emptySignature"',
@@ -880,6 +951,47 @@ void main() {
         throwsA(isA<Exception>()),
       );
     });
+
+    test(
+      'getAuthResponse retries with a fresh snapshot when identity changes mid-unlock',
+      () async {
+        final accountA = _LockedSnapshotWalletAccount(
+          address: '0x1111111111111111111111111111111111111111',
+        );
+        final accountB = _StubWalletAccount(
+          '0xsignature-b',
+          address: '0x2222222222222222222222222222222222222222',
+        );
+        late _MutableIdentityAuthService service;
+        var unlockCalls = 0;
+        when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {
+          unlockCalls++;
+          if (unlockCalls == 1) service.currentAccount = accountB;
+        });
+        Map<String, dynamic>? sentBody;
+        final client = MockClient((request) async {
+          sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(jsonEncode({'accessToken': 'jwt-b'}), 201);
+        });
+        when(() => appStore.httpClient).thenReturn(client);
+        service = _MutableIdentityAuthService(
+          appStore,
+          walletService,
+          accountA,
+        );
+
+        final response = await service.getAuthResponse();
+
+        expect(response['accessToken'], 'jwt-b');
+        expect(accountB.signCallCount, 1);
+        expect(
+          sentBody!['address'],
+          accountB.primaryAddress.address.hexEip55,
+        );
+        expect(unlockCalls, 2);
+        verify(() => walletService.lockCurrentWallet()).called(2);
+      },
+    );
 
     test(
       'getAuthToken hits the sign-then-auth round-trip on a cold cache and caches the token',
