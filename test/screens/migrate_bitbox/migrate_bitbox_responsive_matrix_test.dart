@@ -13,12 +13,15 @@ import 'package:realunit_wallet/packages/repository/balance_repository.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/utils/default_assets.dart';
+import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/cubits/migrate_bitbox/migrate_bitbox_cubit.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/widgets/migrate_intro_view.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/widgets/migrate_register_view.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/widgets/migrate_result_views.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/widgets/migrate_transfer_view.dart';
+import 'package:realunit_wallet/screens/send/cubits/send_process/send_process_cubit.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
@@ -33,6 +36,10 @@ class _MockBalanceRepository extends Mock implements BalanceRepository {}
 class _MockAppStore extends Mock implements AppStore {}
 
 class _MockApiConfig extends Mock implements ApiConfig {}
+
+class _MockRegistrationService extends Mock implements RealUnitRegistrationService {}
+
+class _MockWalletAccount extends Mock implements AWalletAccount {}
 
 const _userData = RealUnitUserDataDto(
   email: 'ada@example.com',
@@ -74,6 +81,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(fixtureBalance());
+    registerFallbackValue(_MockWalletAccount());
     final appStore = _MockAppStore();
     final apiConfig = _MockApiConfig();
     final balanceRepository = _MockBalanceRepository();
@@ -85,6 +93,9 @@ void main() {
     ).thenAnswer((_) => Stream.value(fixtureBalance()));
     GetIt.instance.registerSingleton<AppStore>(appStore);
     GetIt.instance.registerSingleton<BalanceRepository>(balanceRepository);
+    GetIt.instance.registerSingleton<RealUnitRegistrationService>(
+      _MockRegistrationService(),
+    );
   });
 
   tearDownAll(() async => GetIt.instance.reset());
@@ -98,7 +109,8 @@ void main() {
       initialState: const MigrateBitboxIntro(),
     );
     when(() => cubit.startPairing()).thenAnswer((_) async {});
-    when(() => cubit.register()).thenAnswer((_) async {});
+    when(() => cubit.draftAccount).thenReturn(_MockWalletAccount());
+    when(() => cubit.linkedJwt).thenReturn('linked-jwt');
     when(() => cubit.startTransfer()).thenReturn(null);
     when(() => cubit.retry()).thenAnswer((_) async {});
     return cubit;
@@ -180,6 +192,11 @@ void main() {
       MigrateBitboxRegistrationPendingPage,
     ),
     (
+      'settling-timeout',
+      () => const MigrateBitboxSettlingTimeoutPage(),
+      MigrateBitboxSettlingTimeoutPage,
+    ),
+    (
       'success',
       () => const MigrateBitboxSuccessPage(),
       MigrateBitboxSuccessPage,
@@ -199,6 +216,15 @@ void main() {
         canRetry: false,
       ),
       MigrateBitboxFailurePage,
+    ),
+    (
+      'transfer-failure-retryable',
+      () => MigrateTransferFailureView(
+        reason: SendProcessFailureReason.generic,
+        canRetry: true,
+        onRetry: () {},
+      ),
+      MigrateTransferFailureView,
     ),
   ];
 

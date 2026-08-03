@@ -45,7 +45,7 @@ class MigrateIntroView extends StatelessWidget {
                 ),
                 BlocBuilder<BalanceCubit, Balance>(
                   builder: (context, state) => Text(
-                    S.of(context).migrateBitboxIntroBalance('${state.balance}'),
+                    '${S.of(context).migrateBitboxIntroBalance}: ${state.balance} REALU',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.bodyLarge,
                   ),

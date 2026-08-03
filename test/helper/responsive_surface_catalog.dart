@@ -302,6 +302,13 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_result_views.dart',
   ),
   ResponsiveSurface(
+    id: 'migrate_bitbox_settling_timeout_page',
+    description: 'BitBox migration transfer-settling timeout (close CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_result_views.dart',
+  ),
+  ResponsiveSurface(
     id: 'migrate_bitbox_success_page',
     description: 'BitBox migration success result (done CTA)',
     matrixTestPath:
@@ -315,12 +322,13 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
         'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
     productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_result_views.dart',
   ),
-  // The embedded SendProcess failure layout is a private, transient builder
-  // branch in migrate_transfer_view.dart, so it cannot truthfully satisfy the
-  // catalog's public-widget reachability contract. Its retryable and terminal
-  // CTA behaviour is covered through MigrateTransferringView in
-  // migrate_transfer_view_test.dart instead of adding a misleading entry.
-  //
+  ResponsiveSurface(
+    id: 'migrate_bitbox_transfer_failure_view',
+    description: 'BitBox migration embedded transfer failure (retry CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_transfer_view.dart',
+  ),
   // welcome_page remains intentionally excluded because it scrolls end-to-end
   // and has no separate sticky CTA. Not exhaustive — review responsibility
   // remains for every new sticky-CTA surface.

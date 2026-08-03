@@ -22,6 +22,7 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_transfer_service.
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/utils/default_assets.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
 import 'package:realunit_wallet/screens/hardware_connect_bitbox/connect_bitbox_page.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/cubits/migrate_bitbox/migrate_bitbox_cubit.dart';
@@ -60,6 +61,8 @@ class _MockBitboxWallet extends Mock implements BitboxWallet {}
 
 class _MockDebugWallet extends Mock implements DebugWallet {}
 
+class _MockWalletAccount extends Mock implements AWalletAccount {}
+
 const _userData = RealUnitUserDataDto(
   email: 'ada@example.com',
   name: 'Ada Lovelace',
@@ -94,6 +97,7 @@ void main() {
   late _MockHomeBloc homeBloc;
   late _MockBitboxWallet bitboxWallet;
   late _MockWalletService walletService;
+  late _MockWalletAccount draftAccount;
 
   Balance fixtureBalance() => Balance(
     chainId: realUnitAsset.chainId,
@@ -106,6 +110,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(fixtureBalance());
     registerFallbackValue(_MockBitboxWallet());
+    registerFallbackValue(_MockWalletAccount());
     registerFallbackValue(const LoadCurrentWalletEvent());
 
     walletService = _MockWalletService();
@@ -148,6 +153,7 @@ void main() {
     cubit = _MockMigrateBitboxCubit();
     homeBloc = _MockHomeBloc();
     bitboxWallet = _MockBitboxWallet();
+    draftAccount = _MockWalletAccount();
     when(() => homeBloc.state).thenReturn(const HomeState());
     whenListen(
       homeBloc,
@@ -157,7 +163,11 @@ void main() {
     when(() => homeBloc.add(any())).thenReturn(null);
     when(() => cubit.cancelPairing()).thenReturn(null);
     when(() => cubit.onDevicePaired(any())).thenAnswer((_) async {});
-    when(() => cubit.finishMigration()).thenAnswer((_) async {});
+    when(() => cubit.draftAccount).thenReturn(draftAccount);
+    when(() => cubit.linkedJwt).thenReturn('linked-jwt');
+    when(() => cubit.onRegisterCompleted()).thenAnswer((_) async {});
+    when(() => cubit.onRegisterPending()).thenReturn(null);
+    when(() => cubit.onTransferBroadcast()).thenAnswer((_) async {});
     when(
       () => cubit.onTransferFailedTerminally(any()),
     ).thenReturn(null);
@@ -200,6 +210,7 @@ void main() {
       (const MigrateBitboxAwaitingDevice(), MigrateIntroView),
       (const MigrateBitboxRegisterReady(_userData, '0xbitbox'), MigrateRegisterView),
       (const MigrateBitboxRegistrationPending(), MigrateBitboxRegistrationPendingPage),
+      (const MigrateBitboxSettlingTimeout(), MigrateBitboxSettlingTimeoutPage),
       (
         const MigrateBitboxTransferReady(
           fromAddress: '0xfrom',
@@ -229,7 +240,8 @@ void main() {
 
     final progressCases = <(MigrateBitboxState, String)>[
       (const MigrateBitboxLinking(), 'linking'),
-      (const MigrateBitboxRegistering(), 'registering'),
+      (const MigrateBitboxPreparingTransfer(), 'preparing transfer'),
+      (const MigrateBitboxSettling(), 'settling'),
       (const MigrateBitboxCompleting(), 'completing'),
     ];
     for (final (state, label) in progressCases) {
@@ -248,8 +260,8 @@ void main() {
       (const MigrateBitboxAwaitingDevice(), false),
       (const MigrateBitboxLinking(), false),
       (const MigrateBitboxRegisterReady(_userData, '0xbitbox'), true),
-      (const MigrateBitboxRegistering(), false),
       (const MigrateBitboxRegistrationPending(), true),
+      (const MigrateBitboxPreparingTransfer(), false),
       (
         const MigrateBitboxTransferReady(
           fromAddress: '0xfrom',
@@ -259,6 +271,8 @@ void main() {
         true,
       ),
       (const MigrateBitboxTransferring(toAddress: '0xto', amount: 9), false),
+      (const MigrateBitboxSettling(), false),
+      (const MigrateBitboxSettlingTimeout(), true),
       (const MigrateBitboxCompleting(), false),
       (MigrateBitboxSuccess(mappingWallet), true),
       (
@@ -328,15 +342,14 @@ void main() {
 
     expect(await sheet.acquireWallet!(), same(bitboxWallet));
     sheet.onFinish(bitboxWallet);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
     verify(
       () => walletService.acquireUncommittedBitboxWallet('Luke-Skywallet'),
     ).called(1);
     verify(() => cubit.onDevicePaired(bitboxWallet)).called(1);
-
-    await tester.tap(find.text(S.current.cancel));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(ConnectBitboxPage), findsNothing);
 
     verify(() => cubit.cancelPairing()).called(1);
   });

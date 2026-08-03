@@ -38,10 +38,6 @@ class MigrateBitboxRegisterReady extends MigrateBitboxState {
   List<Object?> get props => [userData, bitboxAddress];
 }
 
-class MigrateBitboxRegistering extends MigrateBitboxState {
-  const MigrateBitboxRegistering();
-}
-
 /// Registration is parked in manual review (Aktionariat forward pending, or the
 /// wallet was already registered elsewhere and needs staff review). The wizard
 /// ends here; the balance stays on the software wallet and the user may re-open
@@ -76,6 +72,18 @@ class MigrateBitboxTransferring extends MigrateBitboxState {
 
   @override
   List<Object?> get props => [toAddress, amount];
+}
+
+class MigrateBitboxSettling extends MigrateBitboxState {
+  const MigrateBitboxSettling();
+}
+
+class MigrateBitboxSettlingTimeout extends MigrateBitboxState {
+  const MigrateBitboxSettlingTimeout();
+}
+
+class MigrateBitboxPreparingTransfer extends MigrateBitboxState {
+  const MigrateBitboxPreparingTransfer();
 }
 
 class MigrateBitboxCompleting extends MigrateBitboxState {

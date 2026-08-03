@@ -111,7 +111,7 @@ class _EmbeddedSendProcessView extends StatelessWidget {
     },
     listener: (context, state) {
       if (state is SendProcessSuccess) {
-        context.read<MigrateBitboxCubit>().finishMigration();
+        context.read<MigrateBitboxCubit>().onTransferBroadcast();
       }
       if (state case SendProcessFailure(:final reason, canRetry: false)) {
         context.read<MigrateBitboxCubit>().onTransferFailedTerminally(
@@ -125,33 +125,12 @@ class _EmbeddedSendProcessView extends StatelessWidget {
         S.of(context).sendPreparing,
       ),
       SendProcessSigning() => _progressLayout(context, S.of(context).sendSigning),
-      SendProcessFailure(:final reason, :final canRetry) => ScrollableActionsLayout(
-        centerBody: true,
-        body: Column(
-          spacing: 16,
-          children: [
-            Icon(
-              Icons.error_rounded,
-              size: 64,
-              color: RealUnitColors.status.red600,
-            ),
-            Text(
-              _failureMessage(context, reason),
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: RealUnitColors.neutral500),
-            ),
-          ],
-        ),
-        actions: [
-          AppFilledButton(
-            label: S.of(context).retry,
-            onPressed: canRetry
-                ? () => context.read<SendProcessCubit>().retryConfirm()
-                : null,
-          ),
-        ],
+      SendProcessFailure(:final reason, :final canRetry) => MigrateTransferFailureView(
+        reason: reason,
+        canRetry: canRetry,
+        onRetry: canRetry
+            ? () => context.read<SendProcessCubit>().retryConfirm()
+            : null,
       ),
       SendProcessSuccess() => _progressLayout(context, S.of(context).sendPreparing),
     },
@@ -173,17 +152,59 @@ class _EmbeddedSendProcessView extends StatelessWidget {
     ),
   );
 
-  String _failureMessage(BuildContext context, SendProcessFailureReason reason) => switch (reason) {
-    SendProcessFailureReason.signatureUnsupported => S.of(context).sendFailureSignatureUnsupported,
-    SendProcessFailureReason.signatureCancelled => S.of(context).sendFailureSignatureCancelled,
-    SendProcessFailureReason.gasFundingUnavailable => S.of(context).sendFailureGasUnavailable,
-    SendProcessFailureReason.invalidRequest => S.of(context).sendFailureInvalidRequest,
-    SendProcessFailureReason.registrationOrKycRequired =>
-      S.of(context).sendFailureRegistrationOrKycRequired,
-    SendProcessFailureReason.confirmMismatch => S.of(context).sendFailureConfirmMismatch,
-    SendProcessFailureReason.generic => S.of(context).sendFailureGeneric,
-  };
 }
+
+class MigrateTransferFailureView extends StatelessWidget {
+  const MigrateTransferFailureView({
+    super.key,
+    required this.reason,
+    required this.canRetry,
+    required this.onRetry,
+  });
+
+  final SendProcessFailureReason reason;
+  final bool canRetry;
+  final VoidCallback? onRetry;
+
+  @override
+  Widget build(BuildContext context) => ScrollableActionsLayout(
+    centerBody: true,
+    body: Column(
+      spacing: 16,
+      children: [
+        Icon(
+          Icons.error_rounded,
+          size: 64,
+          color: RealUnitColors.status.red600,
+        ),
+        Text(
+          _failureMessage(context, reason),
+          textAlign: TextAlign.center,
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: RealUnitColors.neutral500),
+        ),
+      ],
+    ),
+    actions: [
+      AppFilledButton(
+        label: S.of(context).retry,
+        onPressed: canRetry ? onRetry : null,
+      ),
+    ],
+  );
+}
+
+String _failureMessage(BuildContext context, SendProcessFailureReason reason) => switch (reason) {
+  SendProcessFailureReason.signatureUnsupported => S.of(context).sendFailureSignatureUnsupported,
+  SendProcessFailureReason.signatureCancelled => S.of(context).sendFailureSignatureCancelled,
+  SendProcessFailureReason.gasFundingUnavailable => S.of(context).sendFailureGasUnavailable,
+  SendProcessFailureReason.invalidRequest => S.of(context).sendFailureInvalidRequest,
+  SendProcessFailureReason.registrationOrKycRequired =>
+    S.of(context).sendFailureRegistrationOrKycRequired,
+  SendProcessFailureReason.confirmMismatch => S.of(context).sendFailureConfirmMismatch,
+  SendProcessFailureReason.generic => S.of(context).sendFailureGeneric,
+};
 
 class _MigrateTransferInfoRow extends StatelessWidget {
   const _MigrateTransferInfoRow({required this.label, required this.value});

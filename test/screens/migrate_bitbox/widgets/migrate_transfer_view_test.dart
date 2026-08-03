@@ -95,7 +95,7 @@ void main() {
       ),
     );
     when(() => migrateCubit.startTransfer()).thenReturn(null);
-    when(() => migrateCubit.finishMigration()).thenAnswer((_) async {});
+    when(() => migrateCubit.onTransferBroadcast()).thenAnswer((_) async {});
     when(
       () => migrateCubit.onTransferFailedTerminally(any()),
     ).thenReturn(null);
@@ -160,7 +160,7 @@ void main() {
     expect(find.text('0xabcd'), findsOneWidget);
   });
 
-  testWidgets('embedded process renders preparing, signing, then finishes on success', (
+  testWidgets('embedded process renders preparing, signing, then starts settling on success', (
     tester,
   ) async {
     final prepare = Completer<RealUnitTransferPaymentInfoDto>();
@@ -187,7 +187,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    verify(() => migrateCubit.finishMigration()).called(1);
+    verify(() => migrateCubit.onTransferBroadcast()).called(1);
   });
 
   testWidgets('retryable failure CTA reconfirms the retained transfer intent', (
@@ -221,7 +221,7 @@ void main() {
         confirmedAmount: 5,
       ),
     ).called(2);
-    verify(() => migrateCubit.finishMigration()).called(1);
+    verify(() => migrateCubit.onTransferBroadcast()).called(1);
   });
 
   final terminalCases = <(String, Exception, String)>[

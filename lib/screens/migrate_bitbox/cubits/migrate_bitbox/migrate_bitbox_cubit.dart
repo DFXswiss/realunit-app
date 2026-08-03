@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
@@ -6,13 +8,13 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_auth_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/address_already_linked_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_status.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_state.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/wallet/exceptions/signing_cancelled_exception.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
 
 part 'migrate_bitbox_state.dart';
 
@@ -39,8 +41,33 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   String? _bitboxSignature;
   BitboxWallet? _persisted;
   Future<void> Function()? _pendingRetry;
-  MigrateBitboxRegisterReady? _registerRetryState;
-  bool _pendingRegisterRetry = false;
+  _MigrateBitboxRetryKind? _pendingRetryKind;
+  Timer? _settlingTimer;
+  int _settlingGeneration = 0;
+  int _settlingAttempts = 0;
+  bool _settlingInFlight = false;
+
+  static const _settlingPollInterval = Duration(seconds: 3);
+  static const _settlingMaxAttempts = 20;
+
+  /// Only valid once onDevicePaired has produced a fresh link (state reaches
+  /// RegisterReady or later). Throws if accessed earlier.
+  AWalletAccount get draftAccount {
+    final draft = _draft;
+    if (draft == null) {
+      throw StateError('draftAccount accessed before onDevicePaired');
+    }
+    return draft.currentAccount;
+  }
+
+  /// Only valid once onDevicePaired has produced a fresh link.
+  String get linkedJwt {
+    final jwt = _newJwt;
+    if (jwt == null) {
+      throw StateError('linkedJwt accessed before onDevicePaired completed linking');
+    }
+    return jwt;
+  }
 
   Future<void> startPairing() async {
     emit(const MigrateBitboxAwaitingDevice());
@@ -58,13 +85,29 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
     emit(const MigrateBitboxLinking());
     _draft = draft;
     try {
-      final oldJwt = await _authService.getAuthToken();
-      if (oldJwt == null) {
+      final sourceInfo = await _registrationService.getRegistrationInfo();
+      if (sourceInfo.state != RealUnitRegistrationState.alreadyRegistered) {
         _pendingRetry = null;
+        _pendingRetryKind = null;
+        emit(
+          const MigrateBitboxFailure(
+            MigrateBitboxFailureReason.registrationMissing,
+          ),
+        );
+        return;
+      }
+
+      final refreshed = await _authService.refreshAuthToken();
+      if (refreshed == null) {
+        _pendingRetry = null;
+        _pendingRetryKind = null;
         emit(const MigrateBitboxFailure(MigrateBitboxFailureReason.generic));
         return;
       }
-      _newJwt = await _authService.authenticateLinkedAccount(draft.currentAccount, oldJwt);
+      _newJwt = await _authService.authenticateLinkedAccount(
+        draft.currentAccount,
+        refreshed,
+      );
 
       final draftAddress = draft.currentAccount.primaryAddress.address.hexEip55;
       // authenticateLinkedAccount has already cached the signature via
@@ -80,6 +123,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
           final userData = info.realUnitUserDataDto;
           if (userData == null) {
             _pendingRetry = null;
+            _pendingRetryKind = null;
             emit(
               const MigrateBitboxFailure(
                 MigrateBitboxFailureReason.generic,
@@ -89,27 +133,36 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
             return;
           }
           _pendingRetry = null;
+          _pendingRetryKind = null;
           emit(MigrateBitboxRegisterReady(userData, draftAddress));
         case RealUnitRegistrationState.alreadyRegistered:
           if (info.manualReview == true) {
             _pendingRetry = null;
+            _pendingRetryKind = null;
             emit(const MigrateBitboxRegistrationPending());
             return;
           }
           await _persistAndPrepareTransfer();
         case RealUnitRegistrationState.newRegistration:
-          _pendingRetry = null;
+          _pendingRetry = () => onDevicePaired(draft);
+          _pendingRetryKind = _MigrateBitboxRetryKind.linking;
           emit(
-            const MigrateBitboxFailure(MigrateBitboxFailureReason.registrationMissing),
+            const MigrateBitboxFailure(
+              MigrateBitboxFailureReason.generic,
+              message: 'wallet link did not attach to the account',
+              canRetry: true,
+            ),
           );
       }
     } on AddressAlreadyLinkedException {
       _pendingRetry = null;
+      _pendingRetryKind = null;
       emit(
         const MigrateBitboxFailure(MigrateBitboxFailureReason.addressAlreadyLinked),
       );
     } on SigningCancelledException {
       _pendingRetry = () => onDevicePaired(draft);
+      _pendingRetryKind = _MigrateBitboxRetryKind.linking;
       emit(
         const MigrateBitboxFailure(
           MigrateBitboxFailureReason.signatureCancelled,
@@ -118,6 +171,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       );
     } on BitboxNotConnectedException {
       _pendingRetry = () => onDevicePaired(draft);
+      _pendingRetryKind = _MigrateBitboxRetryKind.linking;
       emit(
         const MigrateBitboxFailure(
           MigrateBitboxFailureReason.bitboxNotConnected,
@@ -126,6 +180,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       );
     } catch (e) {
       _pendingRetry = () => onDevicePaired(draft);
+      _pendingRetryKind = _MigrateBitboxRetryKind.linking;
       emit(
         MigrateBitboxFailure(
           MigrateBitboxFailureReason.generic,
@@ -136,68 +191,33 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
     }
   }
 
-  /// Only valid while [state] is [MigrateBitboxRegisterReady].
-  Future<void> register() async {
-    final current = state;
-    if (current is! MigrateBitboxRegisterReady) return;
-    _registerRetryState = current;
-    _pendingRegisterRetry = false;
-    final userData = current.userData;
-    emit(const MigrateBitboxRegistering());
-    try {
-      final status = await _registrationService.registerWalletFor(
-        _draft!.currentAccount,
-        userData,
-        _newJwt!,
-      );
-      switch (status) {
-        case RegistrationStatus.completed:
-        case RegistrationStatus.alreadyRegistered:
-          await _persistAndPrepareTransfer();
-        case RegistrationStatus.pendingReview:
-        case RegistrationStatus.forwardingFailed:
-          _pendingRetry = null;
-          emit(const MigrateBitboxRegistrationPending());
-      }
-    } on SigningCancelledException {
-      _pendingRetry = register;
-      _pendingRegisterRetry = true;
-      emit(
-        const MigrateBitboxFailure(
-          MigrateBitboxFailureReason.signatureCancelled,
-          canRetry: true,
-        ),
-      );
-    } on BitboxNotConnectedException {
-      _pendingRetry = register;
-      _pendingRegisterRetry = true;
-      emit(
-        const MigrateBitboxFailure(
-          MigrateBitboxFailureReason.bitboxNotConnected,
-          canRetry: true,
-        ),
-      );
-    } catch (e) {
-      _pendingRetry = register;
-      _pendingRegisterRetry = true;
-      emit(
-        MigrateBitboxFailure(
-          MigrateBitboxFailureReason.generic,
-          message: e.toString(),
-          canRetry: true,
-        ),
-      );
-    }
+  Future<void> onRegisterCompleted() async {
+    if (state is! MigrateBitboxRegisterReady) return;
+    await _persistAndPrepareTransfer();
+  }
+
+  void onRegisterPending() {
+    if (state is! MigrateBitboxRegisterReady) return;
+    _pendingRetry = null;
+    _pendingRetryKind = null;
+    emit(const MigrateBitboxRegistrationPending());
   }
 
   /// Re-runs whatever action last failed with `canRetry: true`. No-op if there
   /// is nothing to retry.
   Future<void> retry() async {
     final action = _pendingRetry;
+    final kind = _pendingRetryKind;
     if (action == null) return;
-    if (_pendingRegisterRetry) {
-      emit(_registerRetryState!);
-    }
+    _pendingRetry = null;
+    _pendingRetryKind = null;
+    emit(
+      switch (kind!) {
+        _MigrateBitboxRetryKind.linking => const MigrateBitboxLinking(),
+        _MigrateBitboxRetryKind.transferPreparation =>
+          const MigrateBitboxPreparingTransfer(),
+      },
+    );
     await action();
   }
 
@@ -216,6 +236,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       // silently skip the transfer and end the wizard "successfully" without
       // moving any funds.
       _pendingRetry = _persistAndPrepareTransfer;
+      _pendingRetryKind = _MigrateBitboxRetryKind.transferPreparation;
       emit(
         const MigrateBitboxFailure(
           MigrateBitboxFailureReason.generic,
@@ -234,6 +255,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       return;
     }
     _pendingRetry = null;
+    _pendingRetryKind = null;
     emit(
       MigrateBitboxTransferReady(
         fromAddress: softwareAddress,
@@ -263,6 +285,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   void onTransferFailedTerminally(String message) {
     if (state is! MigrateBitboxTransferring) return;
     _pendingRetry = _persistAndPrepareTransfer;
+    _pendingRetryKind = _MigrateBitboxRetryKind.transferPreparation;
     emit(
       MigrateBitboxFailure(
         MigrateBitboxFailureReason.generic,
@@ -270,6 +293,59 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
         canRetry: true,
       ),
     );
+  }
+
+  Future<void> onTransferBroadcast() async {
+    final current = state;
+    if (current is! MigrateBitboxTransferring) return;
+    emit(const MigrateBitboxSettling());
+    _startSettlingPoll(current.amount);
+  }
+
+  void _startSettlingPoll(int expectedAmount) {
+    _settlingTimer?.cancel();
+    final generation = ++_settlingGeneration;
+    _settlingAttempts = 0;
+    _settlingInFlight = false;
+    _settlingTimer = Timer.periodic(_settlingPollInterval, (_) async {
+      if (generation != _settlingGeneration || _settlingInFlight) return;
+      _settlingInFlight = true;
+      try {
+        final balance = await _balanceService.fetchBalance(
+          _appStore.primaryAddress,
+        );
+        if (isClosed || generation != _settlingGeneration) return;
+        _settlingAttempts++;
+        final amount = balance.balance.toInt();
+        if (amount == 0) {
+          _settlingTimer?.cancel();
+          await finishMigration();
+          if (isClosed || generation != _settlingGeneration) return;
+          return;
+        }
+        if (amount < expectedAmount) {
+          _settlingTimer?.cancel();
+          await _persistAndPrepareTransfer();
+          if (isClosed || generation != _settlingGeneration) return;
+          return;
+        }
+        if (_settlingAttempts >= _settlingMaxAttempts) {
+          _settlingTimer?.cancel();
+          emit(const MigrateBitboxSettlingTimeout());
+        }
+      } catch (_) {
+        if (isClosed || generation != _settlingGeneration) return;
+        _settlingAttempts++;
+        if (_settlingAttempts >= _settlingMaxAttempts) {
+          _settlingTimer?.cancel();
+          emit(const MigrateBitboxSettlingTimeout());
+        }
+      } finally {
+        if (generation == _settlingGeneration) {
+          _settlingInFlight = false;
+        }
+      }
+    });
   }
 
   Future<void> finishMigration() async {
@@ -291,6 +367,15 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       persisted.currentAccount.primaryAddress.address.hexEip55,
     );
     _pendingRetry = null;
+    _pendingRetryKind = null;
     emit(MigrateBitboxSuccess(persisted));
   }
+
+  @override
+  Future<void> close() {
+    _settlingTimer?.cancel();
+    return super.close();
+  }
 }
+
+enum _MigrateBitboxRetryKind { linking, transferPreparation }

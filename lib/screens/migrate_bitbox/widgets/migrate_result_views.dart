@@ -48,6 +48,46 @@ class MigrateBitboxRegistrationPendingPage extends StatelessWidget {
   );
 }
 
+class MigrateBitboxSettlingTimeoutPage extends StatelessWidget {
+  const MigrateBitboxSettlingTimeoutPage({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(S.of(context).migrateBitbox)),
+    body: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: SafeArea(
+        child: ScrollableActionsLayout(
+          centerBody: true,
+          body: Column(
+            spacing: 16,
+            children: [
+              const Icon(
+                Icons.hourglass_top_rounded,
+                size: 64,
+                color: RealUnitColors.realUnitBlue,
+              ),
+              Text(
+                S.of(context).migrateBitboxSettlingTimeoutInfo,
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: RealUnitColors.neutral500),
+              ),
+            ],
+          ),
+          actions: [
+            AppFilledButton(
+              label: S.of(context).close,
+              onPressed: () => context.pop(),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class MigrateBitboxSuccessPage extends StatelessWidget {
   const MigrateBitboxSuccessPage({super.key});
 
@@ -97,10 +137,12 @@ class MigrateBitboxFailurePage extends StatelessWidget {
   const MigrateBitboxFailurePage({
     super.key,
     required this.reason,
+    this.message,
     required this.canRetry,
   });
 
   final MigrateBitboxFailureReason reason;
+  final String? message;
   final bool canRetry;
 
   @override
@@ -120,7 +162,7 @@ class MigrateBitboxFailurePage extends StatelessWidget {
                 color: RealUnitColors.status.red600,
               ),
               Text(
-                _failureMessage(context, reason),
+                message ?? _failureMessage(context, reason),
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,

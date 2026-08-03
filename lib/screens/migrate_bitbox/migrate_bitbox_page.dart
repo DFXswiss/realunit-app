@@ -54,11 +54,13 @@ class MigrateBitboxViewManager extends StatelessWidget {
         await showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
-          builder: (_) => ConnectBitboxPage(
+          builder: (sheetContext) => ConnectBitboxPage(
             acquireWallet: () =>
                 getIt<WalletService>().acquireUncommittedBitboxWallet('Luke-Skywallet'),
-            onFinish: (wallet) =>
-                context.read<MigrateBitboxCubit>().onDevicePaired(wallet as BitboxWallet),
+            onFinish: (wallet) {
+              Navigator.of(sheetContext).pop();
+              context.read<MigrateBitboxCubit>().onDevicePaired(wallet as BitboxWallet);
+            },
           ),
         );
         if (context.mounted) {
@@ -72,6 +74,7 @@ class MigrateBitboxViewManager extends StatelessWidget {
         MigrateBitboxRegisterReady() ||
         MigrateBitboxTransferReady() ||
         MigrateBitboxRegistrationPending() ||
+        MigrateBitboxSettlingTimeout() ||
         MigrateBitboxFailure() ||
         MigrateBitboxSuccess() => true,
         _ => false,
@@ -86,9 +89,6 @@ class MigrateBitboxViewManager extends StatelessWidget {
             userData: userData,
             bitboxAddress: bitboxAddress,
           ),
-        MigrateBitboxRegistering() => _MigrateBitboxProgressPage(
-          label: S.of(context).migrateBitboxRegisterTitle,
-        ),
         MigrateBitboxRegistrationPending() =>
           const MigrateBitboxRegistrationPendingPage(),
         MigrateBitboxTransferReady(:final fromAddress, :final toAddress, :final amount) =>
@@ -101,12 +101,22 @@ class MigrateBitboxViewManager extends StatelessWidget {
           toAddress: toAddress,
           amount: amount,
         ),
+        MigrateBitboxSettling() => _MigrateBitboxProgressPage(
+          label: S.of(context).migrateBitboxSettling,
+        ),
+        MigrateBitboxSettlingTimeout() =>
+          const MigrateBitboxSettlingTimeoutPage(),
+        MigrateBitboxPreparingTransfer() => _MigrateBitboxProgressPage(
+          label: S.of(context).migrateBitboxPreparingTransfer,
+        ),
         MigrateBitboxCompleting() => _MigrateBitboxProgressPage(
           label: S.of(context).migrateBitboxCompleting,
         ),
         MigrateBitboxSuccess() => const MigrateBitboxSuccessPage(),
-        MigrateBitboxFailure(:final reason, :final canRetry) => MigrateBitboxFailurePage(
+        MigrateBitboxFailure(:final reason, :final message, :final canRetry) =>
+          MigrateBitboxFailurePage(
           reason: reason,
+          message: message,
           canRetry: canRetry,
         ),
       },
