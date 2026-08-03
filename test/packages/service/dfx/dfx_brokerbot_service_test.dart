@@ -12,13 +12,44 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_brokerbot_service.dart'
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:web3dart/web3dart.dart';
 
 class _MockAppStore extends Mock implements AppStore {}
 
 class _MockCacheRepository extends Mock implements CacheRepository {}
 
 class _MockWalletService extends Mock implements WalletService {}
+
+class _StubCreds extends Fake implements CredentialsWithKnownAddress {
+  @override
+  EthereumAddress get address =>
+      EthereumAddress.fromHex('0x0000000000000000000000000000000000000001');
+}
+
+class _StubWalletAccount extends AWalletAccount {
+  _StubWalletAccount() : super(0, _StubCreds());
+  @override
+  Future<String> signMessage(String message, {int addressIndex = 0}) async => '0x';
+}
+
+class _StubWallet extends AWallet {
+  _StubWallet() : super(1, 'Stub');
+  @override
+  WalletType get walletType => WalletType.software;
+  @override
+  AWalletAccount get primaryAccount => _StubWalletAccount();
+  @override
+  AWalletAccount get currentAccount => _StubWalletAccount();
+}
+
+/// The address every cached auth token in this file is bound to — must match
+/// [_StubCreds.address] so `getAuthToken`'s address check treats the token as
+/// belonging to the current wallet.
+final _stubAddress =
+    EthereumAddress.fromHex('0x0000000000000000000000000000000000000001').hexEip55;
 
 void main() {
   late _MockAppStore appStore;
@@ -31,6 +62,7 @@ void main() {
     sessionCache = SessionCache(_MockCacheRepository());
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+    when(() => appStore.wallet).thenReturn(_StubWallet());
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });
@@ -172,7 +204,7 @@ void main() {
 
     group('getSellPrice', () {
       test('GETs /sellPrice with the Bearer JWT', () async {
-        sessionCache.setAuthToken('jwt-1');
+        sessionCache.setAuthToken('jwt-1', _stubAddress);
         String? auth;
         Uri? uri;
         final client = MockClient((request) async {
@@ -198,7 +230,7 @@ void main() {
       });
 
       test('throws ApiException with the JSON body on non-200', () async {
-        sessionCache.setAuthToken('jwt-1');
+        sessionCache.setAuthToken('jwt-1', _stubAddress);
         final client = MockClient(
           (_) async => http.Response(
             jsonEncode({'statusCode': 422, 'message': 'no'}),
@@ -230,7 +262,7 @@ void main() {
 
     group('getSellShares', () {
       test('GETs /sellShares with the Bearer JWT and maps the response', () async {
-        sessionCache.setAuthToken('jwt-2');
+        sessionCache.setAuthToken('jwt-2', _stubAddress);
         final client = MockClient((request) async {
           expect(request.headers['Authorization'], 'Bearer jwt-2');
           return http.Response(
@@ -251,7 +283,7 @@ void main() {
       });
 
       test('throws ApiException on non-200', () async {
-        sessionCache.setAuthToken('jwt-2');
+        sessionCache.setAuthToken('jwt-2', _stubAddress);
         final client = MockClient(
           (_) async => http.Response(
             jsonEncode({'statusCode': 503, 'message': 'broker offline'}),
@@ -266,7 +298,7 @@ void main() {
       });
 
       test('normalises a comma decimal separator before parsing (300,75 → amount=300.75)', () async {
-        sessionCache.setAuthToken('jwt-2');
+        sessionCache.setAuthToken('jwt-2', _stubAddress);
         Uri? uri;
         final client = MockClient((request) async {
           uri = request.url;
@@ -333,7 +365,7 @@ void main() {
     });
 
     test('getSellPrice with non-JSON 200 throws FormatException', () {
-      sessionCache.setAuthToken('jwt-test');
+      sessionCache.setAuthToken('jwt-test', _stubAddress);
       final client = MockClient((_) async => http.Response('not json', 200));
       expect(
         () => buildLocal(client).getSellPrice('10', Currency.chf),
@@ -350,7 +382,7 @@ void main() {
     });
 
     test('getSellShares with non-JSON 200 throws FormatException', () {
-      sessionCache.setAuthToken('jwt-test');
+      sessionCache.setAuthToken('jwt-test', _stubAddress);
       final client = MockClient((_) async => http.Response('not json', 200));
       expect(
         () => buildLocal(client).getSellShares('100', Currency.chf),
