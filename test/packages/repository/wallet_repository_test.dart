@@ -8,6 +8,7 @@ import 'package:realunit_wallet/packages/storage/database.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/packages/storage/wallet_storage.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:web3dart/web3dart.dart';
 
 class _MockSecureStorage extends Mock implements SecureStorage {}
 
@@ -73,17 +74,33 @@ void main() {
     });
 
     test(
-      'getBitboxWalletIdByAddress returns the BitBox row id or null',
+      'getBitboxWalletIdByAddress normalizes legacy rows and ignores malformed candidates',
       () async {
+        await repo.createViewWallet('MalformedHardware', WalletType.bitbox, '');
+        final normalizedAddress = EthereumAddress.fromHex(address).hexEip55;
         final bitboxId = await repo.createViewWallet(
           'Hardware',
           WalletType.bitbox,
-          address,
+          normalizedAddress.toLowerCase(),
         );
         // Same address, different type — must NOT match the BitBox lookup.
-        await repo.createViewWallet('SoftwareView', WalletType.software, address);
+        await repo.createViewWallet(
+          'SoftwareView',
+          WalletType.software,
+          normalizedAddress,
+        );
 
-        expect(await repo.getBitboxWalletIdByAddress(address), bitboxId);
+        expect(
+          await repo.getBitboxWalletIdByAddress(normalizedAddress),
+          bitboxId,
+        );
+        expect(
+          await repo.getBitboxWalletIdByAddress(
+            '0x3333333333333333333333333333333333333333',
+          ),
+          isNull,
+        );
+        expect(await repo.getBitboxWalletIdByAddress(''), isNull);
         expect(await repo.getBitboxWalletIdByAddress('0xNoSuchAddress000000000000000000000001'), isNull);
       },
     );

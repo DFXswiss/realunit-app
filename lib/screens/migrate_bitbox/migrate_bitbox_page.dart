@@ -24,8 +24,9 @@ class MigrateBitboxPage extends StatelessWidget {
   Widget build(BuildContext context) => BlocProvider(
     create: (_) => MigrateBitboxCubit(
       getIt<WalletService>(),
-      // DfxKycService is the smallest registered DFXAuthService — used only as
-      // a transport for ensureSignatureFor(account); no KYC-specific calls here.
+      // DfxKycService is the smallest registered DFXAuthService — used purely
+      // as the auth transport (refreshAuthToken / authenticateLinkedAccount);
+      // no KYC-specific calls here.
       getIt<DfxKycService>(),
       getIt<RealUnitRegistrationService>(),
       getIt<BalanceService>(),
@@ -86,6 +87,8 @@ class MigrateBitboxViewManager extends StatelessWidget {
         ),
         MigrateBitboxRegisterReady(:final userData, :final bitboxAddress) =>
           MigrateRegisterView(
+            account: context.read<MigrateBitboxCubit>().draftAccount,
+            bearerToken: context.read<MigrateBitboxCubit>().linkedJwt,
             userData: userData,
             bitboxAddress: bitboxAddress,
           ),

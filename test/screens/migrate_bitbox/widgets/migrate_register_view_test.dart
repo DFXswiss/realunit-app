@@ -80,8 +80,6 @@ void main() {
         '0x1234567890abcdef',
       ),
     );
-    when(() => parentCubit.draftAccount).thenReturn(account);
-    when(() => parentCubit.linkedJwt).thenReturn('linked-jwt');
     when(() => parentCubit.onRegisterCompleted()).thenAnswer((_) async {});
     when(() => parentCubit.onRegisterPending()).thenReturn(null);
     GetIt.instance.registerSingleton<RealUnitRegistrationService>(
@@ -97,6 +95,8 @@ void main() {
     BlocProvider<MigrateBitboxCubit>.value(
       value: parentCubit,
       child: MigrateRegisterView(
+        account: account,
+        bearerToken: 'linked-jwt',
         userData: _userData,
         bitboxAddress: address,
       ),

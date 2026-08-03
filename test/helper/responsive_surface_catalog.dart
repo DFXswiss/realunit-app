@@ -288,6 +288,13 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_register_view.dart',
   ),
   ResponsiveSurface(
+    id: 'migrate_bitbox_register_failure_view',
+    description: 'BitBox migration registration failure (retry/close CTAs)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_register_view.dart',
+  ),
+  ResponsiveSurface(
     id: 'migrate_bitbox_transfer_ready_view',
     description: 'BitBox migration transfer confirmation (transfer CTA)',
     matrixTestPath:

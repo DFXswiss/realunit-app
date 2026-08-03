@@ -235,6 +235,13 @@ void main() {
         await pumpState(tester, state);
 
         expect(find.byType(widgetType), findsOneWidget);
+        if (state is MigrateBitboxRegisterReady) {
+          final view = tester.widget<MigrateRegisterView>(
+            find.byType(MigrateRegisterView),
+          );
+          expect(view.account, same(draftAccount));
+          expect(view.bearerToken, 'linked-jwt');
+        }
       });
     }
 

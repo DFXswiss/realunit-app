@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/cubits/migrate_bitbox/migrate_bitbox_cubit.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/cubits/migrate_register/migrate_register_cubit.dart';
 import 'package:realunit_wallet/setup/di.dart';
@@ -15,29 +16,30 @@ import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 class MigrateRegisterView extends StatelessWidget {
   const MigrateRegisterView({
     super.key,
+    required this.account,
+    required this.bearerToken,
     required this.userData,
     required this.bitboxAddress,
   });
 
+  final AWalletAccount account;
+  final String bearerToken;
   final RealUnitUserDataDto userData;
   final String bitboxAddress;
 
   @override
-  Widget build(BuildContext context) {
-    final parent = context.read<MigrateBitboxCubit>();
-    return BlocProvider(
-      create: (_) => MigrateRegisterCubit(
-        getIt<RealUnitRegistrationService>(),
-        account: parent.draftAccount,
-        userData: userData,
-        bearerToken: parent.linkedJwt,
-      ),
-      child: _MigrateRegisterBody(
-        userData: userData,
-        bitboxAddress: bitboxAddress,
-      ),
-    );
-  }
+  Widget build(BuildContext context) => BlocProvider(
+    create: (_) => MigrateRegisterCubit(
+      getIt<RealUnitRegistrationService>(),
+      account: account,
+      userData: userData,
+      bearerToken: bearerToken,
+    ),
+    child: _MigrateRegisterBody(
+      userData: userData,
+      bitboxAddress: bitboxAddress,
+    ),
+  );
 }
 
 class _MigrateRegisterBody extends StatelessWidget {
@@ -73,7 +75,7 @@ class _MigrateRegisterBody extends StatelessWidget {
           isSubmitting: true,
         ),
         MigrateRegisterFailure(:final reason, :final message, :final canRetry) =>
-          _MigrateRegisterFailureView(
+          MigrateRegisterFailureView(
             reason: reason,
             message: message,
             canRetry: canRetry,
@@ -153,8 +155,8 @@ class _MigrateRegisterForm extends StatelessWidget {
   );
 }
 
-class _MigrateRegisterFailureView extends StatelessWidget {
-  const _MigrateRegisterFailureView({
+class MigrateRegisterFailureView extends StatelessWidget {
+  const MigrateRegisterFailureView({
     required this.reason,
     required this.message,
     required this.canRetry,

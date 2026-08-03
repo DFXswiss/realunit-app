@@ -17,6 +17,7 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_serv
 import 'package:realunit_wallet/packages/utils/default_assets.dart';
 import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/cubits/migrate_bitbox/migrate_bitbox_cubit.dart';
+import 'package:realunit_wallet/screens/migrate_bitbox/cubits/migrate_register/migrate_register_cubit.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/widgets/migrate_intro_view.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/widgets/migrate_register_view.dart';
 import 'package:realunit_wallet/screens/migrate_bitbox/widgets/migrate_result_views.dart';
@@ -30,6 +31,9 @@ import '../../helper/helper.dart';
 
 class _MockMigrateBitboxCubit extends MockCubit<MigrateBitboxState>
     implements MigrateBitboxCubit {}
+
+class _MockMigrateRegisterCubit extends MockCubit<MigrateRegisterState>
+    implements MigrateRegisterCubit {}
 
 class _MockBalanceRepository extends Mock implements BalanceRepository {}
 
@@ -116,6 +120,18 @@ void main() {
     return cubit;
   }
 
+  _MockMigrateRegisterCubit buildRegisterCubit() {
+    final cubit = _MockMigrateRegisterCubit();
+    when(() => cubit.state).thenReturn(const MigrateRegisterReady());
+    whenListen(
+      cubit,
+      const Stream<MigrateRegisterState>.empty(),
+      initialState: const MigrateRegisterReady(),
+    );
+    when(() => cubit.retrySubmit()).thenAnswer((_) async {});
+    return cubit;
+  }
+
   Future<void> pumpSurface(
     WidgetTester tester,
     MatrixCell cell,
@@ -171,11 +187,25 @@ void main() {
     ('intro', () => const MigrateIntroView(), MigrateIntroView),
     (
       'register',
-      () => const MigrateRegisterView(
+      () => MigrateRegisterView(
+        account: _MockWalletAccount(),
+        bearerToken: 'linked-jwt',
         userData: _userData,
         bitboxAddress: '0x1234567890abcdef1234567890abcdef12345678',
       ),
       MigrateRegisterView,
+    ),
+    (
+      'register-failure-retryable',
+      () => BlocProvider<MigrateRegisterCubit>.value(
+        value: buildRegisterCubit(),
+        child: const MigrateRegisterFailureView(
+          reason: MigrateRegisterFailureReason.generic,
+          message: 'An intentionally long registration failure message',
+          canRetry: true,
+        ),
+      ),
+      MigrateRegisterFailureView,
     ),
     (
       'transfer-ready',
@@ -247,6 +277,15 @@ void main() {
               reason: '$surfaceId primary CTA not tappable on ${cell.label}',
             );
             await tester.pumpAndSettle();
+            if (surfaceType == MigrateRegisterFailureView) {
+              await expectFullyTappable(
+                tester,
+                find.byType(AppFilledButton).last,
+                within: find.byType(surfaceType),
+                reason: '$surfaceId close CTA not tappable on ${cell.label}',
+              );
+              await tester.pumpAndSettle();
+            }
           });
         });
       }

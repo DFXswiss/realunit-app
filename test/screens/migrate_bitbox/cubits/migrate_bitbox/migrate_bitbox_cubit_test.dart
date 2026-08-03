@@ -164,10 +164,6 @@ void main() {
     ).thenAnswer((_) async => info(RealUnitRegistrationState.alreadyRegistered));
     when(() => walletService.persistBitboxWallet(any())).thenAnswer((_) async => persisted);
     when(() => walletService.setCurrentWallet(any())).thenAnswer((_) async {});
-    when(() => balanceService.updateBalance(any())).thenAnswer((_) async {});
-    when(
-      () => balanceService.getBalance(any(), any()),
-    ).thenAnswer((_) async => balance(5));
     when(
       () => balanceService.fetchBalance(any()),
     ).thenAnswer((_) async => balance(5));
@@ -324,7 +320,7 @@ void main() {
       verifyNever(() => walletService.persistBitboxWallet(any()));
     });
 
-    test('alreadyRegistered persists before balance refresh and emits TransferReady', () async {
+    test('alreadyRegistered persists before the fresh balance read and emits TransferReady', () async {
       final cubit = buildCubit();
 
       await cubit.onDevicePaired(draft);
@@ -335,7 +331,7 @@ void main() {
       expect(state.amount, 5);
       verifyInOrder([
         () => walletService.persistBitboxWallet(draft),
-        () => balanceService.updateBalance(softwareAddress),
+        () => balanceService.fetchBalance(softwareAddress),
       ]);
     });
 
@@ -501,6 +497,34 @@ void main() {
       verify(() => walletService.persistBitboxWallet(draft)).called(1);
     });
 
+    test('registration handoff failure stays retryable and a later retry succeeds', () async {
+      final cubit = buildCubit();
+      await reachRegisterReady(cubit);
+      var persistCalls = 0;
+      when(() => walletService.persistBitboxWallet(draft)).thenAnswer((_) async {
+        persistCalls++;
+        if (persistCalls < 3) throw Exception('persist failed');
+        return persisted;
+      });
+
+      await cubit.onRegisterCompleted();
+      expect(
+        cubit.state,
+        const MigrateBitboxFailure(
+          MigrateBitboxFailureReason.generic,
+          message: 'Exception: persist failed',
+          canRetry: true,
+        ),
+      );
+
+      await cubit.retry();
+      expect(cubit.state, isA<MigrateBitboxFailure>());
+      await cubit.retry();
+
+      expect(cubit.state, isA<MigrateBitboxTransferReady>());
+      expect(persistCalls, 3);
+    });
+
     test('onRegisterPending is a no-op outside RegisterReady', () {
       final cubit = buildCubit();
       final initial = cubit.state;
@@ -521,10 +545,10 @@ void main() {
   });
 
   group('$MigrateBitboxCubit transfer preparation', () {
-    test('missing balance fails loud and retry repeats persistence and balance read', () async {
+    test('fetch failure fails loud despite an implicit zero cache and never switches', () async {
       when(
-        () => balanceService.getBalance(any(), any()),
-      ).thenAnswer((_) async => null);
+        () => balanceService.fetchBalance(any()),
+      ).thenThrow(Exception('network unavailable'));
       final cubit = buildCubit();
 
       await cubit.onDevicePaired(draft);
@@ -540,13 +564,16 @@ void main() {
       await cubit.retry();
 
       verify(() => walletService.persistBitboxWallet(draft)).called(2);
-      verify(() => balanceService.updateBalance(softwareAddress)).called(2);
-      verify(() => balanceService.getBalance(realUnitAsset, softwareAddress)).called(2);
+      verify(() => balanceService.fetchBalance(softwareAddress)).called(2);
+      verifyNever(() => balanceService.updateBalance(any()));
+      verifyNever(() => balanceService.getBalance(any(), any()));
+      verifyNever(() => walletService.setCurrentWallet(any()));
+      verifyNever(() => sessionCache.setAuthToken(any(), any()));
     });
 
     test('zero balance completes without emitting TransferReady', () async {
       when(
-        () => balanceService.getBalance(any(), any()),
+        () => balanceService.fetchBalance(any()),
       ).thenAnswer((_) async => balance(0));
       final cubit = buildCubit();
       final emitted = <MigrateBitboxState>[];
@@ -561,7 +588,7 @@ void main() {
 
     test('positive balance truncates to an integer amount', () async {
       when(
-        () => balanceService.getBalance(any(), any()),
+        () => balanceService.fetchBalance(any()),
       ).thenAnswer((_) async => balance(37));
       final cubit = buildCubit();
 
@@ -575,6 +602,27 @@ void main() {
           amount: 37,
         ),
       );
+    });
+
+    test('close during the fresh balance fetch prevents completion and later effects', () async {
+      final cubit = buildCubit(addCloseTearDown: false);
+      await reachRegisterReady(cubit);
+      final fetchStarted = Completer<void>();
+      final pendingBalance = Completer<Balance>();
+      when(() => balanceService.fetchBalance(any())).thenAnswer((_) {
+        fetchStarted.complete();
+        return pendingBalance.future;
+      });
+
+      final preparation = cubit.onRegisterCompleted();
+      await fetchStarted.future;
+      await cubit.close();
+      pendingBalance.complete(balance(0));
+      await preparation;
+
+      verifyNever(() => walletService.setCurrentWallet(any()));
+      verifyNever(() => sessionCache.saveSignature(any(), any()));
+      verifyNever(() => sessionCache.setAuthToken(any(), any()));
     });
   });
 
@@ -626,8 +674,7 @@ void main() {
       );
       await cubit.retry();
 
-      verify(() => balanceService.updateBalance(softwareAddress)).called(2);
-      verify(() => balanceService.getBalance(realUnitAsset, softwareAddress)).called(2);
+      verify(() => balanceService.fetchBalance(softwareAddress)).called(2);
       expect(cubit.state, isA<MigrateBitboxTransferReady>());
     });
 
@@ -660,7 +707,7 @@ void main() {
 
     test('matching signature is persisted before the new auth token', () async {
       when(
-        () => balanceService.getBalance(any(), any()),
+        () => balanceService.fetchBalance(any()),
       ).thenAnswer((_) async => balance(0));
       final cubit = buildCubit();
 
@@ -677,7 +724,7 @@ void main() {
     test('signature-address mismatch skips signature persistence', () async {
       when(() => sessionCache.signatureAddress).thenReturn(softwareAddress);
       when(
-        () => balanceService.getBalance(any(), any()),
+        () => balanceService.fetchBalance(any()),
       ).thenAnswer((_) async => balance(0));
       final cubit = buildCubit();
 
@@ -689,6 +736,44 @@ void main() {
       ]);
       verifyNever(() => sessionCache.saveSignature(any(), any()));
       expect(cubit.state, MigrateBitboxSuccess(persisted));
+    });
+
+    test('close during signature persistence prevents the auth-token commit', () {
+      fakeAsync((async) {
+        final pendingSignatureSave = Completer<void>();
+        when(
+          () => balanceService.fetchBalance(any()),
+        ).thenAnswer((_) async => balance(0));
+        when(
+          () => sessionCache.saveSignature(any(), any()),
+        ).thenAnswer((_) => pendingSignatureSave.future);
+        final cubit = buildCubit(addCloseTearDown: false);
+
+        cubit.onDevicePaired(draft);
+        drain(async);
+        expect(cubit.state, const MigrateBitboxCompleting());
+
+        cubit.close();
+        pendingSignatureSave.complete();
+        drain(async);
+
+        verifyNever(() => sessionCache.setAuthToken(any(), any()));
+        async.flushTimers();
+      });
+    });
+
+    test('finishMigration is a no-op after close', () {
+      fakeAsync((async) {
+        final cubit = buildCubit(addCloseTearDown: false);
+
+        cubit.close();
+        cubit.finishMigration();
+        drain(async);
+
+        verifyNever(() => walletService.setCurrentWallet(any()));
+        verifyNever(() => sessionCache.saveSignature(any(), any()));
+        verifyNever(() => sessionCache.setAuthToken(any(), any()));
+      });
     });
   });
 
@@ -705,9 +790,10 @@ void main() {
 
     test('zero balance on the first tick finishes the migration', () {
       fakeAsync((async) {
+        var calls = 0;
         when(
           () => balanceService.fetchBalance(any()),
-        ).thenAnswer((_) async => balance(0));
+        ).thenAnswer((_) async => balance(calls++ == 0 ? 5 : 0));
         final cubit = buildCubit(addCloseTearDown: false);
         cubit.onDevicePaired(draft);
         drain(async);
@@ -731,9 +817,6 @@ void main() {
         var balanceReads = 0;
         when(
           () => balanceService.fetchBalance(any()),
-        ).thenAnswer((_) async => balance(3));
-        when(
-          () => balanceService.getBalance(any(), any()),
         ).thenAnswer((_) async {
           balanceReads++;
           return balance(balanceReads == 1 ? 5 : 3);
@@ -769,6 +852,7 @@ void main() {
         cubit.startTransfer();
         cubit.onTransferBroadcast();
         drain(async);
+        clearInteractions(balanceService);
 
         for (var i = 0; i < 20; i++) {
           async.elapse(const Duration(seconds: 3));
@@ -788,7 +872,8 @@ void main() {
         var calls = 0;
         when(() => balanceService.fetchBalance(any())).thenAnswer((_) async {
           calls++;
-          if (calls == 1) throw Exception('balance unavailable');
+          if (calls == 1) return balance(5);
+          if (calls == 2) throw Exception('balance unavailable');
           return balance(0);
         });
         final cubit = buildCubit(addCloseTearDown: false);
@@ -805,7 +890,7 @@ void main() {
         drain(async);
 
         expect(cubit.state, MigrateBitboxSuccess(persisted));
-        expect(calls, 2);
+        expect(calls, 3);
         cubit.close();
         async.flushTimers();
       });
@@ -814,9 +899,14 @@ void main() {
     test('overlapping timer ticks do not start a second balance request', () {
       fakeAsync((async) {
         final pendingBalance = Completer<Balance>();
+        var calls = 0;
         when(
           () => balanceService.fetchBalance(any()),
-        ).thenAnswer((_) => pendingBalance.future);
+        ).thenAnswer((_) {
+          calls++;
+          if (calls == 1) return Future.value(balance(5));
+          return pendingBalance.future;
+        });
         final cubit = buildCubit(addCloseTearDown: false);
         cubit.onDevicePaired(draft);
         drain(async);
@@ -827,11 +917,152 @@ void main() {
         async.elapse(const Duration(seconds: 6));
         drain(async);
 
-        verify(() => balanceService.fetchBalance(softwareAddress)).called(1);
+        expect(calls, 2);
         pendingBalance.complete(balance(0));
         drain(async);
         expect(cubit.state, MigrateBitboxSuccess(persisted));
         cubit.close();
+        async.flushTimers();
+      });
+    });
+
+    test('zero-balance finish failure becomes retryable instead of hanging', () {
+      fakeAsync((async) {
+        var balanceCalls = 0;
+        when(() => balanceService.fetchBalance(any())).thenAnswer(
+          (_) async => balance(balanceCalls++ == 0 ? 5 : 0),
+        );
+        when(
+          () => walletService.setCurrentWallet(any()),
+        ).thenThrow(Exception('wallet switch failed'));
+        final cubit = buildCubit(addCloseTearDown: false);
+        cubit.onDevicePaired(draft);
+        drain(async);
+        cubit.startTransfer();
+        cubit.onTransferBroadcast();
+        drain(async);
+
+        async.elapse(const Duration(seconds: 3));
+        drain(async);
+
+        expect(
+          cubit.state,
+          const MigrateBitboxFailure(
+            MigrateBitboxFailureReason.generic,
+            message: 'Exception: wallet switch failed',
+            canRetry: true,
+          ),
+        );
+        async.elapse(const Duration(seconds: 6));
+        drain(async);
+        expect(balanceCalls, 2);
+        expect(cubit.state, isA<MigrateBitboxFailure>());
+        cubit.close();
+        async.flushTimers();
+      });
+    });
+
+    test('lower balance with a persistence failure becomes retryable', () {
+      fakeAsync((async) {
+        var balanceCalls = 0;
+        when(() => balanceService.fetchBalance(any())).thenAnswer((_) async {
+          balanceCalls++;
+          return balance(balanceCalls == 1 ? 5 : 3);
+        });
+        var persistCalls = 0;
+        when(() => walletService.persistBitboxWallet(any())).thenAnswer((_) async {
+          persistCalls++;
+          if (persistCalls == 2) throw Exception('persist failed');
+          return persisted;
+        });
+        final cubit = buildCubit(addCloseTearDown: false);
+        cubit.onDevicePaired(draft);
+        drain(async);
+        cubit.startTransfer();
+        cubit.onTransferBroadcast();
+        drain(async);
+
+        async.elapse(const Duration(seconds: 3));
+        drain(async);
+
+        expect(
+          cubit.state,
+          const MigrateBitboxFailure(
+            MigrateBitboxFailureReason.generic,
+            message: 'Exception: persist failed',
+            canRetry: true,
+          ),
+        );
+        async.elapse(const Duration(seconds: 6));
+        drain(async);
+        expect(balanceCalls, 2);
+        expect(cubit.state, isA<MigrateBitboxFailure>());
+        cubit.close();
+        async.flushTimers();
+      });
+    });
+
+    test('close during a pending settling balance prevents all finish side effects', () {
+      fakeAsync((async) {
+        final pendingBalance = Completer<Balance>();
+        var balanceCalls = 0;
+        when(() => balanceService.fetchBalance(any())).thenAnswer((_) {
+          balanceCalls++;
+          if (balanceCalls == 1) return Future.value(balance(5));
+          return pendingBalance.future;
+        });
+        final cubit = buildCubit(addCloseTearDown: false);
+        cubit.onDevicePaired(draft);
+        drain(async);
+        cubit.startTransfer();
+        cubit.onTransferBroadcast();
+        drain(async);
+        async.elapse(const Duration(seconds: 3));
+        drain(async);
+
+        cubit.close();
+        pendingBalance.complete(balance(0));
+        drain(async);
+
+        verifyNever(() => walletService.setCurrentWallet(any()));
+        verifyNever(() => sessionCache.saveSignature(any(), any()));
+        verifyNever(() => sessionCache.setAuthToken(any(), any()));
+        async.flushTimers();
+      });
+    });
+
+    test('close during setCurrentWallet prevents signature, token, and success emission', () {
+      fakeAsync((async) {
+        final pendingSwitch = Completer<void>();
+        var balanceCalls = 0;
+        when(() => balanceService.fetchBalance(any())).thenAnswer(
+          (_) async => balance(balanceCalls++ == 0 ? 5 : 0),
+        );
+        when(
+          () => walletService.setCurrentWallet(any()),
+        ).thenAnswer((_) => pendingSwitch.future);
+        final cubit = buildCubit(addCloseTearDown: false);
+        final emitted = <MigrateBitboxState>[];
+        final subscription = cubit.stream.listen(emitted.add);
+        cubit.onDevicePaired(draft);
+        drain(async);
+        cubit.startTransfer();
+        cubit.onTransferBroadcast();
+        drain(async);
+        async.elapse(const Duration(seconds: 3));
+        drain(async);
+        expect(cubit.state, const MigrateBitboxCompleting());
+
+        cubit.close();
+        final emissionCountAtClose = emitted.length;
+        pendingSwitch.complete();
+        drain(async);
+
+        expect(emitted, hasLength(emissionCountAtClose));
+        expect(emitted.whereType<MigrateBitboxSuccess>(), isEmpty);
+        verifyNever(() => sessionCache.saveSignature(any(), any()));
+        verifyNever(() => sessionCache.setAuthToken(any(), any()));
+        subscription.cancel();
         async.flushTimers();
       });
     });

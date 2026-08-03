@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:realunit_wallet/models/balance.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/balance_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_auth_service.dart';
@@ -21,8 +22,9 @@ part 'migrate_bitbox_state.dart';
 class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   MigrateBitboxCubit(
     this._walletService,
-    // DfxKycService is the smallest registered DFXAuthService — used only as
-    // a transport for ensureSignatureFor(account); no KYC-specific calls here.
+    // DfxKycService is the smallest registered DFXAuthService — used purely as
+    // the auth transport (refreshAuthToken / authenticateLinkedAccount); no
+    // KYC-specific calls here.
     DfxKycService authService,
     this._registrationService,
     this._balanceService,
@@ -142,7 +144,10 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
             emit(const MigrateBitboxRegistrationPending());
             return;
           }
-          await _persistAndPrepareTransfer();
+          await _runSafely(
+            _persistAndPrepareTransfer,
+            _MigrateBitboxRetryKind.transferPreparation,
+          );
         case RealUnitRegistrationState.newRegistration:
           _pendingRetry = () => onDevicePaired(draft);
           _pendingRetryKind = _MigrateBitboxRetryKind.linking;
@@ -193,7 +198,10 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
 
   Future<void> onRegisterCompleted() async {
     if (state is! MigrateBitboxRegisterReady) return;
-    await _persistAndPrepareTransfer();
+    await _runSafely(
+      _persistAndPrepareTransfer,
+      _MigrateBitboxRetryKind.transferPreparation,
+    );
   }
 
   void onRegisterPending() {
@@ -209,16 +217,41 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
     final action = _pendingRetry;
     final kind = _pendingRetryKind;
     if (action == null) return;
+    final retryKind = kind!;
     _pendingRetry = null;
     _pendingRetryKind = null;
     emit(
-      switch (kind!) {
+      switch (retryKind) {
         _MigrateBitboxRetryKind.linking => const MigrateBitboxLinking(),
         _MigrateBitboxRetryKind.transferPreparation =>
           const MigrateBitboxPreparingTransfer(),
       },
     );
-    await action();
+    await _runSafely(action, retryKind);
+  }
+
+  /// Runs a fallible wizard action without losing its retry affordance. The
+  /// action is re-installed before the failure is exposed, so a second retry
+  /// remains possible even when the first retry attempt itself throws.
+  Future<void> _runSafely(
+    Future<void> Function() action,
+    _MigrateBitboxRetryKind kind, {
+    Future<void> Function()? retryAction,
+  }) async {
+    try {
+      await action();
+    } catch (e) {
+      if (isClosed) return;
+      _pendingRetry = retryAction ?? action;
+      _pendingRetryKind = kind;
+      emit(
+        MigrateBitboxFailure(
+          MigrateBitboxFailureReason.generic,
+          message: e.toString(),
+          canRetry: true,
+        ),
+      );
+    }
   }
 
   Future<void> _persistAndPrepareTransfer() async {
@@ -226,15 +259,11 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
     final softwareAddress = _appStore.primaryAddress;
     final bitboxAddress = _persisted!.currentAccount.primaryAddress.address.hexEip55;
 
-    await _balanceService.updateBalance(softwareAddress);
-    final balance = await _balanceService.getBalance(
-      _appStore.apiConfig.asset,
-      softwareAddress,
-    );
-    if (balance == null) {
-      // Fail-loud: NEVER interpret a missing balance read as zero — that would
-      // silently skip the transfer and end the wizard "successfully" without
-      // moving any funds.
+    late final Balance balance;
+    try {
+      balance = await _balanceService.fetchBalance(softwareAddress);
+    } catch (_) {
+      if (isClosed) return;
       _pendingRetry = _persistAndPrepareTransfer;
       _pendingRetryKind = _MigrateBitboxRetryKind.transferPreparation;
       emit(
@@ -246,11 +275,12 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       );
       return;
     }
+    if (isClosed) return;
 
     final amount = balance.balance.toInt();
     if (amount == 0) {
-      // Nothing to transfer — e.g. re-entering the wizard after a transfer that
-      // already completed in a prior run.
+      // Nothing to transfer — e.g. re-entering the wizard after a transfer
+      // that already completed in a prior run.
       await finishMigration();
       return;
     }
@@ -318,15 +348,22 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
         _settlingAttempts++;
         final amount = balance.balance.toInt();
         if (amount == 0) {
-          _settlingTimer?.cancel();
-          await finishMigration();
+          await _runSafely(
+            finishMigration,
+            _MigrateBitboxRetryKind.transferPreparation,
+            retryAction: _persistAndPrepareTransfer,
+          );
           if (isClosed || generation != _settlingGeneration) return;
+          _settlingTimer?.cancel();
           return;
         }
         if (amount < expectedAmount) {
-          _settlingTimer?.cancel();
-          await _persistAndPrepareTransfer();
+          await _runSafely(
+            _persistAndPrepareTransfer,
+            _MigrateBitboxRetryKind.transferPreparation,
+          );
           if (isClosed || generation != _settlingGeneration) return;
+          _settlingTimer?.cancel();
           return;
         }
         if (_settlingAttempts >= _settlingMaxAttempts) {
@@ -349,9 +386,11 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   }
 
   Future<void> finishMigration() async {
+    if (isClosed) return;
     emit(const MigrateBitboxCompleting());
     final persisted = _persisted!;
     await _walletService.setCurrentWallet(persisted.id);
+    if (isClosed) return;
     final signature = _bitboxSignature;
     if (signature != null) {
       final bitboxAddress = persisted.currentAccount.primaryAddress.address.hexEip55;
@@ -359,6 +398,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       // authenticated call if this is skipped — mirrors
       // ConnectBitboxCubit.continueWithoutSignature.
       await _appStore.sessionCache.saveSignature(bitboxAddress, signature);
+      if (isClosed) return;
     }
     // After setCurrentWallet, before the view's HomeBloc reload, so any sync
     // triggered by the reload is already authenticated as the new wallet.
@@ -366,6 +406,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       _newJwt!,
       persisted.currentAccount.primaryAddress.address.hexEip55,
     );
+    if (isClosed) return;
     _pendingRetry = null;
     _pendingRetryKind = null;
     emit(MigrateBitboxSuccess(persisted));
@@ -373,6 +414,10 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
 
   @override
   Future<void> close() {
+    // Invalidate callbacks already awaiting a balance/finish operation. A
+    // wizard closed mid-flight must not half-apply the identity switch; a
+    // later zero-balance re-entry completes the migration cleanly.
+    _settlingGeneration++;
     _settlingTimer?.cancel();
     return super.close();
   }

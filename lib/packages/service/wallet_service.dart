@@ -100,9 +100,14 @@ class WalletService {
     if (!_isValidEthAddress(address)) {
       throw const BitboxAddressUnavailableException();
     }
-    final walletId = await _repository.createViewWallet(name, WalletType.bitbox, address);
+    final normalizedAddress = EthereumAddress.fromHex(address).hexEip55;
+    final walletId = await _repository.createViewWallet(
+      name,
+      WalletType.bitbox,
+      normalizedAddress,
+    );
     await setCurrentWallet(walletId);
-    return BitboxWallet(walletId, name, address, _bitboxService);
+    return BitboxWallet(walletId, name, normalizedAddress, _bitboxService);
   }
 
   /// Reads the ETH address from the connected BitBox and returns an
@@ -121,7 +126,8 @@ class WalletService {
     if (!_isValidEthAddress(address)) {
       throw const BitboxAddressUnavailableException();
     }
-    return BitboxWallet(0, name, address, _bitboxService);
+    final normalizedAddress = EthereumAddress.fromHex(address).hexEip55;
+    return BitboxWallet(0, name, normalizedAddress, _bitboxService);
   }
 
   /// Persists a [draft] from [acquireUncommittedBitboxWallet] WITHOUT switching

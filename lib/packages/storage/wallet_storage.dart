@@ -15,6 +15,9 @@ extension WalletStorage on AppDatabase {
             ..limit(1))
           .getSingleOrNull();
 
+  Future<List<WalletInfo>> getWalletsByType(int walletType) =>
+      (select(walletInfos)..where((row) => row.type.equals(walletType))).get();
+
   Future<int> updateWalletAddress(int id, String address) => (update(
     walletInfos,
   )..where((row) => row.id.equals(id))).write(WalletInfosCompanion(address: Value(address)));

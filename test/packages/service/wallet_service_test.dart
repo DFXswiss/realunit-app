@@ -12,6 +12,7 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_address_u
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/storage/database.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:web3dart/web3dart.dart';
 
 class _MockWalletRepository extends Mock implements WalletRepository {}
 
@@ -23,6 +24,7 @@ class _MockAppStore extends Mock implements AppStore {}
 
 const _testMnemonic = 'test test test test test test test test test test test junk';
 const _debugAddress = '0x0000000000000000000000000000000000000001';
+const _lowercaseAddress = '0x9f5713deacb8e9cab6c2d3fae1afc2715f8d2d71';
 
 WalletInfo _info({
   int id = 1,
@@ -249,6 +251,22 @@ void main() {
         verify(() => settings.saveCurrentWalletId(11)).called(1);
       });
 
+      test('normalizes the device address before persisting and returning it', () async {
+        final normalized = EthereumAddress.fromHex(_lowercaseAddress).hexEip55;
+        when(() => bitbox.getEthAddress()).thenAnswer((_) async => _lowercaseAddress);
+        when(() => repo.createViewWallet(any(), any(), any())).thenAnswer((_) async => 12);
+        when(
+          () => bitbox.getCredentials(any()),
+        ).thenReturn(BitboxCredentials(_lowercaseAddress));
+
+        final wallet = await service.createBitboxWallet('Hardware');
+
+        expect(wallet.currentAccount.primaryAddress.address.hexEip55, normalized);
+        verify(
+          () => repo.createViewWallet('Hardware', WalletType.bitbox, normalized),
+        ).called(1);
+      });
+
       test('propagates a BitBox derivation failure without writing to the repo', () async {
         when(() => bitbox.getEthAddress()).thenThrow(Exception('USB transport dropped'));
 
@@ -317,6 +335,18 @@ void main() {
         },
       );
 
+      test('normalizes the device address in the uncommitted draft', () async {
+        final normalized = EthereumAddress.fromHex(_lowercaseAddress).hexEip55;
+        when(() => bitbox.getEthAddress()).thenAnswer((_) async => _lowercaseAddress);
+        when(
+          () => bitbox.getCredentials(any()),
+        ).thenReturn(BitboxCredentials(_lowercaseAddress));
+
+        final draft = await service.acquireUncommittedBitboxWallet('Migration');
+
+        expect(draft.currentAccount.primaryAddress.address.hexEip55, normalized);
+      });
+
       test('throws BitboxAddressUnavailableException on a malformed address', () async {
         when(() => bitbox.getEthAddress()).thenAnswer((_) async => 'not-a-hex-address');
 
@@ -364,15 +394,22 @@ void main() {
       });
 
       test(
-        'reuses an existing BitBox row with the same address (idempotent dedup)',
+        'reuses a legacy lowercase BitBox row for the normalized incoming address',
         () async {
-          when(() => repo.getBitboxWalletIdByAddress(any())).thenAnswer((_) async => 17);
+          final normalized = EthereumAddress.fromHex(_lowercaseAddress).hexEip55;
+          when(
+            () => bitbox.getCredentials(any()),
+          ).thenReturn(BitboxCredentials(_lowercaseAddress));
+          when(
+            () => repo.getBitboxWalletIdByAddress(normalized),
+          ).thenAnswer((_) async => 17);
 
-          final draft = BitboxWallet(0, 'Migration', _debugAddress, bitbox);
+          final draft = BitboxWallet(0, 'Migration', _lowercaseAddress, bitbox);
           final persisted = await service.persistBitboxWallet(draft);
 
           expect(persisted.id, 17);
           expect(persisted.name, 'Migration');
+          verify(() => repo.getBitboxWalletIdByAddress(normalized)).called(1);
           verifyNever(() => repo.createViewWallet(any(), any(), any()));
           verifyNever(() => settings.saveCurrentWalletId(any()));
         },

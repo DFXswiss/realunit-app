@@ -135,24 +135,20 @@ class _SignatureTestAuthService extends DFXAuthService {
   String get walletAddress => _address;
 }
 
-class _LateCommitAuthService extends DFXAuthService {
-  _LateCommitAuthService(super.appStore, super.walletService, this.currentAddress);
+class _MutableIdentityAuthService extends DFXAuthService {
+  _MutableIdentityAuthService(
+    super.appStore,
+    super.walletService,
+    this.currentAccount,
+  );
 
-  String currentAddress;
-  final authResponses = <Completer<Map<String, dynamic>>>[];
-
-  @override
-  AWalletAccount get wallet => throw UnimplementedError();
-
-  @override
-  String get walletAddress => currentAddress;
+  AWalletAccount currentAccount;
 
   @override
-  Future<Map<String, dynamic>> getAuthResponse([bool sendWalletName = true]) {
-    final completer = Completer<Map<String, dynamic>>();
-    authResponses.add(completer);
-    return completer.future;
-  }
+  AWalletAccount get wallet => currentAccount;
+
+  @override
+  String get walletAddress => currentAccount.primaryAddress.address.hexEip55;
 }
 
 // ---------------------------------------------------------------------------
@@ -911,26 +907,112 @@ void main() {
       expect(sessionCache.authTokenAddress, walletAddress);
     });
 
-    test('late auth response cannot commit after the wallet address changes', () async {
-      const oldAddress = '0x1111111111111111111111111111111111111111';
-      const newAddress = '0x2222222222222222222222222222222222222222';
-      final service = _LateCommitAuthService(appStore, walletService, oldAddress);
+    test('A-B-A changes never commit the B response under A', () async {
+      final accountA = _StubWalletAccount(
+        '0xsignature-a',
+        address: '0x1111111111111111111111111111111111111111',
+      );
+      final accountB = _StubWalletAccount(
+        '0xsignature-b',
+        address: '0x2222222222222222222222222222222222222222',
+      );
+      final pendingResponses = List.generate(
+        3,
+        (_) => Completer<http.Response>(),
+      );
+      final requestArrivals = List.generate(3, (_) => Completer<void>());
+      final sentBodies = <Map<String, dynamic>>[];
+      var requestIndex = 0;
+      final client = MockClient((request) {
+        sentBodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+        final index = requestIndex++;
+        requestArrivals[index].complete();
+        return pendingResponses[index].future;
+      });
+      when(() => appStore.httpClient).thenReturn(client);
+      final service = _MutableIdentityAuthService(
+        appStore,
+        walletService,
+        accountA,
+      );
 
       final tokenFuture = service.getAuthToken();
-      await Future<void>.delayed(Duration.zero);
-      expect(service.authResponses, hasLength(1));
+      await requestArrivals[0].future;
+      expect(sentBodies.single['address'], service.walletAddress);
 
-      service.currentAddress = newAddress;
-      service.authResponses.single.complete({'accessToken': 'jwt-old'});
-      await Future<void>.delayed(Duration.zero);
+      service.currentAccount = accountB;
+      pendingResponses[0].complete(
+        http.Response(jsonEncode({'accessToken': 'jwt-a-old'}), 201),
+      );
+      await requestArrivals[1].future;
+      expect(sentBodies, hasLength(2));
+      expect(
+        sentBodies[1]['address'],
+        accountB.primaryAddress.address.hexEip55,
+      );
 
+      service.currentAccount = accountA;
+      pendingResponses[1].complete(
+        http.Response(jsonEncode({'accessToken': 'jwt-b'}), 201),
+      );
+      await requestArrivals[2].future;
       expect(sessionCache.authToken, isNull);
-      expect(service.authResponses, hasLength(2));
-      service.authResponses.last.complete({'accessToken': 'jwt-new'});
+      expect(sentBodies, hasLength(3));
+      expect(
+        sentBodies[2]['address'],
+        accountA.primaryAddress.address.hexEip55,
+      );
 
-      expect(await tokenFuture, 'jwt-new');
-      expect(sessionCache.authToken, 'jwt-new');
-      expect(sessionCache.authTokenAddress, newAddress);
+      pendingResponses[2].complete(
+        http.Response(jsonEncode({'accessToken': 'jwt-a-current'}), 201),
+      );
+
+      expect(await tokenFuture, 'jwt-a-current');
+      expect(sessionCache.authToken, 'jwt-a-current');
+      expect(
+        sessionCache.authTokenAddress,
+        accountA.primaryAddress.address.hexEip55,
+      );
+    });
+
+    test('flapping identity fails loudly after three authentication attempts', () async {
+      final accountA = _StubWalletAccount(
+        '0xsignature-a',
+        address: '0x1111111111111111111111111111111111111111',
+      );
+      final accountB = _StubWalletAccount(
+        '0xsignature-b',
+        address: '0x2222222222222222222222222222222222222222',
+      );
+      late _MutableIdentityAuthService service;
+      var authCalls = 0;
+      final client = MockClient((_) async {
+        authCalls++;
+        service.currentAccount = identical(service.currentAccount, accountA)
+            ? accountB
+            : accountA;
+        return http.Response(jsonEncode({'accessToken': 'jwt-$authCalls'}), 201);
+      });
+      when(() => appStore.httpClient).thenReturn(client);
+      service = _MutableIdentityAuthService(
+        appStore,
+        walletService,
+        accountA,
+      );
+
+      await expectLater(
+        service.getAuthToken(),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'toString()',
+            contains('wallet identity changed during authentication'),
+          ),
+        ),
+      );
+
+      expect(authCalls, 3);
+      expect(sessionCache.authToken, isNull);
     });
 
     test('invalidateAuthToken clears the cached JWT', () {
