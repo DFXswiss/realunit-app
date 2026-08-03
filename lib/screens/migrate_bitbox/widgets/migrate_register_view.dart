@@ -157,6 +157,7 @@ class _MigrateRegisterForm extends StatelessWidget {
 
 class MigrateRegisterFailureView extends StatelessWidget {
   const MigrateRegisterFailureView({
+    super.key,
     required this.reason,
     required this.message,
     required this.canRetry,
