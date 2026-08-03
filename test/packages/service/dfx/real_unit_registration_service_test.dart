@@ -13,6 +13,7 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/buy_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/registration_rejected_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_email_status.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_status.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_user_type.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_state.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
@@ -172,6 +173,30 @@ void main() {
         throwsA(isA<ApiException>()),
       );
     });
+  });
+
+  group('$RealUnitRegistrationService.getRegistrationInfoWith', () {
+    test(
+      'GETs /v1/realunit/registration with the explicit bearerToken, not the session JWT',
+      () async {
+        String? auth;
+        String? path;
+        final client = MockClient((request) async {
+          auth = request.headers['Authorization'];
+          path = request.url.path;
+          return http.Response(
+            jsonEncode({'state': 'AddWallet', 'userData': null}),
+            200,
+          );
+        });
+
+        final info = await build(client).getRegistrationInfoWith('jwt-for-linked-address');
+
+        expect(info.state, RealUnitRegistrationState.addWallet);
+        expect(path, '/v1/realunit/registration');
+        expect(auth, 'Bearer jwt-for-linked-address');
+      },
+    );
   });
 
   group('$RealUnitRegistrationService.completeRegistration', () {
@@ -375,6 +400,105 @@ void main() {
         () => build(client).registerWallet(buildUserData()),
         throwsA(isA<BitboxNotConnectedException>()),
       );
+    });
+  });
+
+  group('$RealUnitRegistrationService.registerWalletFor', () {
+    RealUnitUserDataDto buildUserData() => const RealUnitUserDataDto(
+      email: 'a@b.com',
+      name: 'Ada Lovelace',
+      type: 'HUMAN',
+      phoneNumber: '+41 79 000 00 00',
+      birthday: '1815-12-10',
+      nationality: 'CH',
+      addressStreet: 'Bahnhofstrasse 1',
+      addressPostalCode: '8000',
+      addressCity: 'Zurich',
+      addressCountry: 'CH',
+      swissTaxResidence: true,
+      lang: 'de',
+      kycData: KycPersonalData(
+        accountType: KycAccountType.personal,
+        firstName: 'Ada',
+        lastName: 'Lovelace',
+        phone: '+41 79 000 00 00',
+        address: KycAddress(
+          street: 'Bahnhofstrasse',
+          zip: '8000',
+          city: 'Zurich',
+          country: 41,
+        ),
+      ),
+    );
+
+    test(
+      'signs with the explicit account credentials and submits with the override bearer token',
+      () async {
+        final linkedAccount = _MockAccount();
+        final linkedCreds = FakeBitboxCredentials();
+        when(() => linkedAccount.primaryAddress).thenReturn(linkedCreds);
+
+        final seenAuthHeaders = <String?>[];
+        final seenPaths = <String>[];
+        Map<String, dynamic>? registerBody;
+        final client = MockClient((request) async {
+          seenPaths.add(request.url.path);
+          seenAuthHeaders.add(request.headers['Authorization']);
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
+          if (request.url.path == '/v1/realunit/register/wallet') {
+            registerBody = jsonDecode(request.body) as Map<String, dynamic>;
+            return http.Response(jsonEncode({'status': 'completed'}), 201);
+          }
+          return http.Response('unexpected', 500);
+        });
+
+        final status = await build(client).registerWalletFor(
+          linkedAccount,
+          buildUserData(),
+          'jwt-for-linked-address',
+        );
+
+        expect(status, RegistrationStatus.completed);
+        // Both the date fetch and the register POST must carry the override
+        // token — not the session JWT of the software wallet.
+        expect(
+          seenAuthHeaders,
+          everyElement(equals('Bearer jwt-for-linked-address')),
+        );
+        expect(seenPaths, contains('/v1/realunit/register/date'));
+        expect(seenPaths, contains('/v1/realunit/register/wallet'));
+        expect(registerBody!['walletAddress'], linkedCreds.address.hexEip55);
+        expect(registerBody!['registrationDate'], '2026-07-13');
+        expect((registerBody!['signature'] as String).length, 132);
+        // Explicit-account path must NOT unlock/lock the software wallet.
+        verifyNever(() => walletService.ensureCurrentWalletUnlocked());
+        verifyNever(() => walletService.lockCurrentWallet());
+      },
+    );
+
+    test('throws BitboxNotConnectedException when the explicit account is disconnected', () async {
+      final linkedAccount = _MockAccount();
+      when(() => linkedAccount.primaryAddress).thenReturn(
+        FakeBitboxCredentials(behavior: FakeBitboxBehavior.disconnect)..bitboxManager = null,
+      );
+      final client = MockClient((request) async {
+        if (request.url.path == '/v1/realunit/register/date') {
+          return http.Response('{"date":"2026-07-13"}', 200);
+        }
+        return http.Response('{}', 201);
+      });
+
+      expect(
+        () => build(client).registerWalletFor(
+          linkedAccount,
+          buildUserData(),
+          'jwt-for-linked-address',
+        ),
+        throwsA(isA<BitboxNotConnectedException>()),
+      );
+      verifyNever(() => walletService.ensureCurrentWalletUnlocked());
     });
   });
 

@@ -72,6 +72,22 @@ void main() {
       verifyNever(() => secureStorage.getOrCreateMnemonicKey());
     });
 
+    test(
+      'getBitboxWalletIdByAddress returns the BitBox row id or null',
+      () async {
+        final bitboxId = await repo.createViewWallet(
+          'Hardware',
+          WalletType.bitbox,
+          address,
+        );
+        // Same address, different type — must NOT match the BitBox lookup.
+        await repo.createViewWallet('SoftwareView', WalletType.software, address);
+
+        expect(await repo.getBitboxWalletIdByAddress(address), bitboxId);
+        expect(await repo.getBitboxWalletIdByAddress('0xNoSuchAddress000000000000000000000001'), isNull);
+      },
+    );
+
     test('getWalletInfo returns the row with the seed still encrypted', () async {
       final id = await repo.createWallet(walletName, WalletType.software, seed, address);
 

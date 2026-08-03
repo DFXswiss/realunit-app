@@ -102,6 +102,47 @@ class WalletService {
     return BitboxWallet(walletId, name, address, _bitboxService);
   }
 
+  /// Reads the ETH address from the connected BitBox and returns an
+  /// UNCOMMITTED [BitboxWallet] draft — `id` is the `0` sentinel, no row is
+  /// written to `walletInfos` and the current wallet is NOT switched. Pair with
+  /// [persistBitboxWallet] once the new address is registered server-side,
+  /// mirroring [generateUncommittedSeedWallet]/[commitGeneratedWallet] so an
+  /// aborted wizard leaves no orphan wallet row behind.
+  /// Throws [BitboxAddressUnavailableException] on an unusable address (same
+  /// guard as [createBitboxWallet]).
+  Future<BitboxWallet> acquireUncommittedBitboxWallet(String name) async {
+    final address = await _bitboxService.getEthAddress();
+    if (!_isValidEthAddress(address)) {
+      throw const BitboxAddressUnavailableException();
+    }
+    return BitboxWallet(0, name, address, _bitboxService);
+  }
+
+  /// Persists a [draft] from [acquireUncommittedBitboxWallet] WITHOUT switching
+  /// the current wallet. Deduplicates by address: an existing BitBox row with
+  /// the same address is reused instead of inserting a second row (covers a
+  /// device that was already paired once outside the wizard, and makes the call
+  /// idempotent across wizard re-entries). Asserts on a non-draft id in dev
+  /// (mirror of [commitGeneratedWallet]).
+  ///
+  /// The migration wizard calls this BEFORE any funds move (right after the new
+  /// address is registered server-side), so an app death between the balance
+  /// transfer and the final wallet switch still leaves a local wallet row
+  /// pointing at the funded address. The final switch is a plain
+  /// [setCurrentWallet] — deliberately not part of this method.
+  Future<BitboxWallet> persistBitboxWallet(BitboxWallet draft) async {
+    assert(
+      draft.id == 0,
+      'persistBitboxWallet expects an uncommitted draft (id == 0); '
+      'got id=${draft.id} — likely double-commit or wrong caller.',
+    );
+    final address = draft.primaryAccount.primaryAddress.address.hexEip55;
+    final existingId = await _repository.getBitboxWalletIdByAddress(address);
+    final id = existingId ??
+        await _repository.createViewWallet(draft.name, WalletType.bitbox, address);
+    return BitboxWallet(id, draft.name, address, _bitboxService);
+  }
+
   /// True when [address] parses as a canonical 20-byte Ethereum address.
   ///
   /// Uses the same web3dart parser that every wallet credential class relies on

@@ -290,6 +290,104 @@ void main() {
       });
     });
 
+    group('acquireUncommittedBitboxWallet', () {
+      test(
+        'returns a draft BitboxWallet with id=0 and does NOT insert or switch',
+        () async {
+          when(() => bitbox.getEthAddress()).thenAnswer((_) async => _debugAddress);
+          when(() => bitbox.getCredentials(any())).thenReturn(BitboxCredentials(_debugAddress));
+
+          final draft = await service.acquireUncommittedBitboxWallet('Migration');
+
+          expect(draft, isA<BitboxWallet>());
+          expect(
+            draft.id,
+            0,
+            reason:
+                'uncommitted drafts use the 0 sentinel until persistBitboxWallet lands the row',
+          );
+          expect(draft.name, 'Migration');
+          expect(
+            draft.primaryAccount.primaryAddress.address.hexEip55,
+            BitboxCredentials(_debugAddress).address.hexEip55,
+          );
+          verify(() => bitbox.getEthAddress()).called(1);
+          verifyNever(() => repo.createViewWallet(any(), any(), any()));
+          verifyNever(() => settings.saveCurrentWalletId(any()));
+        },
+      );
+
+      test('throws BitboxAddressUnavailableException on a malformed address', () async {
+        when(() => bitbox.getEthAddress()).thenAnswer((_) async => 'not-a-hex-address');
+
+        await expectLater(
+          () => service.acquireUncommittedBitboxWallet('Migration'),
+          throwsA(isA<BitboxAddressUnavailableException>()),
+        );
+        verifyNever(() => repo.createViewWallet(any(), any(), any()));
+        verifyNever(() => settings.saveCurrentWalletId(any()));
+      });
+
+      test('throws BitboxAddressUnavailableException on an empty address', () async {
+        when(() => bitbox.getEthAddress()).thenAnswer((_) async => '');
+
+        await expectLater(
+          () => service.acquireUncommittedBitboxWallet('Migration'),
+          throwsA(isA<BitboxAddressUnavailableException>()),
+        );
+        verifyNever(() => repo.createViewWallet(any(), any(), any()));
+        verifyNever(() => settings.saveCurrentWalletId(any()));
+      });
+    });
+
+    group('persistBitboxWallet', () {
+      setUp(() {
+        when(() => bitbox.getCredentials(any())).thenReturn(BitboxCredentials(_debugAddress));
+      });
+
+      test('inserts a new BitBox view row when no existing row matches the address', () async {
+        when(() => repo.getBitboxWalletIdByAddress(any())).thenAnswer((_) async => null);
+        when(() => repo.createViewWallet(any(), any(), any())).thenAnswer((_) async => 33);
+
+        final draft = BitboxWallet(0, 'Migration', _debugAddress, bitbox);
+        final persisted = await service.persistBitboxWallet(draft);
+
+        expect(persisted.id, 33);
+        expect(persisted.name, 'Migration');
+        verify(() => repo.getBitboxWalletIdByAddress(any())).called(1);
+        verify(
+          () => repo.createViewWallet('Migration', WalletType.bitbox, any()),
+        ).called(1);
+        // Migration commits the row WITHOUT switching current wallet — the
+        // wizard switches only after the funds move completes.
+        verifyNever(() => settings.saveCurrentWalletId(any()));
+      });
+
+      test(
+        'reuses an existing BitBox row with the same address (idempotent dedup)',
+        () async {
+          when(() => repo.getBitboxWalletIdByAddress(any())).thenAnswer((_) async => 17);
+
+          final draft = BitboxWallet(0, 'Migration', _debugAddress, bitbox);
+          final persisted = await service.persistBitboxWallet(draft);
+
+          expect(persisted.id, 17);
+          expect(persisted.name, 'Migration');
+          verifyNever(() => repo.createViewWallet(any(), any(), any()));
+          verifyNever(() => settings.saveCurrentWalletId(any()));
+        },
+      );
+
+      test('asserts that the draft carries the id=0 sentinel', () async {
+        final alreadyPersisted = BitboxWallet(99, 'Migration', _debugAddress, bitbox);
+
+        await expectLater(
+          () => service.persistBitboxWallet(alreadyPersisted),
+          throwsA(isA<AssertionError>()),
+        );
+      });
+    });
+
     group('currentWalletNeedsAddressRecovery', () {
       test('true for a BitBox row persisted with an empty address', () async {
         when(() => settings.currentWalletId).thenReturn(5);

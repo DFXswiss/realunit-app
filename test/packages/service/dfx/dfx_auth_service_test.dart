@@ -12,6 +12,7 @@ import 'package:realunit_wallet/packages/config/network_mode.dart';
 import 'package:realunit_wallet/packages/repository/cache_repository.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_auth_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/address_already_linked_exception.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/wallet/exceptions/signing_cancelled_exception.dart';
@@ -397,6 +398,77 @@ void main() {
       );
       expect(service.refreshAuthTokenCalls, 1);
     });
+
+    test(
+      'bearerTokenOverride uses the exact token and skips the 401-refresh path',
+      () async {
+        final seenAuthHeaders = <String?>[];
+        var calls = 0;
+        final client = MockClient((request) async {
+          calls++;
+          seenAuthHeaders.add(request.headers['Authorization']);
+          return http.Response('{"message":"Unauthorized"}', 401);
+        });
+        final service = _RetryTestAuthService(_RetryTestAppStore(client), _MockWalletService());
+
+        final response = await service.authenticatedGet(
+          Uri.parse('https://api.example.test/v1/resource'),
+          bearerTokenOverride: 'link-jwt-for-new-address',
+        );
+
+        expect(response.statusCode, 401);
+        expect(calls, 1, reason: 'override must not retry on 401');
+        expect(seenAuthHeaders, ['Bearer link-jwt-for-new-address']);
+        expect(service.authTokenCalls, 0);
+        expect(service.refreshAuthTokenCalls, 0);
+      },
+    );
+
+    test(
+      'authenticatedPost bearerTokenOverride lands in the Authorization header',
+      () async {
+        String? auth;
+        final client = MockClient((request) async {
+          auth = request.headers['Authorization'];
+          return http.Response('{"ok":true}', 201);
+        });
+        final service = _RetryTestAuthService(_RetryTestAppStore(client), _MockWalletService());
+
+        await service.authenticatedPost(
+          Uri.parse('https://api.example.test/v1/resource'),
+          headers: {'Content-Type': 'application/json'},
+          body: '{"value":1}',
+          bearerTokenOverride: 'override-post-token',
+        );
+
+        expect(auth, 'Bearer override-post-token');
+        expect(service.authTokenCalls, 0);
+        expect(service.refreshAuthTokenCalls, 0);
+      },
+    );
+
+    test(
+      'authenticatedPut bearerTokenOverride lands in the Authorization header',
+      () async {
+        String? auth;
+        final client = MockClient((request) async {
+          auth = request.headers['Authorization'];
+          return http.Response('{"ok":true}', 200);
+        });
+        final service = _RetryTestAuthService(_RetryTestAppStore(client), _MockWalletService());
+
+        await service.authenticatedPut(
+          Uri.parse('https://api.example.test/v1/resource'),
+          headers: {'Content-Type': 'application/json'},
+          body: '{"value":1}',
+          bearerTokenOverride: 'override-put-token',
+        );
+
+        expect(auth, 'Bearer override-put-token');
+        expect(service.authTokenCalls, 0);
+        expect(service.refreshAuthTokenCalls, 0);
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -595,6 +667,30 @@ void main() {
       expect(httpCalled, isFalse, reason: 'no /v1/auth/signMessage round-trip');
     });
 
+    test('buildSignMessage on mainnet keeps the historical PRD text byte-for-byte', () {
+      final client = MockClient((_) async => http.Response('', 200));
+      final message = buildService(client).buildSignMessage(walletAddress);
+
+      expect(
+        message,
+        'By_signing_this_message,_you_confirm_that_you_are_the_sole_owner_'
+        'of_the_provided_Blockchain_address._Your_ID:_$walletAddress',
+      );
+      expect(message.startsWith('[dev]_'), isFalse);
+    });
+
+    test('buildSignMessage on testnet prefixes the message with [dev]_', () {
+      when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.testnet));
+      final client = MockClient((_) async => http.Response('', 200));
+      final message = buildService(client).buildSignMessage(walletAddress);
+
+      expect(
+        message,
+        '[dev]_By_signing_this_message,_you_confirm_that_you_are_the_sole_owner_'
+        'of_the_provided_Blockchain_address._Your_ID:_$walletAddress',
+      );
+    });
+
     test(
       'getAuthResponse POSTs /v1/auth with wallet + address + signature, returns the parsed 201',
       () async {
@@ -767,6 +863,151 @@ void main() {
       expect(service.walletAddress, creds.address.hexEip55);
       // `host` proxies the apiConfig getter.
       expect(service.host, 'api.dfx.swiss');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // authenticateLinkedAccount — link a NEW address under the current UserData
+  // by POSTing /v1/auth with the CURRENT wallet's JWT as Authorization.
+  // -------------------------------------------------------------------------
+
+  group('$DFXAuthService authenticateLinkedAccount', () {
+    late _MockAppStore appStore;
+    late _MockSessionCache sessionCache;
+    late _MockWalletService walletService;
+    late _StubWalletAccount account;
+
+    const accountAddress = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    final accountAddressEip55 = EthereumAddress.fromHex(accountAddress).hexEip55;
+    const stubSignature = '0xfeedface';
+    const linkBearerToken = 'jwt-of-current-software-wallet';
+
+    setUp(() {
+      appStore = _MockAppStore();
+      sessionCache = _MockSessionCache();
+      walletService = _MockWalletService();
+      account = _StubWalletAccount(stubSignature, address: accountAddress);
+
+      when(() => appStore.sessionCache).thenReturn(sessionCache);
+      when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+      when(() => sessionCache.loadSignature()).thenAnswer((_) async {});
+      when(() => sessionCache.signature).thenReturn(null);
+      when(() => sessionCache.signatureAddress).thenReturn(null);
+      when(() => sessionCache.saveSignature(any(), any())).thenAnswer((_) async {});
+      when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
+      when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
+    });
+
+    _SignatureTestAuthService buildService(http.Client client) {
+      when(() => appStore.httpClient).thenReturn(client);
+      return _SignatureTestAuthService(
+        appStore,
+        walletService,
+        account,
+        accountAddressEip55,
+      );
+    }
+
+    test(
+      'cache-miss: signs, caches, POSTs /v1/auth with link Bearer + body, returns accessToken',
+      () async {
+        Map<String, dynamic>? sentBody;
+        Map<String, String>? sentHeaders;
+        String? sentMethod;
+        String? sentPath;
+        final client = MockClient((request) async {
+          sentMethod = request.method;
+          sentPath = request.url.path;
+          sentHeaders = request.headers;
+          sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(jsonEncode({'accessToken': 'jwt-for-new-address'}), 201);
+        });
+
+        final token = await buildService(client).authenticateLinkedAccount(
+          account,
+          linkBearerToken,
+        );
+
+        expect(token, 'jwt-for-new-address');
+        expect(sentMethod, 'POST');
+        expect(sentPath, '/v1/auth');
+        expect(sentHeaders!['authorization'], 'Bearer $linkBearerToken');
+        expect(sentHeaders!['content-type'], contains('application/json'));
+        expect(sentBody!['wallet'], 'RealUnit');
+        expect(sentBody!['address'], accountAddressEip55);
+        expect(sentBody!['signature'], stubSignature);
+        expect(account.signCallCount, 1);
+        verify(() => sessionCache.saveSignature(accountAddressEip55, stubSignature)).called(1);
+        // Returned token must NOT be written to the session cache — the
+        // caller owns the identity switch.
+        verifyNever(() => sessionCache.setAuthToken(any()));
+      },
+    );
+
+    test('cache-hit: reuses the cached signature and does not re-sign', () async {
+      when(() => sessionCache.signature).thenReturn(stubSignature);
+      when(() => sessionCache.signatureAddress).thenReturn(accountAddressEip55);
+      Map<String, dynamic>? sentBody;
+      final client = MockClient((request) async {
+        sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode({'accessToken': 'jwt-linked'}), 201);
+      });
+
+      final token = await buildService(client).authenticateLinkedAccount(
+        account,
+        linkBearerToken,
+      );
+
+      expect(token, 'jwt-linked');
+      expect(account.signCallCount, 0);
+      expect(sentBody!['signature'], stubSignature);
+      verifyNever(() => sessionCache.saveSignature(any(), any()));
+    });
+
+    for (final empty in const ['', '0x']) {
+      test(
+        'throws SigningCancelledException when the device returns "$empty"',
+        () async {
+          account = _StubWalletAccount(empty, address: accountAddress);
+          final client = MockClient((_) async => http.Response('should-not-be-called', 500));
+
+          await expectLater(
+            () => buildService(client).authenticateLinkedAccount(account, linkBearerToken),
+            throwsA(isA<SigningCancelledException>()),
+          );
+        },
+      );
+    }
+
+    test('throws AddressAlreadyLinkedException on 409', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 409, 'message': 'Address already linked to another account'}),
+          409,
+        ),
+      );
+
+      await expectLater(
+        () => buildService(client).authenticateLinkedAccount(account, linkBearerToken),
+        throwsA(isA<AddressAlreadyLinkedException>()),
+      );
+    });
+
+    test('throws a generic Exception on non-201/409 status (e.g. 500)', () async {
+      final client = MockClient(
+        (_) async => http.Response('upstream broken', 500),
+      );
+
+      await expectLater(
+        () => buildService(client).authenticateLinkedAccount(account, linkBearerToken),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'toString()',
+            contains('Failed to link address. Status: 500'),
+          ),
+        ),
+      );
     });
   });
 

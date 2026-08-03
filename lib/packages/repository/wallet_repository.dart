@@ -22,6 +22,16 @@ class WalletRepository {
   Future<int> createViewWallet(String name, WalletType type, String address) =>
       _appDatabase.insertWallet(name, '', address, type.index);
 
+  /// Returns the row id of an existing BitBox wallet with [address], or null.
+  /// Used by the migration wizard to make committing a paired device idempotent.
+  Future<int?> getBitboxWalletIdByAddress(String address) async {
+    final info = await _appDatabase.getWalletByTypeAndAddress(
+      WalletType.bitbox.index,
+      address,
+    );
+    return info?.id;
+  }
+
   /// Returns the wallet row with the encrypted seed *still encrypted*. Use this
   /// at app startup so we don't pay the mnemonic-decrypt / BIP32-derivation
   /// cost just to render the dashboard — the cached address is enough.
