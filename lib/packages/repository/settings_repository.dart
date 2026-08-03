@@ -47,4 +47,9 @@ class SettingsRepository {
 
   set softwareTermsAccepted(bool accepted) =>
       _sharedPreferences.setBool('softwareTermsAccepted', accepted);
+
+  bool get insiderFeaturesUnlocked =>
+      _sharedPreferences.getBool('insiderFeaturesUnlocked') ?? false;
+  set insiderFeaturesUnlocked(bool unlocked) =>
+      _sharedPreferences.setBool('insiderFeaturesUnlocked', unlocked);
 }

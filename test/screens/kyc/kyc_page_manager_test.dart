@@ -4,6 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/screens/kyc/subpages/kyc_unsupported_step_page.dart';
+import 'package:realunit_wallet/packages/service/dfx/dfx_country_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
+import 'package:realunit_wallet/screens/kyc/steps/personal_data/kyc_personal_data_page.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/dto/kyc_level_dto.dart';
@@ -77,6 +82,34 @@ KycStepSessionDto _currentStep(
 void main() {
   late _MockDfxKycService kycService;
   late _MockRealUnitRegistrationService registrationService;
+
+  RealUnitUserDataDto personalUserData() => const RealUnitUserDataDto(
+    email: 'erika@example.com',
+    name: 'Erika Mueller',
+    type: 'HUMAN',
+    phoneNumber: '+41790000000',
+    birthday: '1990-01-01',
+    nationality: 'CH',
+    addressStreet: 'Bahnhofstrasse 1',
+    addressPostalCode: '8001',
+    addressCity: 'Winterthur',
+    addressCountry: 'CH',
+    swissTaxResidence: true,
+    lang: 'EN',
+    kycData: KycPersonalData(
+      accountType: KycAccountType.personal,
+      firstName: 'Erika',
+      lastName: 'Mueller',
+      phone: '+41790000000',
+      address: KycAddress(
+        street: 'Bahnhofstrasse',
+        houseNumber: '1',
+        zip: '8001',
+        city: 'Winterthur',
+        country: 41,
+      ),
+    ),
+  );
   late _MockRealUnitLegalService legalService;
   late _MockAppStore appStore;
   late _MockAWallet wallet;
@@ -100,6 +133,59 @@ void main() {
       (_) async => const RealUnitLegalInfoDto(agreements: [], allAccepted: true),
     );
   });
+
+  // The personal-data step only renders its correction form when the registration payload reaches it.
+  // Both hops are easy to drop silently — `_continueKyc` forwarding it into `KycSuccess`, and the
+  // manager passing it to the page — and either one makes the gate refuse for EVERY account, which is
+  // exactly the dead end this step exists to remove.
+  testWidgets(
+    'KycSuccess(personalData) renders the form, not the refusal screen',
+    (tester) async {
+      when(() => registrationService.getRegistrationInfo()).thenAnswer(
+        (_) async => RealUnitRegistrationInfoDto(
+          state: RealUnitRegistrationState.alreadyRegistered,
+          realUnitUserDataDto: personalUserData(),
+        ),
+      );
+      when(() => kycService.getKycStatus()).thenAnswer(
+        (_) async => _kycStatus(
+          level: KycLevel.level20,
+          processStatus: KycProcessStatus.inProgress,
+        ),
+      );
+      when(() => kycService.getUser()).thenAnswer((_) async => _user());
+      when(() => kycService.continueKyc()).thenAnswer(
+        (_) async => _session(
+          level: KycLevel.level20,
+          steps: const [],
+          currentStep: _currentStep(KycStepName.personalData),
+        ),
+      );
+
+      // the page resolves both from getIt
+      final getIt = GetIt.instance;
+      getIt.registerSingleton<DfxKycService>(kycService);
+      getIt.registerSingleton<DfxCountryService>(fixtureCountryService());
+      addTearDown(() async => getIt.reset());
+
+      final cubit = KycCubit(kycService, registrationService, legalService, appStore);
+      await tester.pumpApp(
+        BlocProvider<KycCubit>.value(value: cubit, child: const KycViewManager()),
+      );
+
+      await cubit.checkKyc();
+      await tester.pumpAndSettle();
+
+      expect(cubit.state, isA<KycSuccess>());
+      expect((cubit.state as KycSuccess).currentStep, KycStep.personalData);
+      // the payload survived both hops
+      expect((cubit.state as KycSuccess).realUnitUserData, isNotNull);
+      expect(find.byType(KycPersonalDataView), findsOneWidget);
+      expect(find.byType(KycFailurePage), findsNothing);
+
+      await cubit.close();
+    },
+  );
 
   // An in-progress `dfxApproval` step used to land on a blank white Scaffold
   // (the `(_) => const Scaffold()` fallback in KycViewManager). It must render
@@ -185,19 +271,22 @@ void main() {
     },
   );
 
-  // The KycUnsupportedStepFailure arm renders a KycFailurePage with the
-  // unsupported step name — a state no page test drives directly.
+  // The KycUnsupportedStepFailure arm renders the actionable handoff, never the generic failure page
+  // (which carries no actions) and never the raw wire identifier of the step.
   testWidgets(
-    'KycViewManager renders KycFailurePage for KycUnsupportedStepFailure',
+    'KycViewManager renders KycUnsupportedStepPage for KycUnsupportedStepFailure',
     (tester) async {
       final cubit = _MockKycCubit();
       when(() => cubit.state).thenReturn(
-        const KycUnsupportedStepFailure(KycStepName.personalData),
+        const KycUnsupportedStepFailure(KycStepName.statutes),
       );
 
       await tester.pumpApp(viewWithState(cubit));
 
-      expect(find.byType(KycFailurePage), findsOneWidget);
+      expect(find.byType(KycUnsupportedStepPage), findsOneWidget);
+      expect(find.byType(KycFailurePage), findsNothing);
+      // the internal step name must not leak into the UI
+      expect(find.textContaining(KycStepName.statutes.value), findsNothing);
     },
   );
 

@@ -83,6 +83,20 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     productionPath: 'lib/screens/kyc/subpages/kyc_pending_page.dart',
   ),
   ResponsiveSurface(
+    id: 'kyc_unsupported_step_page',
+    description: 'KYC unsupported-step handoff page',
+    matrixTestPath:
+        'test/screens/kyc/subpages/kyc_status_pages_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/kyc/subpages/kyc_unsupported_step_page.dart',
+  ),
+  ResponsiveSurface(
+    id: 'kyc_personal_data_missing_user_data_page',
+    description: 'KYC personal-data missing-payload refresh page',
+    matrixTestPath:
+        'test/screens/kyc/subpages/kyc_status_pages_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/kyc/steps/personal_data/kyc_personal_data_page.dart',
+  ),
+  ResponsiveSurface(
     id: 'kyc_account_merge_page',
     description: 'KYC account merge page',
     matrixTestPath: 'test/screens/kyc/kyc_merge_link_responsive_matrix_test.dart',
@@ -259,7 +273,7 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     matrixTestPath: 'test/screens/pin/pin_sheets_responsive_matrix_test.dart',
     productionPath: 'lib/screens/pin/widgets/enable_biometric_bottom_sheet.dart',
   ),
-  // Migration covers 34 surfaces total (bitbox_connect_sheet + 33 above). No
+  // Migration covers 36 surfaces total (bitbox_connect_sheet + 35 above). No
   // further known candidates remain from the prior sweep. welcome_page was
   // reviewed and found safe (scrolls end-to-end, no separate sticky CTA) — not
   // a migration candidate. Not exhaustive — review responsibility for every

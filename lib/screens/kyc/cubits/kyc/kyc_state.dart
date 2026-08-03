@@ -4,6 +4,7 @@ enum KycStep {
   email,
   confirmEmail,
   registration,
+  personalData,
   linkWallet,
   legalDisclaimer,
   nationality,
@@ -43,7 +44,9 @@ class KycSuccess extends KycState {
 
   /// Server-side user record attached to the routing decision. Populated when
   /// `RealUnitRegistrationService.getRegistrationInfo()` returns userData
-  /// alongside the state (`AddWallet` always, `NewRegistration` when the
+  /// alongside the state (`AddWallet` always, `AlreadyRegistered` whenever the
+  /// registration carries a signed payload — which is what the `personalData`
+  /// step seeds its correction form from — and `NewRegistration` when the
   /// backend has fallback data). The cubit forwards the DTO so downstream
   /// pages do not need to re-fetch — see CONTRIBUTING.md "Single round-trip
   /// per decision".

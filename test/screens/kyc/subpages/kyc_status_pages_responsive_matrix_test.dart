@@ -12,6 +12,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/setup/routing/routes/support_routes.dart';
+import 'package:realunit_wallet/widgets/buttons/app_text_button.dart';
+import 'package:realunit_wallet/screens/kyc/steps/personal_data/kyc_personal_data_page.dart';
+import 'package:realunit_wallet/screens/kyc/subpages/kyc_unsupported_step_page.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/subpages/kyc_completed_page.dart';
@@ -74,6 +78,54 @@ void main() {
 
   /// Hosts [KycCompletedPage] under a two-route GoRouter so `context.pop` has
   /// somewhere to go back to (mirrors support_email_capture_page_test).
+  /// Hosts the unsupported-step page under a router so its support CTA — which navigates — can be
+  /// really tapped. `pumpPage` cannot: it mounts pages under `MaterialApp(home:)`, and a tap would
+  /// throw "No GoRouter found in context".
+  Future<GoRouter> pumpUnsupportedStepPage(
+    WidgetTester tester,
+    MatrixCell cell,
+  ) async {
+    await tester.binding.setSurfaceSize(cell.device.size);
+    addTearDown(() async {
+      await tester.binding.setSurfaceSize(null);
+    });
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => BlocProvider<KycCubit>.value(
+            value: cubit,
+            child: const KycUnsupportedStepPage(),
+          ),
+        ),
+        GoRoute(
+          name: SupportRoutes.support,
+          path: '/support',
+          builder: (_, _) => const Scaffold(body: Text('SUPPORT')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: cell.mediaQuery,
+        child: MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: _localizationsDelegates,
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    return router;
+  }
+
   Future<GoRouter> pumpCompletedPage(
     WidgetTester tester,
     MatrixCell cell,
@@ -167,6 +219,72 @@ void main() {
             find.byType(AppFilledButton),
             within: find.byType(KycManualReviewPage),
             reason: 'KycManualReviewPage / ${cell.label}: CTA not tappable',
+          );
+        });
+      });
+    }
+  });
+
+  // Two live tap targets in one sticky block, so both are asserted rather than just the primary CTA.
+  // The DE copy is long enough that the 3.0 text-scale cells are the point of this group.
+  group('KycUnsupportedStepPage responsive matrix (full device × textScale)', () {
+    for (final cell in kFullResponsiveMatrix) {
+      testWidgets(cell.id, (tester) async {
+        await withTargetPlatform(cell.device.platform, () async {
+          await expectNoLayoutOverflow(
+            tester,
+            () async {
+              await pumpUnsupportedStepPage(tester, cell);
+            },
+            reason: 'overflow on KycUnsupportedStepPage / ${cell.label}',
+          );
+
+          await expectFullyTappable(
+            tester,
+            find.byType(AppFilledButton),
+            within: find.byType(KycUnsupportedStepPage),
+            reason: 'KycUnsupportedStepPage / ${cell.label}: retry not tappable',
+          );
+
+          // Asserted for real, not inferred from the overflow check: ScrollableActionsLayout scrolls
+          // an over-tall action block instead of overflowing, so a CTA pushed out of the viewport
+          // raises nothing. Only a hit test catches it.
+          await expectFullyTappable(
+            tester,
+            find.byType(AppTextButton),
+            within: find.byType(KycUnsupportedStepPage),
+            reason: 'KycUnsupportedStepPage / ${cell.label}: support CTA not tappable',
+          );
+        });
+      });
+    }
+  });
+
+  group('KycPersonalDataPage missing-payload responsive matrix (full device × textScale)', () {
+    for (final cell in kFullResponsiveMatrix) {
+      testWidgets(cell.id, (tester) async {
+        await withTargetPlatform(cell.device.platform, () async {
+          await expectNoLayoutOverflow(
+            tester,
+            () async {
+              await pumpPage(
+                tester,
+                cell,
+                BlocProvider<KycCubit>.value(
+                  value: cubit,
+                  // null payload → the defensive refresh surface
+                  child: const KycPersonalDataPage(url: 'https://example.com'),
+                ),
+              );
+            },
+            reason: 'overflow on KycPersonalDataPage(missing payload) / ${cell.label}',
+          );
+
+          await expectFullyTappable(
+            tester,
+            find.byType(AppFilledButton),
+            within: find.byType(KycPersonalDataPage),
+            reason: 'KycPersonalDataPage(missing payload) / ${cell.label}: CTA not tappable',
           );
         });
       });

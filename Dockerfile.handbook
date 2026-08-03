@@ -7,7 +7,7 @@
 # Build context is the repo root; only docs/handbook/, scripts/, and
 # test/goldens/ are copied in.
 #
-# The 61 screenshots (`screenshots/NN-name.png`) are assembled from the
+# The handbook screenshots (`screenshots/NN-name.png`) are assembled from the
 # visual-regression Golden baselines under `test/goldens/screens/` via
 # scripts/assemble-handbook-screenshots.sh — one Golden per handbook
 # entry, see the mapping in that script. `docs/handbook/screenshots/` is

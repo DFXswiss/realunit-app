@@ -4,9 +4,15 @@ import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_reg
 class RealUnitRegistrationInfoDto {
   /// API-side routing decision for this wallet. Drives KYC dispatch in
   /// `KycCubit._runCheckKyc` — see CONTRIBUTING.md "API as Decision
-  /// Authority". `userData` is populated for `addWallet` (prior payload)
-  /// and `newRegistration` (KYC pre-fill); `null` for `alreadyRegistered`
-  /// (no UX needed).
+  /// Authority". `userData` is populated whenever a registration row exists —
+  /// `alreadyRegistered` and `addWallet` both carry the stored signed payload —
+  /// and for `newRegistration` when DFX KYC data can pre-fill the form. It is
+  /// `null` only when the stored registration has no signed payload, or when
+  /// there is no verified personal data to pre-fill from.
+  ///
+  /// `alreadyRegistered` is NOT a no-payload case: the personal-data KYC step
+  /// is reached only through that branch and seeds its correction form from
+  /// this payload, so treating it as null would dead-end that step.
   final RealUnitRegistrationState state;
   final RealUnitUserDataDto? realUnitUserDataDto;
 

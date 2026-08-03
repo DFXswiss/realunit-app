@@ -6,6 +6,12 @@
 // inside the height-bounded `Expanded > Stack` host (dashboard_page.dart)
 // overflowed already at default text scale with one pending transaction,
 // painting the CTA outside the parent's hit-testable region.
+//
+// A second matrix group below covers the same tappability guarantee for the
+// four DashboardActions buttons (Buy/Sell/Pay/Send) in a standalone host —
+// pre-existing overflow debt in the surrounding dashboard sections (e.g.
+// cash_holding_box.dart) is tracked separately as issue #887 and out of
+// scope for that check.
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -21,6 +27,7 @@ import 'package:realunit_wallet/screens/dashboard/bloc/balance_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/dashboard_bloc.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/pending_transactions_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/dashboard_page.dart';
+import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_actions.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/styles/currency.dart';
@@ -92,18 +99,52 @@ void main() {
     child: const DashboardView(),
   );
 
-  // A minimal two-route stack: '/' hosts the dashboard, '/buy' is a marker
-  // page so a real `context.pushNamed(AppRoutes.buy)` resolves instead of
-  // throwing (the CTA's actual, unmocked navigation call).
-  GoRouter buildRouter() => GoRouter(
+  Widget buildActionsHost() => BlocProvider<SettingsBloc>.value(
+    value: settingsBloc,
+    child: const Scaffold(
+      body: Padding(
+        padding: EdgeInsets.symmetric(horizontal: 20),
+        child: DashboardActions(),
+      ),
+    ),
+  );
+
+  // A minimal five-route stack: '/' hosts either the full dashboard or the
+  // standalone DashboardActions host (see [homeBuilder]); '/buy', '/sell',
+  // '/pay' and '/send' are marker pages so the four action buttons' real,
+  // unmocked `context.pushNamed(...)` calls resolve instead of throwing.
+  GoRouter buildRouter({
+    Widget Function(BuildContext, GoRouterState)? homeBuilder,
+  }) => GoRouter(
     initialLocation: '/',
     routes: [
-      GoRoute(path: '/', builder: (_, _) => buildDashboard()),
+      GoRoute(path: '/', builder: homeBuilder ?? (_, _) => buildDashboard()),
       GoRoute(
         name: AppRoutes.buy,
         path: '/buy',
         builder: (_, _) => const Scaffold(
           body: Center(child: Text('buy-page-marker')),
+        ),
+      ),
+      GoRoute(
+        name: AppRoutes.sell,
+        path: '/sell',
+        builder: (_, _) => const Scaffold(
+          body: Center(child: Text('sell-page-marker')),
+        ),
+      ),
+      GoRoute(
+        name: AppRoutes.pay,
+        path: '/pay',
+        builder: (_, _) => const Scaffold(
+          body: Center(child: Text('pay-page-marker')),
+        ),
+      ),
+      GoRoute(
+        name: AppRoutes.send,
+        path: '/send',
+        builder: (_, _) => const Scaffold(
+          body: Center(child: Text('send-page-marker')),
         ),
       ),
     ],
@@ -141,6 +182,34 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
   }
 
+  Future<void> pumpActions(WidgetTester tester, MatrixCell cell) async {
+    final router = buildRouter(homeBuilder: (_, _) => buildActionsHost());
+    addTearDown(router.dispose);
+
+    await tester.binding.setSurfaceSize(cell.device.size);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: cell.mediaQuery,
+        child: MaterialApp.router(
+          routerConfig: router,
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+
   group('DashboardView responsive matrix - empty balance, buy CTA reachable '
       '(full device x textScale)', () {
     for (final cell in kFullResponsiveMatrix) {
@@ -171,6 +240,60 @@ void main() {
       }
     }
   });
+
+  group(
+    'DashboardActions responsive matrix - insider unlocked, all four actions '
+    'tappable (full device x textScale)',
+    () {
+      for (final cell in kFullResponsiveMatrix) {
+        testWidgets(cell.id, (tester) async {
+          await withTargetPlatform(cell.device.platform, () async {
+            when(() => settingsBloc.state)
+                .thenReturn(const SettingsState(insiderFeaturesUnlocked: true));
+
+            await expectNoLayoutOverflow(
+              tester,
+              () async {
+                await pumpActions(tester, cell);
+              },
+              reason: 'overflow on insider unlocked / ${cell.label}',
+            );
+
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.buy),
+              within: find.byType(DashboardActions),
+              reason: '${cell.label}: buy button not tappable',
+            );
+
+            await pumpActions(tester, cell);
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.sell),
+              within: find.byType(DashboardActions),
+              reason: '${cell.label}: sell button not tappable',
+            );
+
+            await pumpActions(tester, cell);
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.pay),
+              within: find.byType(DashboardActions),
+              reason: '${cell.label}: pay button not tappable',
+            );
+
+            await pumpActions(tester, cell);
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.send),
+              within: find.byType(DashboardActions),
+              reason: '${cell.label}: send button not tappable',
+            );
+          });
+        });
+      }
+    },
+  );
 
   // Focused regression: the exact reported failure mode (empty balance, one
   // waitingForPayment pending tx, default text scale) must invoke the real
