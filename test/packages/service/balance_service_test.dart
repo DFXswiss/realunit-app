@@ -198,7 +198,7 @@ void main() {
 
         test('rethrows a transport failure without persisting', () async {
           final appStore = buildAppStore(
-            (_) async => throw const http.ClientException('offline'),
+            (_) async => throw http.ClientException('offline'),
           );
           final service = BalanceService(balanceRepository, appStore);
 
