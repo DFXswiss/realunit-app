@@ -62,7 +62,14 @@ Future<void> expectFullyTappable(
   );
 
   final box = tester.renderObject<RenderBox>(finder);
-  final rect = box.localToGlobal(Offset.zero) & box.size;
+  // Map BOTH corners through the render transform: `localToGlobal(zero) &
+  // size` appends the untransformed layout size, which overstates the visual
+  // rect for scaled targets (e.g. inside a FittedBox) and fails containment
+  // on content that visibly fits. For untransformed targets both forms agree.
+  final rect = Rect.fromPoints(
+    box.localToGlobal(Offset.zero),
+    box.localToGlobal(box.size.bottomRight(Offset.zero)),
+  );
 
   expect(
     rect.width,
@@ -77,7 +84,10 @@ Future<void> expectFullyTappable(
 
   expect(within, findsOneWidget, reason: 'within parent not found');
   final parentBox = tester.renderObject<RenderBox>(within);
-  final parentRect = parentBox.localToGlobal(Offset.zero) & parentBox.size;
+  final parentRect = Rect.fromPoints(
+    parentBox.localToGlobal(Offset.zero),
+    parentBox.localToGlobal(parentBox.size.bottomRight(Offset.zero)),
+  );
   // Allow 1px float tolerance.
   final inflated = parentRect.inflate(1);
   expect(

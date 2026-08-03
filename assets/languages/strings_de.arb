@@ -372,6 +372,7 @@
   "settingsCurrencyLoadFailed": "Währungsliste konnte nicht geladen werden",
   "settingsCurrencyLoadFailedDescription": "Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
   "settingsDeleteWallet": "Wallet zurücksetzen",
+  "settingsInsiderFeaturesUnlocked": "Insider-Funktionen freigeschaltet",
   "settingsLanguageLoadFailed": "Sprachliste konnte nicht geladen werden",
   "settingsLanguageLoadFailedDescription": "Bitte überprüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
   "settingsLanguages": "Sprachen",

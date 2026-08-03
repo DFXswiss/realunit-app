@@ -11,6 +11,7 @@ import 'package:realunit_wallet/screens/pin/verify_pin_page.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/screens/settings/widgets/settings_confirm_logout_wallet_sheet.dart';
 import 'package:realunit_wallet/screens/settings/widgets/settings_section.dart';
+import 'package:realunit_wallet/screens/settings/widgets/settings_version_unlock.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/routing/routes/pin_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
@@ -153,16 +154,7 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-            child: Text(
-              S.of(context).settingsAppVersion(releaseTag),
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: RealUnitColors.neutral500,
-              ),
-            ),
-          ),
+          const SettingsVersionUnlock(releaseTag: releaseTag),
         ],
       ),
     ),
