@@ -125,5 +125,24 @@ void main() {
         return wrapForGolden(buildSubject());
       },
     );
+    goldenTest(
+      'insider features unlocked',
+      fileName: 'dashboard_insider_unlocked',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => settingsBloc.state)
+            .thenReturn(const SettingsState(insiderFeaturesUnlocked: true));
+        when(() => balanceCubit.state).thenReturn(
+          Balance(
+            chainId: realUnitAsset.chainId,
+            contractAddress: realUnitAsset.address,
+            walletAddress: '0x0',
+            balance: BigInt.from(5000000000000000000),
+            asset: realUnitAsset,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
   });
 }

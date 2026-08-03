@@ -1,22 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_actions.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/widgets/action_button.dart';
 
+import '../../../../helper/helper.dart';
+
 void main() {
   late List<String> pushedRoutes;
+  late MockSettingsBloc settingsBloc;
 
   setUp(() {
     pushedRoutes = <String>[];
+    settingsBloc = MockSettingsBloc();
   });
 
-  // Routes the four action buttons can push. Each target records the pushed
-  // route name so the `onPressed` closures are both executed and asserted,
-  // instead of only painted.
   GoRouter buildRouter() {
     GoRoute target(String name, String path) => GoRoute(
       name: name,
@@ -32,7 +36,12 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, _) => const Scaffold(body: DashboardActions()),
+          builder: (_, _) => Scaffold(
+            body: BlocProvider<SettingsBloc>.value(
+              value: settingsBloc,
+              child: const DashboardActions(),
+            ),
+          ),
         ),
         target(AppRoutes.buy, '/buy'),
         target(AppRoutes.sell, '/sell'),
@@ -48,76 +57,99 @@ void main() {
     await tester.pumpWidget(
       MaterialApp.router(
         routerConfig: router,
-        localizationsDelegates: const [
-          S.delegate,
-          GlobalMaterialLocalizations.delegate,
-        ],
+        localizationsDelegates: const [S.delegate, GlobalMaterialLocalizations.delegate],
         supportedLocales: S.delegate.supportedLocales,
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  Finder actionButtonByLabel(String label) => find.byWidgetPredicate(
-    (w) => w is ActionButton && w.label == label,
-  );
+  Finder actionButtonByLabel(String label) =>
+      find.byWidgetPredicate((w) => w is ActionButton && w.label == label);
 
   group('$DashboardActions', () {
-    testWidgets('renders the buy, sell, pay and send action buttons', (tester) async {
-      await pumpActions(tester);
+    group('locked (default)', () {
+      setUp(() {
+        when(() => settingsBloc.state).thenReturn(const SettingsState());
+      });
 
-      expect(actionButtonByLabel(S.current.buy), findsOneWidget);
-      expect(actionButtonByLabel(S.current.sell), findsOneWidget);
-      expect(actionButtonByLabel(S.current.pay), findsOneWidget);
-      expect(actionButtonByLabel(S.current.send), findsOneWidget);
-      // Each button is laid out inside an Expanded so the row divides the
-      // available width into four equal slots.
-      expect(find.byType(Expanded), findsNWidgets(4));
+      testWidgets('renders only the buy and sell action buttons', (tester) async {
+        await pumpActions(tester);
+
+        expect(actionButtonByLabel(S.current.buy), findsOneWidget);
+        expect(actionButtonByLabel(S.current.sell), findsOneWidget);
+        expect(actionButtonByLabel(S.current.pay), findsNothing);
+        expect(actionButtonByLabel(S.current.send), findsNothing);
+        expect(find.byType(Expanded), findsNWidgets(2));
+      });
+
+      testWidgets('buy button pushes the buy route', (tester) async {
+        await pumpActions(tester);
+        await tester.tap(actionButtonByLabel(S.current.buy));
+        await tester.pumpAndSettle();
+        expect(pushedRoutes, [AppRoutes.buy]);
+      });
+
+      testWidgets('sell button pushes the sell route', (tester) async {
+        await pumpActions(tester);
+        await tester.tap(actionButtonByLabel(S.current.sell));
+        await tester.pumpAndSettle();
+        expect(pushedRoutes, [AppRoutes.sell]);
+      });
     });
 
-    testWidgets('renders the expected icons for each action', (tester) async {
-      await pumpActions(tester);
+    group('unlocked', () {
+      setUp(() {
+        when(() => settingsBloc.state)
+            .thenReturn(const SettingsState(insiderFeaturesUnlocked: true));
+      });
 
-      expect(find.byIcon(Icons.add_circle_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.do_not_disturb_on_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.qr_code_scanner_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.send_rounded), findsOneWidget);
-    });
+      testWidgets('renders the buy, sell, pay and send action buttons', (tester) async {
+        await pumpActions(tester);
 
-    testWidgets('buy button pushes the buy route', (tester) async {
-      await pumpActions(tester);
+        expect(actionButtonByLabel(S.current.buy), findsOneWidget);
+        expect(actionButtonByLabel(S.current.sell), findsOneWidget);
+        expect(actionButtonByLabel(S.current.pay), findsOneWidget);
+        expect(actionButtonByLabel(S.current.send), findsOneWidget);
+        expect(find.byType(Expanded), findsNWidgets(4));
+      });
 
-      await tester.tap(actionButtonByLabel(S.current.buy));
-      await tester.pumpAndSettle();
+      testWidgets('renders the expected icons for each action', (tester) async {
+        await pumpActions(tester);
 
-      expect(pushedRoutes, [AppRoutes.buy]);
-    });
+        expect(find.byIcon(Icons.add_circle_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.do_not_disturb_on_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.qr_code_scanner_rounded), findsOneWidget);
+        expect(find.byIcon(Icons.send_rounded), findsOneWidget);
+      });
 
-    testWidgets('sell button pushes the sell route', (tester) async {
-      await pumpActions(tester);
+      testWidgets('buy button pushes the buy route', (tester) async {
+        await pumpActions(tester);
+        await tester.tap(actionButtonByLabel(S.current.buy));
+        await tester.pumpAndSettle();
+        expect(pushedRoutes, [AppRoutes.buy]);
+      });
 
-      await tester.tap(actionButtonByLabel(S.current.sell));
-      await tester.pumpAndSettle();
+      testWidgets('sell button pushes the sell route', (tester) async {
+        await pumpActions(tester);
+        await tester.tap(actionButtonByLabel(S.current.sell));
+        await tester.pumpAndSettle();
+        expect(pushedRoutes, [AppRoutes.sell]);
+      });
 
-      expect(pushedRoutes, [AppRoutes.sell]);
-    });
+      testWidgets('pay button pushes the pay route', (tester) async {
+        await pumpActions(tester);
+        await tester.tap(actionButtonByLabel(S.current.pay));
+        await tester.pumpAndSettle();
+        expect(pushedRoutes, [AppRoutes.pay]);
+      });
 
-    testWidgets('pay button pushes the pay route', (tester) async {
-      await pumpActions(tester);
-
-      await tester.tap(actionButtonByLabel(S.current.pay));
-      await tester.pumpAndSettle();
-
-      expect(pushedRoutes, [AppRoutes.pay]);
-    });
-
-    testWidgets('send button pushes the send route', (tester) async {
-      await pumpActions(tester);
-
-      await tester.tap(actionButtonByLabel(S.current.send));
-      await tester.pumpAndSettle();
-
-      expect(pushedRoutes, [AppRoutes.send]);
+      testWidgets('send button pushes the send route', (tester) async {
+        await pumpActions(tester);
+        await tester.tap(actionButtonByLabel(S.current.send));
+        await tester.pumpAndSettle();
+        expect(pushedRoutes, [AppRoutes.send]);
+      });
     });
   });
 }

@@ -82,6 +82,18 @@ void main() {
     });
   });
 
+  group('UnlockInsiderFeaturesEvent', () {
+    test('all instances are equal (singleton-style event, no payload)', () {
+      const a = UnlockInsiderFeaturesEvent();
+      const b = UnlockInsiderFeaturesEvent();
+
+      expect(a, equals(b));
+      expect(a.hashCode, b.hashCode);
+      // Inherits the empty `props` list from the sealed base class.
+      expect(a.props, isEmpty);
+    });
+  });
+
   group('SettingsEvent (cross-subclass identity)', () {
     test('different subclasses are not equal even when props happen to match', () {
       // Two payload-less events from different subclasses must still compare
@@ -105,16 +117,19 @@ void main() {
       final cur = SetCurrencyEvent(Currency.eur);
       final net = SetNetworkModeEvent(NetworkMode.mainnet);
       final toggle = ToggleHideAmountEvent();
+      final unlock = UnlockInsiderFeaturesEvent();
 
       expect(lang, equals(const SetLanguageEvent(Language.de)));
       expect(cur, equals(const SetCurrencyEvent(Currency.eur)));
       expect(net, equals(const SetNetworkModeEvent(NetworkMode.mainnet)));
       expect(toggle, equals(const ToggleHideAmountEvent()));
+      expect(unlock, equals(const UnlockInsiderFeaturesEvent()));
 
       expect(lang.props, [Language.de]);
       expect(cur.props, [Currency.eur]);
       expect(net.props, [NetworkMode.mainnet]);
       expect(toggle.props, isEmpty);
+      expect(unlock.props, isEmpty);
     });
   });
 }

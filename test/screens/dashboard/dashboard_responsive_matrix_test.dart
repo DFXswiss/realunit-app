@@ -79,7 +79,8 @@ void main() {
     when(() => balanceCubit.state).thenReturn(zeroBalance());
     when(() => balanceCubit.asset).thenReturn(realUnitAsset);
     when(() => pendingTxCubit.state).thenReturn(const <TransactionDto>[]);
-    when(() => settingsBloc.state).thenReturn(const SettingsState());
+    when(() => settingsBloc.state)
+        .thenReturn(const SettingsState(insiderFeaturesUnlocked: true));
   });
 
   Widget buildDashboard() => MultiBlocProvider(

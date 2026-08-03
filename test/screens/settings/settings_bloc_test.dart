@@ -20,6 +20,7 @@ void main() {
     when(() => repo.language).thenReturn('en');
     when(() => repo.currency).thenReturn('CHF');
     when(() => repo.networkMode).thenReturn(NetworkMode.mainnet);
+    when(() => repo.insiderFeaturesUnlocked).thenReturn(false);
   });
 
   SettingsBloc build() => SettingsBloc(
@@ -34,6 +35,7 @@ void main() {
       when(() => repo.language).thenReturn('de');
       when(() => repo.currency).thenReturn('EUR');
       when(() => repo.networkMode).thenReturn(NetworkMode.testnet);
+      when(() => repo.insiderFeaturesUnlocked).thenReturn(true);
 
       final bloc = build();
 
@@ -41,6 +43,7 @@ void main() {
       expect(bloc.state.currency, Currency.eur);
       expect(bloc.state.networkMode, NetworkMode.testnet);
       expect(bloc.state.hideAmounts, isFalse);
+      expect(bloc.state.insiderFeaturesUnlocked, isTrue);
     });
 
     blocTest<SettingsBloc, SettingsState>(
@@ -123,5 +126,15 @@ void main() {
       expect(bloc.state.hideAmounts, isTrue);
       verifyNever(() => repo.language = any()); // proxy: no repo call at all
     });
+
+    blocTest<SettingsBloc, SettingsState>(
+      'UnlockInsiderFeaturesEvent persists to the repo and emits insiderFeaturesUnlocked=true',
+      build: build,
+      act: (bloc) => bloc.add(const UnlockInsiderFeaturesEvent()),
+      verify: (bloc) {
+        expect(bloc.state.insiderFeaturesUnlocked, isTrue);
+        verify(() => repo.insiderFeaturesUnlocked = true).called(1);
+      },
+    );
   });
 }
