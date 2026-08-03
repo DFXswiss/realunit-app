@@ -2,8 +2,10 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/models/balance.dart';
@@ -285,13 +287,32 @@ void main() {
       ),
       initialState: const MigrateBitboxIntro(),
     );
-    await tester.pumpApp(
-      BlocProvider<HomeBloc>.value(
-        value: homeBloc,
-        child: BlocProvider<MigrateBitboxCubit>.value(
-          value: cubit,
-          child: const MigrateBitboxViewManager(),
+    // The sheet's ConnectBitboxView cancel button pops via go_router, so the
+    // manager must sit on a real (single-entry) GoRouter stack — mirrors
+    // connect_bitbox_view_test.dart's pumpViewOnSingleEntryStack.
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => BlocProvider<HomeBloc>.value(
+            value: homeBloc,
+            child: BlocProvider<MigrateBitboxCubit>.value(
+              value: cubit,
+              child: const MigrateBitboxViewManager(),
+            ),
+          ),
         ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        localizationsDelegates: [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        routerConfig: router,
       ),
     );
     await tester.pump();

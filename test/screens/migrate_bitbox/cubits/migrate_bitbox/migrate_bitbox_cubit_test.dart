@@ -219,6 +219,9 @@ void main() {
 
       await cubit.startPairing();
       cubit.cancelPairing();
+      // Stream listeners are serviced on the microtask queue — flush it so
+      // both emissions have reached the collector before asserting.
+      await Future<void>.delayed(Duration.zero);
 
       expect(emissions, [const MigrateBitboxAwaitingDevice(), const MigrateBitboxIntro()]);
     });
