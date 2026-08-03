@@ -122,6 +122,32 @@ void main() {
       });
     });
 
+    group('insiderFeaturesUnlocked', () {
+      test('defaults to false when not stored', () async {
+        SharedPreferences.setMockInitialValues({});
+        final repo = SettingsRepository(await SharedPreferences.getInstance());
+
+        expect(repo.insiderFeaturesUnlocked, isFalse);
+      });
+
+      test('returns the stored value when set', () async {
+        SharedPreferences.setMockInitialValues({'insiderFeaturesUnlocked': true});
+        final repo = SettingsRepository(await SharedPreferences.getInstance());
+
+        expect(repo.insiderFeaturesUnlocked, isTrue);
+      });
+
+      test('setter persists', () async {
+        SharedPreferences.setMockInitialValues({});
+        final repo = SettingsRepository(await SharedPreferences.getInstance());
+
+        repo.insiderFeaturesUnlocked = true;
+        await Future<void>.delayed(Duration.zero);
+
+        expect(repo.insiderFeaturesUnlocked, isTrue);
+      });
+    });
+
     group('networkMode', () {
       test('defaults to mainnet when no value is stored', () async {
         SharedPreferences.setMockInitialValues({});
