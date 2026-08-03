@@ -103,8 +103,8 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(fixtureBalance());
-    registerFallbackValue<BitboxWallet>(_MockBitboxWallet());
-    registerFallbackValue<HomeEvent>(const LoadCurrentWalletEvent());
+    registerFallbackValue(_MockBitboxWallet());
+    registerFallbackValue(const LoadCurrentWalletEvent());
 
     walletService = _MockWalletService();
     final authService = _MockDfxKycService();

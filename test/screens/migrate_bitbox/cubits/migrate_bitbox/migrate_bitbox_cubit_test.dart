@@ -107,8 +107,8 @@ void main() {
   );
 
   setUpAll(() {
-    registerFallbackValue<BitboxWallet>(_MockBitboxWallet());
-    registerFallbackValue<AWalletAccount>(_MockBitboxWalletAccount());
+    registerFallbackValue(_MockBitboxWallet());
+    registerFallbackValue(_MockBitboxWalletAccount());
     registerFallbackValue(_userData);
     registerFallbackValue(realUnitAsset);
   });
