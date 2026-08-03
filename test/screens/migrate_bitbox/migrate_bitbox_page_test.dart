@@ -285,7 +285,7 @@ void main() {
       testWidgets('$state canPop=$expected', (tester) async {
         await pumpState(tester, state);
 
-        final popScope = tester.widget<PopScope>(find.byType(PopScope));
+        final popScope = tester.widget<PopScope>(find.byType(PopScope).first);
         expect(popScope.canPop, expected);
       });
     }

@@ -347,6 +347,7 @@ void main() {
       sessionCache = SessionCache(_MockCacheRepository());
       when(() => appStore.sessionCache).thenReturn(sessionCache);
       when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+      when(() => appStore.wallet).thenReturn(_StubWallet());
       when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
       when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
     });

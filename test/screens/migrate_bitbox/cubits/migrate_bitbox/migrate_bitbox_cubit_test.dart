@@ -728,12 +728,16 @@ void main() {
 
     test('a lower positive balance prepares a transfer for the remainder', () {
       fakeAsync((async) {
+        var balanceReads = 0;
         when(
           () => balanceService.fetchBalance(any()),
         ).thenAnswer((_) async => balance(3));
         when(
           () => balanceService.getBalance(any(), any()),
-        ).thenAnswer((_) async => balance(3));
+        ).thenAnswer((_) async {
+          balanceReads++;
+          return balance(balanceReads == 1 ? 5 : 3);
+        });
         final cubit = buildCubit(addCloseTearDown: false);
         cubit.onDevicePaired(draft);
         drain(async);

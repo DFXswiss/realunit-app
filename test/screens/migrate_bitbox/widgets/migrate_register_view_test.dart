@@ -151,19 +151,13 @@ void main() {
     await tester.pump();
   });
 
-  final failureCases = <(Exception, String)>[
-    (
-      const SigningCancelledException(),
-      S.current.sendFailureSignatureCancelled,
-    ),
-    (
-      const BitboxNotConnectedException(),
-      S.current.connectBitboxFailed,
-    ),
-    (Exception('registration failed'), 'Exception: registration failed'),
+  final failureCases = <Exception>[
+    const SigningCancelledException(),
+    const BitboxNotConnectedException(),
+    Exception('registration failed'),
   ];
 
-  for (final (error, expectedMessage) in failureCases) {
+  for (final error in failureCases) {
     testWidgets('$error shows the classified failure and retries', (tester) async {
       var calls = 0;
       when(
@@ -179,6 +173,11 @@ void main() {
       await tester.pump();
       await tester.pump();
 
+      final expectedMessage = switch (error) {
+        SigningCancelledException() => S.current.sendFailureSignatureCancelled,
+        BitboxNotConnectedException() => S.current.connectBitboxFailed,
+        _ => error.toString(),
+      };
       expect(find.text(expectedMessage), findsOneWidget);
       expect(tester.widget<PopScope>(find.byType(PopScope)).canPop, isTrue);
       expect(find.text(S.current.close), findsOneWidget);

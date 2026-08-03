@@ -230,6 +230,7 @@ void main() {
       when(() => sessionCache.signedMessage).thenReturn(null);
       when(() => sessionCache.authToken).thenReturn(null);
       when(() => sessionCache.authTokenAddress).thenReturn(null);
+      when(() => sessionCache.loadSignature()).thenAnswer((_) async {});
       when(() => sessionCache.saveSignature(any(), any(), any())).thenAnswer((_) async {});
     });
 
@@ -319,9 +320,16 @@ void main() {
 
     group('getAuthToken', () {
       test('returns the cached auth token without re-signing', () async {
+        final walletAddress = walletAccount.primaryAddress.address.hexEip55;
         when(() => sessionCache.authToken).thenReturn('cached.jwt.token');
+        when(() => sessionCache.authTokenAddress).thenReturn(walletAddress);
 
-        final token = await buildService().getAuthToken();
+        final token = await _SignatureTestAuthService(
+          appStore,
+          walletService,
+          walletAccount,
+          walletAddress,
+        ).getAuthToken();
 
         expect(token, 'cached.jwt.token');
         expect(walletAccount.signCallCount, 0);
@@ -1033,6 +1041,14 @@ void main() {
     test(
       'cache-miss: signs, caches, POSTs /v1/auth with link Bearer + body, returns accessToken',
       () async {
+        var saveCalls = 0;
+        List<Object?>? savedArguments;
+        when(
+          () => sessionCache.saveSignature(any(), any(), any()),
+        ).thenAnswer((invocation) async {
+          saveCalls++;
+          savedArguments = invocation.positionalArguments;
+        });
         Map<String, dynamic>? sentBody;
         Map<String, String>? sentHeaders;
         String? sentMethod;
@@ -1045,7 +1061,8 @@ void main() {
           return http.Response(jsonEncode({'accessToken': 'jwt-for-new-address'}), 201);
         });
 
-        final token = await buildService(client).authenticateLinkedAccount(
+        final service = buildService(client);
+        final token = await service.authenticateLinkedAccount(
           account,
           linkBearerToken,
         );
@@ -1059,14 +1076,12 @@ void main() {
         expect(sentBody!['address'], accountAddressEip55);
         expect(sentBody!['signature'], stubSignature);
         expect(account.signCallCount, 1);
-        final service = buildService(client);
-        verify(
-          () => sessionCache.saveSignature(
-            accountAddressEip55,
-            stubSignature,
-            service.buildSignMessage(accountAddressEip55),
-          ),
-        ).called(1);
+        expect(saveCalls, 1);
+        expect(savedArguments, [
+          accountAddressEip55,
+          stubSignature,
+          service.buildSignMessage(accountAddressEip55),
+        ]);
         // Returned token must NOT be written to the session cache — the
         // caller owns the identity switch.
         verifyNever(() => sessionCache.setAuthToken(any(), any()));
@@ -1098,6 +1113,14 @@ void main() {
     });
 
     test('cache message mismatch re-signs before authenticating the linked account', () async {
+      var saveCalls = 0;
+      List<Object?>? savedArguments;
+      when(
+        () => sessionCache.saveSignature(any(), any(), any()),
+      ).thenAnswer((invocation) async {
+        saveCalls++;
+        savedArguments = invocation.positionalArguments;
+      });
       when(() => sessionCache.signature).thenReturn(stubSignature);
       when(() => sessionCache.signatureAddress).thenReturn(accountAddressEip55);
       when(() => sessionCache.signedMessage).thenReturn('wrong-environment-message');
@@ -1109,13 +1132,12 @@ void main() {
       await service.authenticateLinkedAccount(account, linkBearerToken);
 
       expect(account.signCallCount, 1);
-      verify(
-        () => sessionCache.saveSignature(
-          accountAddressEip55,
-          stubSignature,
-          service.buildSignMessage(accountAddressEip55),
-        ),
-      ).called(1);
+      expect(saveCalls, 1);
+      expect(savedArguments, [
+        accountAddressEip55,
+        stubSignature,
+        service.buildSignMessage(accountAddressEip55),
+      ]);
     });
 
     for (final empty in const ['', '0x']) {
