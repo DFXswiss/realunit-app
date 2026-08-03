@@ -315,7 +315,7 @@ void main() {
         test(
           'throws SigningCancelledException when the wallet returns "$emptySignature"',
           () async {
-            walletAccount = _StubWalletAccount(emptySignature);
+            walletAccount = _StubWalletAccount(emptySignature, address: address);
 
             expect(
               () => buildService().getSignature('msg'),
