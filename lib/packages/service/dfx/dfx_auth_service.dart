@@ -203,11 +203,10 @@ abstract class DFXAuthService {
     await walletService.ensureCurrentWalletUnlocked();
     try {
       final currentAccount = wallet;
-      final signingAccount =
-          currentAccount.primaryAddress.address.hexEip55 == address
-          ? currentAccount
-          : account;
-      final signature = await signingAccount
+      if (currentAccount.primaryAddress.address.hexEip55 != address) {
+        throw _WalletIdentityChangedException();
+      }
+      final signature = await currentAccount
           .signMessage(message)
           .timeout(_signMessageTimeout);
       if (signature.isEmpty || signature == '0x') {
@@ -282,20 +281,24 @@ abstract class DFXAuthService {
       }
 
       await appStore.sessionCache.loadSignature();
-      final response = await _getAuthResponseFor(
-        accountSnapshot,
-        addressSnapshot,
-        true,
-      );
+      try {
+        final response = await _getAuthResponseFor(
+          accountSnapshot,
+          addressSnapshot,
+          true,
+        );
 
-      // Close the late-commit race when the active wallet identity changes
-      // while /v1/auth is in flight. Discard the old identity's response and
-      // retry against the now-current wallet context.
-      if (walletAddress != addressSnapshot) continue;
+        // Close the late-commit race when the active wallet identity changes
+        // while /v1/auth is in flight. Discard the old identity's response and
+        // retry against the now-current wallet context.
+        if (walletAddress != addressSnapshot) continue;
 
-      final token = response['accessToken'] as String;
-      appStore.sessionCache.setAuthToken(token, addressSnapshot);
-      return token;
+        final token = response['accessToken'] as String;
+        appStore.sessionCache.setAuthToken(token, addressSnapshot);
+        return token;
+      } on _WalletIdentityChangedException {
+        continue;
+      }
     }
     throw Exception('wallet identity changed during authentication');
   }
@@ -406,3 +409,11 @@ abstract class DFXAuthService {
     return response;
   }
 }
+
+/// Internal marker: the active wallet identity changed between taking the
+/// snapshot in [DFXAuthService.getAuthToken] and finishing the unlock in
+/// [DFXAuthService._getSignatureFor]. Never signs with a stale (possibly
+/// locked) snapshot account — the caller must retry with a fresh snapshot.
+/// File-private by design: this must never leak into the public exception
+/// surface, it is caught within this file.
+class _WalletIdentityChangedException implements Exception {}

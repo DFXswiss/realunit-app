@@ -97,10 +97,11 @@ class WalletService {
     // rarer non-empty-but-malformed read before `EthereumAddress.fromHex`
     // would crash the dashboard build on the next launch.
     final address = await _bitboxService.getEthAddress();
-    if (!_isValidEthAddress(address)) {
+    if (!_isValidEthAddress(address.toLowerCase())) {
       throw const BitboxAddressUnavailableException();
     }
-    final normalizedAddress = EthereumAddress.fromHex(address).hexEip55;
+    final normalizedAddress =
+        EthereumAddress.fromHex(address.toLowerCase()).hexEip55;
     final walletId = await _repository.createViewWallet(
       name,
       WalletType.bitbox,
@@ -123,10 +124,11 @@ class WalletService {
   //   tests with mocked transport (see wallet_service_test.dart).
   Future<BitboxWallet> acquireUncommittedBitboxWallet(String name) async {
     final address = await _bitboxService.getEthAddress();
-    if (!_isValidEthAddress(address)) {
+    if (!_isValidEthAddress(address.toLowerCase())) {
       throw const BitboxAddressUnavailableException();
     }
-    final normalizedAddress = EthereumAddress.fromHex(address).hexEip55;
+    final normalizedAddress =
+        EthereumAddress.fromHex(address.toLowerCase()).hexEip55;
     return BitboxWallet(0, name, normalizedAddress, _bitboxService);
   }
 
@@ -161,6 +163,8 @@ class WalletService {
   /// so the validity boundary here matches exactly the one that would otherwise
   /// throw deep in the dashboard build. An empty string fails fast through the
   /// [FormatException]/[ArgumentError] catch — no need to special-case it.
+  /// Callers lowercase SDK addresses before validation and normalization so
+  /// mixed-case values without a valid EIP-55 checksum are not rejected early.
   static bool _isValidEthAddress(String address) {
     try {
       EthereumAddress.fromHex(address);
@@ -200,12 +204,12 @@ class WalletService {
     // Shares the retry + empty-guard boundary with createBitboxWallet; the
     // format check stays as defence-in-depth (see that method).
     final rawAddress = await _bitboxService.getEthAddress();
-    if (!_isValidEthAddress(rawAddress)) {
+    if (!_isValidEthAddress(rawAddress.toLowerCase())) {
       throw const BitboxAddressUnavailableException();
     }
     // Same EIP-55 normalization as the create/acquire paths — the SDK's
     // address casing is not guaranteed consistent across reads.
-    final address = EthereumAddress.fromHex(rawAddress).hexEip55;
+    final address = EthereumAddress.fromHex(rawAddress.toLowerCase()).hexEip55;
     await _repository.updateAddress(id, address);
     return BitboxWallet(id, info.name, address, _bitboxService);
   }

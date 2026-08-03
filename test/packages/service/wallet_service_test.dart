@@ -25,6 +25,7 @@ class _MockAppStore extends Mock implements AppStore {}
 const _testMnemonic = 'test test test test test test test test test test test junk';
 const _debugAddress = '0x0000000000000000000000000000000000000001';
 const _lowercaseAddress = '0x9f5713deacb8e9cab6c2d3fae1afc2715f8d2d71';
+const _invalidMixedCaseAddress = '0x52908400098527886e0F7030069857D2E4169EE7';
 
 WalletInfo _info({
   int id = 1,
@@ -267,6 +268,26 @@ void main() {
         ).called(1);
       });
 
+      test('accepts a checksum-invalid mixed-case device address', () async {
+        final normalized = EthereumAddress.fromHex(
+          _invalidMixedCaseAddress.toLowerCase(),
+        ).hexEip55;
+        when(
+          () => bitbox.getEthAddress(),
+        ).thenAnswer((_) async => _invalidMixedCaseAddress);
+        when(() => repo.createViewWallet(any(), any(), any())).thenAnswer((_) async => 13);
+        when(
+          () => bitbox.getCredentials(any()),
+        ).thenReturn(BitboxCredentials(normalized));
+
+        final wallet = await service.createBitboxWallet('Hardware');
+
+        expect(wallet.currentAccount.primaryAddress.address.hexEip55, normalized);
+        verify(
+          () => repo.createViewWallet('Hardware', WalletType.bitbox, normalized),
+        ).called(1);
+      });
+
       test('propagates a BitBox derivation failure without writing to the repo', () async {
         when(() => bitbox.getEthAddress()).thenThrow(Exception('USB transport dropped'));
 
@@ -345,6 +366,24 @@ void main() {
         final draft = await service.acquireUncommittedBitboxWallet('Migration');
 
         expect(draft.currentAccount.primaryAddress.address.hexEip55, normalized);
+      });
+
+      test('accepts a checksum-invalid mixed-case address in the draft', () async {
+        final normalized = EthereumAddress.fromHex(
+          _invalidMixedCaseAddress.toLowerCase(),
+        ).hexEip55;
+        when(
+          () => bitbox.getEthAddress(),
+        ).thenAnswer((_) async => _invalidMixedCaseAddress);
+        when(
+          () => bitbox.getCredentials(any()),
+        ).thenReturn(BitboxCredentials(normalized));
+
+        final draft = await service.acquireUncommittedBitboxWallet('Migration');
+
+        expect(draft.currentAccount.primaryAddress.address.hexEip55, normalized);
+        verifyNever(() => repo.createViewWallet(any(), any(), any()));
+        verifyNever(() => settings.saveCurrentWalletId(any()));
       });
 
       test('throws BitboxAddressUnavailableException on a malformed address', () async {
@@ -513,6 +552,27 @@ void main() {
 
         expect(wallet.currentAccount.primaryAddress.address.hexEip55, checksummed);
         verify(() => repo.updateAddress(5, checksummed)).called(1);
+      });
+
+      test('accepts a checksum-invalid mixed-case address when healing', () async {
+        final normalized = EthereumAddress.fromHex(
+          _invalidMixedCaseAddress.toLowerCase(),
+        ).hexEip55;
+        when(() => settings.currentWalletId).thenReturn(5);
+        when(() => repo.getWalletInfo(5)).thenAnswer(
+          (_) async => _info(id: 5, name: 'Hardware', address: '', type: WalletType.bitbox),
+        );
+        when(
+          () => bitbox.getEthAddress(),
+        ).thenAnswer((_) async => _invalidMixedCaseAddress);
+        when(
+          () => bitbox.getCredentials(any()),
+        ).thenReturn(BitboxCredentials(normalized));
+
+        final wallet = await service.healCurrentBitboxAddress();
+
+        expect(wallet.currentAccount.primaryAddress.address.hexEip55, normalized);
+        verify(() => repo.updateAddress(5, normalized)).called(1);
       });
 
       test('propagates BitboxAddressUnavailableException and does NOT persist', () async {

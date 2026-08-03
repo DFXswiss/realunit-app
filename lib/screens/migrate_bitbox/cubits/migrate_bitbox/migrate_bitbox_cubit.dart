@@ -396,7 +396,11 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       // The lazy path in DFXAuthService.getSignature still recovers on the next
       // authenticated call if this is skipped — mirrors
       // ConnectBitboxCubit.continueWithoutSignature.
-      await _appStore.sessionCache.saveSignature(bitboxAddress, signature);
+      await _appStore.sessionCache.saveSignature(
+        bitboxAddress,
+        signature,
+        _authService.buildSignMessage(bitboxAddress),
+      );
       if (isClosed) return;
     }
     // After setCurrentWallet, before the view's HomeBloc reload, so any sync

@@ -64,6 +64,16 @@ class _StubWalletAccount extends AWalletAccount {
   }
 }
 
+class _LockedSnapshotWalletAccount extends _StubWalletAccount {
+  _LockedSnapshotWalletAccount({required String address})
+    : super('unused', address: address);
+
+  @override
+  Future<String> signMessage(String message, {int addressIndex = 0}) {
+    throw StateError('locked snapshot account');
+  }
+}
+
 class _StubCredentials extends CredentialsWithKnownAddress {
   _StubCredentials(String hexAddress) : _address = EthereumAddress.fromHex(hexAddress);
 
@@ -906,6 +916,97 @@ void main() {
       expect(authCalls, 1);
       expect(sessionCache.authTokenAddress, walletAddress);
     });
+
+    test(
+      'wallet identity change during unlock retries with a fresh snapshot',
+      () async {
+        final accountA = _LockedSnapshotWalletAccount(
+          address: '0x1111111111111111111111111111111111111111',
+        );
+        final accountB = _StubWalletAccount(
+          '0xsignature-b',
+          address: '0x2222222222222222222222222222222222222222',
+        );
+        late _MutableIdentityAuthService service;
+        var unlockCalls = 0;
+        when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {
+          unlockCalls++;
+          if (unlockCalls == 1) service.currentAccount = accountB;
+        });
+        Map<String, dynamic>? sentBody;
+        final client = MockClient((request) async {
+          sentBody = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(jsonEncode({'accessToken': 'jwt-b'}), 201);
+        });
+        when(() => appStore.httpClient).thenReturn(client);
+        service = _MutableIdentityAuthService(
+          appStore,
+          walletService,
+          accountA,
+        );
+
+        final token = await service.getAuthToken();
+
+        expect(token, 'jwt-b');
+        expect(unlockCalls, 2);
+        expect(accountB.signCallCount, 1);
+        expect(
+          sentBody!['address'],
+          accountB.primaryAddress.address.hexEip55,
+        );
+        verify(() => walletService.lockCurrentWallet()).called(2);
+      },
+    );
+
+    test(
+      'identity change during every unlock fails loudly after three attempts',
+      () async {
+        final accountA = _StubWalletAccount(
+          '0xsignature-a',
+          address: '0x1111111111111111111111111111111111111111',
+        );
+        final accountB = _StubWalletAccount(
+          '0xsignature-b',
+          address: '0x2222222222222222222222222222222222222222',
+        );
+        late _MutableIdentityAuthService service;
+        var unlockCalls = 0;
+        when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {
+          unlockCalls++;
+          service.currentAccount = identical(service.currentAccount, accountA)
+              ? accountB
+              : accountA;
+        });
+        var authCalls = 0;
+        final client = MockClient((_) async {
+          authCalls++;
+          return http.Response(jsonEncode({'accessToken': 'unexpected'}), 201);
+        });
+        when(() => appStore.httpClient).thenReturn(client);
+        service = _MutableIdentityAuthService(
+          appStore,
+          walletService,
+          accountA,
+        );
+
+        await expectLater(
+          service.getAuthToken(),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'toString()',
+              contains('wallet identity changed during authentication'),
+            ),
+          ),
+        );
+
+        expect(unlockCalls, 3);
+        expect(authCalls, 0);
+        expect(accountA.signCallCount, 0);
+        expect(accountB.signCallCount, 0);
+        verify(() => walletService.lockCurrentWallet()).called(3);
+      },
+    );
 
     test('A-B-A changes never commit the B response under A', () async {
       final accountA = _StubWalletAccount(

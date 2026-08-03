@@ -74,6 +74,7 @@ void main() {
   const refreshedJwt = 'refreshed-jwt';
   const newJwt = 'new-jwt';
   const signature = '0xsigned';
+  const signMessage = 'scoped-sign-message';
 
   late String draftAddress;
   late String persistedAddress;
@@ -149,10 +150,11 @@ void main() {
     when(() => apiConfig.asset).thenReturn(realUnitAsset);
     when(() => sessionCache.signatureAddress).thenReturn(draftAddress);
     when(() => sessionCache.signature).thenReturn(signature);
-    when(() => sessionCache.saveSignature(any(), any())).thenAnswer((_) async {});
+    when(() => sessionCache.saveSignature(any(), any(), any())).thenAnswer((_) async {});
     when(() => sessionCache.setAuthToken(any(), any())).thenReturn(null);
 
     when(() => authService.refreshAuthToken()).thenAnswer((_) async => refreshedJwt);
+    when(() => authService.buildSignMessage(any())).thenReturn(signMessage);
     when(
       () => authService.authenticateLinkedAccount(any(), any()),
     ).thenAnswer((_) async => newJwt);
@@ -621,7 +623,7 @@ void main() {
       await preparation;
 
       verifyNever(() => walletService.setCurrentWallet(any()));
-      verifyNever(() => sessionCache.saveSignature(any(), any()));
+      verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
       verifyNever(() => sessionCache.setAuthToken(any(), any()));
     });
   });
@@ -715,7 +717,11 @@ void main() {
 
       verifyInOrder([
         () => walletService.setCurrentWallet(42),
-        () => sessionCache.saveSignature(persistedAddress, signature),
+        () => sessionCache.saveSignature(
+          persistedAddress,
+          signature,
+          signMessage,
+        ),
         () => sessionCache.setAuthToken(newJwt, persistedAddress),
       ]);
       expect(cubit.state, MigrateBitboxSuccess(persisted));
@@ -734,7 +740,7 @@ void main() {
         () => walletService.setCurrentWallet(42),
         () => sessionCache.setAuthToken(newJwt, persistedAddress),
       ]);
-      verifyNever(() => sessionCache.saveSignature(any(), any()));
+      verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
       expect(cubit.state, MigrateBitboxSuccess(persisted));
     });
 
@@ -745,7 +751,7 @@ void main() {
           () => balanceService.fetchBalance(any()),
         ).thenAnswer((_) async => balance(0));
         when(
-          () => sessionCache.saveSignature(any(), any()),
+          () => sessionCache.saveSignature(any(), any(), any()),
         ).thenAnswer((_) => pendingSignatureSave.future);
         final cubit = buildCubit(addCloseTearDown: false);
 
@@ -771,7 +777,7 @@ void main() {
         drain(async);
 
         verifyNever(() => walletService.setCurrentWallet(any()));
-        verifyNever(() => sessionCache.saveSignature(any(), any()));
+        verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
         verifyNever(() => sessionCache.setAuthToken(any(), any()));
       });
     });
@@ -1025,7 +1031,7 @@ void main() {
         drain(async);
 
         verifyNever(() => walletService.setCurrentWallet(any()));
-        verifyNever(() => sessionCache.saveSignature(any(), any()));
+        verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
         verifyNever(() => sessionCache.setAuthToken(any(), any()));
         async.flushTimers();
       });
@@ -1060,7 +1066,7 @@ void main() {
 
         expect(emitted, hasLength(emissionCountAtClose));
         expect(emitted.whereType<MigrateBitboxSuccess>(), isEmpty);
-        verifyNever(() => sessionCache.saveSignature(any(), any()));
+        verifyNever(() => sessionCache.saveSignature(any(), any(), any()));
         verifyNever(() => sessionCache.setAuthToken(any(), any()));
         subscription.cancel();
         async.flushTimers();
