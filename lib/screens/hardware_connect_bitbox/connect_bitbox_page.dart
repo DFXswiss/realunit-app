@@ -9,9 +9,10 @@ import 'package:realunit_wallet/screens/hardware_connect_bitbox/connect_bitbox_v
 import 'package:realunit_wallet/setup/di.dart';
 
 class ConnectBitboxPage extends StatelessWidget {
-  const ConnectBitboxPage({super.key, required this.onFinish});
+  const ConnectBitboxPage({super.key, required this.onFinish, this.acquireWallet});
 
   final void Function(AWallet wallet) onFinish;
+  final Future<BitboxWallet> Function()? acquireWallet;
 
   @override
   Widget build(BuildContext context) => BlocProvider(
@@ -21,6 +22,7 @@ class ConnectBitboxPage extends StatelessWidget {
       // DfxKycService is the smallest registered DFXAuthService — used only as
       // a transport for ensureSignatureFor(account); no KYC-specific calls here.
       getIt<DfxKycService>(),
+      acquireWallet: acquireWallet,
     ),
     child: ConnectBitboxView(onFinish: onFinish),
   );
