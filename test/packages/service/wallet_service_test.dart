@@ -499,6 +499,22 @@ void main() {
         verify(() => repo.updateAddress(5, _debugAddress)).called(1);
       });
 
+      test('normalizes a lowercase device address to EIP-55 before persisting', () async {
+        const lowercase = '0xbc6a215909b7c412eea434389c34cd2600aa1260';
+        final checksummed = EthereumAddress.fromHex(lowercase).hexEip55;
+        when(() => settings.currentWalletId).thenReturn(5);
+        when(() => repo.getWalletInfo(5)).thenAnswer(
+          (_) async => _info(id: 5, name: 'Hardware', address: '', type: WalletType.bitbox),
+        );
+        when(() => bitbox.getEthAddress()).thenAnswer((_) async => lowercase);
+        when(() => bitbox.getCredentials(any())).thenReturn(BitboxCredentials(checksummed));
+
+        final wallet = await service.healCurrentBitboxAddress();
+
+        expect(wallet.currentAccount.primaryAddress.address.hexEip55, checksummed);
+        verify(() => repo.updateAddress(5, checksummed)).called(1);
+      });
+
       test('propagates BitboxAddressUnavailableException and does NOT persist', () async {
         when(() => settings.currentWalletId).thenReturn(5);
         when(() => repo.getWalletInfo(5)).thenAnswer(

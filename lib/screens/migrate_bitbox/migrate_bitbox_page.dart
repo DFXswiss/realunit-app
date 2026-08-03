@@ -24,9 +24,8 @@ class MigrateBitboxPage extends StatelessWidget {
   Widget build(BuildContext context) => BlocProvider(
     create: (_) => MigrateBitboxCubit(
       getIt<WalletService>(),
-      // DfxKycService is the smallest registered DFXAuthService — used purely
-      // as the auth transport (refreshAuthToken / authenticateLinkedAccount);
-      // no KYC-specific calls here.
+      // DfxKycService serves purely as the auth transport here
+      // (refreshAuthToken / authenticateLinkedAccount); no KYC-specific calls.
       getIt<DfxKycService>(),
       getIt<RealUnitRegistrationService>(),
       getIt<BalanceService>(),

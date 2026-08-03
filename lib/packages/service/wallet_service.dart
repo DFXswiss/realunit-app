@@ -199,10 +199,13 @@ class WalletService {
     final info = (await _repository.getWalletInfo(id))!;
     // Shares the retry + empty-guard boundary with createBitboxWallet; the
     // format check stays as defence-in-depth (see that method).
-    final address = await _bitboxService.getEthAddress();
-    if (!_isValidEthAddress(address)) {
+    final rawAddress = await _bitboxService.getEthAddress();
+    if (!_isValidEthAddress(rawAddress)) {
       throw const BitboxAddressUnavailableException();
     }
+    // Same EIP-55 normalization as the create/acquire paths — the SDK's
+    // address casing is not guaranteed consistent across reads.
+    final address = EthereumAddress.fromHex(rawAddress).hexEip55;
     await _repository.updateAddress(id, address);
     return BitboxWallet(id, info.name, address, _bitboxService);
   }

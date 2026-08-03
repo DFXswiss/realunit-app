@@ -22,9 +22,8 @@ part 'migrate_bitbox_state.dart';
 class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   MigrateBitboxCubit(
     this._walletService,
-    // DfxKycService is the smallest registered DFXAuthService — used purely as
-    // the auth transport (refreshAuthToken / authenticateLinkedAccount); no
-    // KYC-specific calls here.
+    // DfxKycService serves purely as the auth transport here
+    // (refreshAuthToken / authenticateLinkedAccount); no KYC-specific calls.
     DfxKycService authService,
     this._registrationService,
     this._balanceService,
@@ -414,9 +413,11 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
 
   @override
   Future<void> close() {
-    // Invalidate callbacks already awaiting a balance/finish operation. A
-    // wizard closed mid-flight must not half-apply the identity switch; a
-    // later zero-balance re-entry completes the migration cleanly.
+    // Invalidate settling callbacks already awaiting a balance/finish
+    // operation: steps that have not run yet are skipped after close.
+    // Already-completed side effects (e.g. a finished setCurrentWallet) are
+    // not rolled back — a later re-entry completes the migration cleanly
+    // via the zero-balance skip.
     _settlingGeneration++;
     _settlingTimer?.cancel();
     return super.close();
