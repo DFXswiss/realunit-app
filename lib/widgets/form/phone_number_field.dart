@@ -21,17 +21,20 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
   void initState() {
     super.initState();
     final value = widget.controller.value;
-    if (value != null) {
-      for (var p in prefixes) {
-        if (value.startsWith(p)) {
-          prefix = p;
-          number = value.substring(p.length);
-          break;
-        }
+    for (final p in prefixes) {
+      if (value != null && value.startsWith(p)) {
+        prefix = p;
+        number = value.substring(p.length);
+        break;
       }
-    } else {
-      prefix = prefixes.first;
     }
+
+    // A seeded value this field cannot decompose (empty, or a dial code it does not offer) must not
+    // leave `prefix` null: the dropdown carries no validator, so `Form.validate()` would pass while
+    // `updatePhoneNumber()` silently refused to write, and the stale value would be submitted
+    // instead of what the user typed. Fall back to the first prefix; the number field starts empty,
+    // so the validator still blocks submit until it is re-entered.
+    prefix ??= prefixes.first;
   }
 
   void updatePhoneNumber() {

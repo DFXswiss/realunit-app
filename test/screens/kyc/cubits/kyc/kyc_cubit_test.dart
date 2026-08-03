@@ -809,9 +809,9 @@ void main() {
     );
 
     // PendingReview + a required step the app cannot render (e.g.
-    // additionalDocuments, residencePermit, statutes, personalData — all
-    // absent from `_mapStepName`). Must surface an explicit failure with
-    // the step name, never `KycCompleted`.
+    // additionalDocuments, residencePermit, statutes — all absent from
+    // `_mapStepName`). Must surface an explicit failure with the step name,
+    // never `KycCompleted`.
     blocTest<KycCubit, KycState>(
       'emits KycUnsupportedStepFailure(step) when PendingReview required step is unmapped',
       setUp: () {
@@ -835,6 +835,35 @@ void main() {
       expect: () => [
         const KycLoading(),
         const KycUnsupportedStepFailure(KycStepName.additionalDocuments),
+      ],
+    );
+
+    // Registration normally satisfies PersonalData without the user seeing it. It re-opens when
+    // identification rejects the submitted data, and until the page existed that landed the user on
+    // the unsupported-step failure screen with no way to correct anything.
+    blocTest<KycCubit, KycState>(
+      'routes PersonalData to its own step instead of the unsupported-step failure',
+      setUp: () {
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(
+            level: KycLevel.level20,
+            processStatus: KycProcessStatus.pendingReview,
+            steps: [
+              _step(
+                KycStepName.personalData,
+                status: KycStepStatus.inProgress,
+                isRequired: true,
+              ),
+            ],
+          ),
+        );
+        when(() => kycService.getUser()).thenAnswer((_) async => _user());
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        const KycPending(KycStep.personalData),
       ],
     );
 
@@ -903,7 +932,9 @@ void main() {
           (_) async => _session(
             level: KycLevel.level20,
             steps: const [],
-            currentStep: _currentStep(KycStepName.personalData),
+            // personalData used to stand in for "unmapped" here; it has its own page now, so this
+            // needs a name that is still absent from `_mapStepName`.
+            currentStep: _currentStep(KycStepName.statutes),
           ),
         );
       },
@@ -911,7 +942,7 @@ void main() {
       act: (cubit) => cubit.checkKyc(),
       expect: () => [
         const KycLoading(),
-        const KycUnsupportedStepFailure(KycStepName.personalData),
+        const KycUnsupportedStepFailure(KycStepName.statutes),
       ],
     );
 
