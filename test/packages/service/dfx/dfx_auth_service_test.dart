@@ -222,7 +222,9 @@ void main() {
     setUp(() {
       appStore = _MockAppStore();
       sessionCache = _MockSessionCache();
-      walletAccount = _StubWalletAccount(validSig);
+      // The account must carry the same address the service reports — the
+      // identity guard in _getSignatureFor compares the two since round 3.
+      walletAccount = _StubWalletAccount(validSig, address: address);
       walletService = _MockWalletService();
 
       when(() => appStore.sessionCache).thenReturn(sessionCache);
@@ -716,7 +718,10 @@ void main() {
     late _MockWalletService walletService;
     late _StubWalletAccount account;
 
-    const walletAddress = '0xdddddddddddddddddddddddddddddddddddddddd';
+    // Digits-only fixture: EIP-55 checksumming leaves it unchanged, so the
+    // raw constant stays equal to the account's hexEip55 the identity guard
+    // in _getSignatureFor compares against.
+    const walletAddress = '0x4444444444444444444444444444444444444444';
     const validSignature = '0xfeedface';
 
     setUp(() {
@@ -1393,11 +1398,13 @@ void main() {
         when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
         when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
 
+        // The service address must match the hanging account's real derived
+        // address, otherwise the identity guard fires before the hang.
         final service = _SignatureTestAuthService(
           appStore,
           walletService,
           account,
-          '0xEeEeEeEeEeEeEeEeEeEeEeEeEeEeEeEeEeEeEeEe',
+          account.primaryAddress.address.hexEip55,
         );
 
         Object? caught;
