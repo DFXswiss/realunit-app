@@ -286,31 +286,33 @@ abstract class DFXAuthService {
   // bitbox_flutter v0.0.2 fixed the BLE force-unwrap and dedup hang, the
   // empty-signature guard in `getSignature` covers the cancel/disconnect
   // case gracefully, and the SDK no longer panics on NACK.
-  Future<String?> getAuthToken() => _withIdentityRetry<String?>((accountSnapshot, addressSnapshot) async {
-    final cachedToken = appStore.sessionCache.authToken;
-    if (cachedToken != null &&
-        appStore.sessionCache.authTokenAddress == addressSnapshot) {
-      return cachedToken;
-    }
+  Future<String?> getAuthToken() => _withIdentityRetry<String?>(
+    (accountSnapshot, addressSnapshot) async {
+      final cachedToken = appStore.sessionCache.authToken;
+      if (cachedToken != null &&
+          appStore.sessionCache.authTokenAddress == addressSnapshot) {
+        return cachedToken;
+      }
 
-    await appStore.sessionCache.loadSignature();
-    final response = await _getAuthResponseFor(
-      accountSnapshot,
-      addressSnapshot,
-      true,
-    );
+      await appStore.sessionCache.loadSignature();
+      final response = await _getAuthResponseFor(
+        accountSnapshot,
+        addressSnapshot,
+        true,
+      );
 
-    // Close the late-commit race when the active wallet identity changes
-    // while /v1/auth is in flight. Discard the old identity's response and
-    // retry against the now-current wallet context.
-    if (walletAddress != addressSnapshot) {
-      throw _WalletIdentityChangedException();
-    }
+      // Close the late-commit race when the active wallet identity changes
+      // while /v1/auth is in flight. Discard the old identity's response and
+      // retry against the now-current wallet context.
+      if (walletAddress != addressSnapshot) {
+        throw _WalletIdentityChangedException();
+      }
 
-    final token = response['accessToken'] as String;
-    appStore.sessionCache.setAuthToken(token, addressSnapshot);
-    return token;
-  });
+      final token = response['accessToken'] as String;
+      appStore.sessionCache.setAuthToken(token, addressSnapshot);
+      return token;
+    },
+  );
 
   void invalidateAuthToken() => appStore.sessionCache.clearAuthToken();
 
@@ -419,10 +421,12 @@ abstract class DFXAuthService {
   }
 }
 
-/// Internal marker: the active wallet identity changed between taking the
-/// snapshot in [DFXAuthService._withIdentityRetry] and finishing the unlock in
-/// [DFXAuthService._getSignatureFor]. Never signs with a stale (possibly
-/// locked) snapshot account — the caller must retry with a fresh snapshot.
-/// Caught exclusively by [DFXAuthService._withIdentityRetry] — never escapes
-/// this file.
+/// Internal marker: the active wallet identity changed during an
+/// authentication attempt — either between taking the snapshot in
+/// [DFXAuthService._withIdentityRetry] and finishing the unlock in
+/// [DFXAuthService._getSignatureFor], or after the auth response arrived but
+/// before its late commit gate in [DFXAuthService.getAuthToken]. Never signs
+/// with (or commits for) a stale snapshot — the caller must retry with a
+/// fresh snapshot. Caught exclusively by [DFXAuthService._withIdentityRetry]
+/// — never escapes this file.
 class _WalletIdentityChangedException implements Exception {}
