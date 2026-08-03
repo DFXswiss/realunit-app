@@ -154,7 +154,7 @@ class SettingsPage extends StatelessWidget {
               ),
             ],
           ),
-          SettingsVersionUnlock(releaseTag: releaseTag),
+          const SettingsVersionUnlock(releaseTag: releaseTag),
         ],
       ),
     ),
