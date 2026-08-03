@@ -174,6 +174,10 @@ void main() {
           expect(actionButtonByLabel(S.current.send), findsNothing);
 
           controller.add(const SettingsState(insiderFeaturesUnlocked: true));
+          // Two pumps: the first delivers the stream event (async broadcast
+          // delivery updates the mock's state and marks the element dirty),
+          // the second builds the frame that shows the unlocked buttons.
+          await tester.pump();
           await tester.pump();
 
           expect(actionButtonByLabel(S.current.pay), findsOneWidget);
