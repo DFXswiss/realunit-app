@@ -105,10 +105,18 @@ class _EmbeddedSendProcessView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => BlocConsumer<SendProcessCubit, SendProcessState>(
-    listenWhen: (_, current) => current is SendProcessSuccess,
+    listenWhen: (_, current) => switch (current) {
+      SendProcessSuccess() || SendProcessFailure(canRetry: false) => true,
+      _ => false,
+    },
     listener: (context, state) {
       if (state is SendProcessSuccess) {
         context.read<MigrateBitboxCubit>().finishMigration();
+      }
+      if (state case SendProcessFailure(:final reason, canRetry: false)) {
+        context.read<MigrateBitboxCubit>().onTransferFailedTerminally(
+          _failureMessage(context, reason),
+        );
       }
     },
     builder: (context, state) => switch (state) {

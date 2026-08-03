@@ -43,6 +43,13 @@ class MigrateBitboxViewManager extends StatelessWidget {
     listenWhen: (_, current) =>
         current is MigrateBitboxAwaitingDevice || current is MigrateBitboxSuccess,
     listener: (context, state) async {
+      // Synchronous context use first: the await in the AwaitingDevice branch
+      // below would otherwise trip use_build_context_synchronously for every
+      // context read that follows it in this async closure.
+      if (state is MigrateBitboxSuccess) {
+        context.read<HomeBloc>().add(LoadWalletEvent(state.wallet));
+        return;
+      }
       if (state is MigrateBitboxAwaitingDevice) {
         await showModalBottomSheet<void>(
           context: context,
@@ -57,9 +64,6 @@ class MigrateBitboxViewManager extends StatelessWidget {
         if (context.mounted) {
           context.read<MigrateBitboxCubit>().cancelPairing();
         }
-      }
-      if (state is MigrateBitboxSuccess) {
-        context.read<HomeBloc>().add(LoadWalletEvent(state.wallet));
       }
     },
     builder: (context, state) => PopScope(

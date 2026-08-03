@@ -39,6 +39,8 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   String? _bitboxSignature;
   BitboxWallet? _persisted;
   Future<void> Function()? _pendingRetry;
+  MigrateBitboxRegisterReady? _registerRetryState;
+  bool _pendingRegisterRetry = false;
 
   Future<void> startPairing() async {
     emit(const MigrateBitboxAwaitingDevice());
@@ -138,6 +140,8 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   Future<void> register() async {
     final current = state;
     if (current is! MigrateBitboxRegisterReady) return;
+    _registerRetryState = current;
+    _pendingRegisterRetry = false;
     final userData = current.userData;
     emit(const MigrateBitboxRegistering());
     try {
@@ -157,6 +161,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       }
     } on SigningCancelledException {
       _pendingRetry = register;
+      _pendingRegisterRetry = true;
       emit(
         const MigrateBitboxFailure(
           MigrateBitboxFailureReason.signatureCancelled,
@@ -165,6 +170,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       );
     } on BitboxNotConnectedException {
       _pendingRetry = register;
+      _pendingRegisterRetry = true;
       emit(
         const MigrateBitboxFailure(
           MigrateBitboxFailureReason.bitboxNotConnected,
@@ -173,6 +179,7 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       );
     } catch (e) {
       _pendingRetry = register;
+      _pendingRegisterRetry = true;
       emit(
         MigrateBitboxFailure(
           MigrateBitboxFailureReason.generic,
@@ -188,6 +195,9 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
   Future<void> retry() async {
     final action = _pendingRetry;
     if (action == null) return;
+    if (_pendingRegisterRetry) {
+      emit(_registerRetryState!);
+    }
     await action();
   }
 
@@ -241,6 +251,23 @@ class MigrateBitboxCubit extends Cubit<MigrateBitboxState> {
       MigrateBitboxTransferring(
         toAddress: current.toAddress,
         amount: current.amount,
+      ),
+    );
+  }
+
+  /// Leaves the embedded transfer flow after a DEFINITIVE (non-retryable)
+  /// SendProcessFailure. Re-entering via retry runs a fresh
+  /// _persistAndPrepareTransfer — the dead intent is discarded and the balance
+  /// re-read, so a partially-executed transfer surfaces as a reduced (or zero)
+  /// remaining amount instead of a blind re-send.
+  void onTransferFailedTerminally(String message) {
+    if (state is! MigrateBitboxTransferring) return;
+    _pendingRetry = _persistAndPrepareTransfer;
+    emit(
+      MigrateBitboxFailure(
+        MigrateBitboxFailureReason.generic,
+        message: message,
+        canRetry: true,
       ),
     );
   }
