@@ -79,8 +79,7 @@ void main() {
     when(() => balanceCubit.state).thenReturn(zeroBalance());
     when(() => balanceCubit.asset).thenReturn(realUnitAsset);
     when(() => pendingTxCubit.state).thenReturn(const <TransactionDto>[]);
-    when(() => settingsBloc.state)
-        .thenReturn(const SettingsState(insiderFeaturesUnlocked: true));
+    when(() => settingsBloc.state).thenReturn(const SettingsState());
   });
 
   Widget buildDashboard() => MultiBlocProvider(
@@ -172,6 +171,64 @@ void main() {
       }
     }
   });
+
+  group(
+    'DashboardView responsive matrix - positive balance, insider unlocked, '
+    'all four actions tappable (full device x textScale)',
+    () {
+      for (final cell in kFullResponsiveMatrix) {
+        testWidgets(cell.id, (tester) async {
+          await withTargetPlatform(cell.device.platform, () async {
+            when(() => balanceCubit.state).thenReturn(
+              Balance(
+                chainId: realUnitAsset.chainId,
+                contractAddress: realUnitAsset.address,
+                walletAddress: '0x0',
+                balance: BigInt.from(5000000000000000000),
+                asset: realUnitAsset,
+              ),
+            );
+            when(() => settingsBloc.state)
+                .thenReturn(const SettingsState(insiderFeaturesUnlocked: true));
+
+            await expectNoLayoutOverflow(
+              tester,
+              () async {
+                await pumpDashboard(tester, cell);
+              },
+              reason:
+                  'overflow on positive balance, insider unlocked / ${cell.label}',
+            );
+
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.buy),
+              within: find.byType(DashboardView),
+              reason: '${cell.label}: buy button not tappable',
+            );
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.sell),
+              within: find.byType(DashboardView),
+              reason: '${cell.label}: sell button not tappable',
+            );
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.pay),
+              within: find.byType(DashboardView),
+              reason: '${cell.label}: pay button not tappable',
+            );
+            await expectFullyTappable(
+              tester,
+              find.text(S.current.send),
+              within: find.byType(DashboardView),
+              reason: '${cell.label}: send button not tappable',
+            );
+          });
+        });
+      }
+    },
+  );
 
   // Focused regression: the exact reported failure mode (empty balance, one
   // waitingForPayment pending tx, default text scale) must invoke the real

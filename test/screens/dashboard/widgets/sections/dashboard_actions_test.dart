@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -150,6 +152,33 @@ void main() {
         await tester.pumpAndSettle();
         expect(pushedRoutes, [AppRoutes.send]);
       });
+    });
+
+    group('transitions', () {
+      testWidgets(
+        'rebuilds from locked to unlocked when the bloc emits without a remount '
+        '(pins context.watch, a regression to context.read would not react)',
+        (tester) async {
+          final controller = StreamController<SettingsState>();
+          addTearDown(controller.close);
+          whenListen(
+            settingsBloc,
+            controller.stream,
+            initialState: const SettingsState(),
+          );
+
+          await pumpActions(tester);
+
+          expect(actionButtonByLabel(S.current.pay), findsNothing);
+          expect(actionButtonByLabel(S.current.send), findsNothing);
+
+          controller.add(const SettingsState(insiderFeaturesUnlocked: true));
+          await tester.pump();
+
+          expect(actionButtonByLabel(S.current.pay), findsOneWidget);
+          expect(actionButtonByLabel(S.current.send), findsOneWidget);
+        },
+      );
     });
   });
 }

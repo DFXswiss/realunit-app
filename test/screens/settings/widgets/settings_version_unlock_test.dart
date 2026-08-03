@@ -95,5 +95,21 @@ void main() {
 
       expect(find.textContaining('1.2.3'), findsOneWidget);
     });
+
+    testWidgets(
+      'nine taps still dispatch UnlockInsiderFeaturesEvent exactly once '
+      '(pins the == 7 comparison, a regression to >= 7 would fire on every tap after)',
+      (tester) async {
+        await tester.pumpApp(host());
+
+        for (var i = 0; i < 9; i++) {
+          await tester.tap(find.byType(SettingsVersionUnlock));
+          await tester.pump();
+        }
+
+        verify(() => settingsBloc.add(const UnlockInsiderFeaturesEvent())).called(1);
+        expect(find.byType(SnackBar), findsOneWidget);
+      },
+    );
   });
 }
