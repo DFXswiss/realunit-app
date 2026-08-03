@@ -27,9 +27,9 @@ import 'package:realunit_wallet/setup/error_handling/realunit_error_view.dart';
 /// engine's own reporting running instead of suppressing it (returning `true`
 /// would claim the error as handled while our log is a no-op, i.e. total
 /// silence). So this makes async errors *reachable where a developer is already
-/// attached*; it adds no release-mode visibility on its own. Getting evidence
-/// off a customer's device needs a crash reporter or a persisted log sink —
-/// this handler body is the hook such a sink plugs into.
+/// attached*; it adds no release-mode visibility on its own. Release-mode
+/// evidence comes from the crash reporter (`crash_reporting.dart`), which is
+/// initialized after this call and chains the handlers installed here.
 ///
 /// @no-integration-test: the engine-side fallback reporting that runs after
 /// [PlatformDispatcher.onError] returns false is embedder behaviour and is not
