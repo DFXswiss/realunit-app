@@ -11,11 +11,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/models/balance.dart';
+import 'package:realunit_wallet/models/transaction.dart';
+import 'package:realunit_wallet/packages/config/api_config.dart';
+import 'package:realunit_wallet/packages/repository/transaction_repository.dart';
+import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
 import 'package:realunit_wallet/packages/utils/default_assets.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/balance_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -35,6 +41,12 @@ class _MockBalanceCubit extends MockCubit<Balance> implements BalanceCubit {}
 
 class _MockPendingTransactionsCubit extends MockCubit<List<TransactionDto>>
     implements PendingTransactionsCubit {}
+
+class _MockTransactionRepository extends Mock implements TransactionRepository {}
+
+class _MockRealUnitPdfService extends Mock implements RealUnitPdfService {}
+
+class _MockApiConfig extends Mock implements ApiConfig {}
 
 void main() {
   late _MockDashboardBloc dashboardBloc;
@@ -68,6 +80,27 @@ void main() {
     inputAsset: 'REALU',
     date: DateTime.utc(2026, 5, 20, 12),
   );
+
+  setUpAll(() {
+    final getIt = GetIt.instance;
+    final apiConfig = _MockApiConfig();
+    final appStore = MockAppStore();
+    final transactionRepository = _MockTransactionRepository();
+    when(() => apiConfig.asset).thenReturn(realUnitAsset);
+    when(() => appStore.apiConfig).thenReturn(apiConfig);
+    when(() => appStore.primaryAddress).thenReturn('0x0');
+    when(() => transactionRepository.watchTransactionsOfAssets(
+              any(),
+              any(),
+              any(),
+            ))
+        .thenAnswer((_) => const Stream<List<Transaction>>.empty());
+    getIt.registerSingleton<AppStore>(appStore);
+    getIt.registerSingleton<RealUnitPdfService>(_MockRealUnitPdfService());
+    getIt.registerSingleton<TransactionRepository>(transactionRepository);
+  });
+
+  tearDownAll(() async => GetIt.instance.reset());
 
   setUp(() {
     dashboardBloc = _MockDashboardBloc();
