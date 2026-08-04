@@ -8,10 +8,11 @@ name: Handbook CI/CD
 # This also means the previous "DEV is green before PRD ships" guarantee is
 # gone by design. The safety net for handbook CONTENT is now the PR check
 # (handbook-build-check.yaml), which runs on every handbook-relevant PR —
-# it validates the image build and a container smoke test, not the deploy
-# WIRING itself (SSH, secrets, server rollout), which only the actual
-# deploy run here exercises. There is no intermediate staging-only deploy
-# left to catch problems before PRD sees them.
+# it gates screenshot-assembly, store-listing sync, legal-sync, and an
+# image build + container smoke test, not the deploy WIRING itself (SSH,
+# secrets, server rollout), which only the actual deploy run here
+# exercises. There is no intermediate staging-only deploy left to catch
+# problems before PRD sees them.
 #
 # All build/deploy/smoke logic lives in the reusable workflow
 # .github/workflows/handbook.yaml. This file only wires the PRD parameters

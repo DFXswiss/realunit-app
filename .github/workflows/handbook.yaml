@@ -8,8 +8,10 @@ name: Handbook reusable CI/CD
 # exactly one place. A push to staging deploys directly to PRD
 # (handbook.realunit.app); the former DEV instance is retired. There is no
 # DEV→PRD `needs:` ordering here — the PR check (handbook-build-check.yaml)
-# is now what must pass before a change can reach staging in the first
-# place (see handbook-deploy.yaml header).
+# gates handbook CONTENT (screenshot-assembly, store-listing sync,
+# legal-sync, image build + container smoke) before a change can reach
+# staging; it does not exercise this reusable workflow's deploy WIRING
+# itself (SSH, secrets, server rollout) — see handbook-deploy.yaml header.
 #
 # Mirrors the shared SSH-deploy workflow templates from the internal ops repo.
 
@@ -17,7 +19,7 @@ on:
   workflow_call:
     inputs:
       environment:
-        description: "Target environment label (dev | prd) — used in job name + smoke log lines"
+        description: "Target environment label (prd) — used in job name + smoke log lines"
         required: true
         type: string
       ref:

@@ -1,12 +1,25 @@
 name: Handbook Build Check
 
-# PR-only build verification for the handbook CONTENT: Dockerfile.handbook +
-# the Goldens-assembled screenshots (image build + a container smoke test).
-# Does NOT push to Docker Hub and does NOT deploy — that remains the job of
-# handbook-deploy.yaml (staging push → PRD). This check gates handbook
-# CONTENT changes before a staging merge; it does not exercise the deploy
-# WIRING itself (SSH, secrets, server rollout) — that is only validated by
-# the actual deploy run.
+# PR-only build verification for the handbook CONTENT. Gates four things
+# before a staging merge, all pure content checks with no live deploy:
+#   - screenshot-assembly: scripts/assemble-handbook-screenshots.sh runs and
+#                           produces the expected PNG count
+#   - store-listing sync:  scripts/assemble-handbook-store-listing.py output
+#                           matches the committed handbook (+ its HTML
+#                           sanitizer strips injection payloads)
+#   - legal-sync:           scripts/assemble-handbook-legal.py output
+#                           matches the committed handbook
+#   - image build + smoke:  `docker build` (no push) + a container smoke
+#                           test against /healthz, /de/ (auth wall), the
+#                           assembled screenshots, and the legal downloads
+#
+# Does NOT check out DFXswiss/api or RealUnitCH/web (those only happen in
+# the real build inside handbook.yaml) and does NOT push to Docker Hub or
+# deploy — that remains the job of handbook-deploy.yaml (staging push →
+# PRD). The paths filter below mirrors exactly the CONTENT inputs of the
+# handbook image; the workflow files / deploy WIRING itself (SSH, secrets,
+# server rollout) are exercised exclusively by the deploy run, not by this
+# check.
 #
 # Path filter covers everything that goes into the handbook image:
 #   - docs/handbook/**            handbook HTML, README, en/de subtrees
@@ -44,8 +57,6 @@ on:
       - "Dockerfile.handbook"
       - "handbook.nginx.conf"
       - "handbook.htpasswd"
-      - ".github/workflows/handbook.yaml"
-      - ".github/workflows/handbook-deploy.yaml"
       - ".github/workflows/handbook-build-check.yaml"
 
 permissions:

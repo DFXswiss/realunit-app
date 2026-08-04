@@ -125,7 +125,8 @@ auf `handbook-deploy.yaml` in **diesem** Repo. Die frühere separate
 DEV-Instanz (`dev-handbook.realunit.app`, Image `:beta`) ist stillgelegt und
 wird nicht mehr bespielt; das Sicherheitsnetz für Handbook-INHALTE ist jetzt
 der PR-Check `handbook-build-check.yaml`, der bei jedem handbook-relevanten
-PR läuft (Image-Build + Smoke) — die Deploy-VERDRAHTUNG selbst (SSH/Secrets/
+PR läuft (Screenshot-Assemblierung, Store-Listing-Sync, Legal-Sync sowie
+Image-Build + Smoke) — die Deploy-VERDRAHTUNG selbst (SSH/Secrets/
 Rollout in `handbook-deploy.yaml`) prüft erst der Deploy-Lauf selbst. Eine
 reine Mail-Template-, i18n- oder Generator-Änderung im api-Repo löst
 **keinen** automatischen Rebuild aus — sie fliesst erst mit dem nächsten
