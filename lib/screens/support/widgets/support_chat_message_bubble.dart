@@ -58,6 +58,32 @@ class SupportChatMessageBubble extends StatelessWidget {
                           color: isFromCustomer ? RealUnitColors.basic.white : RealUnitColors.neutral900,
                         ),
                       ),
+                    if (supportMessage.fileName != null)
+                      Row(
+                        mainAxisSize: .min,
+                        spacing: 4.0,
+                        children: [
+                          Icon(
+                            Icons.attach_file_rounded,
+                            size: 16,
+                            color: isFromCustomer
+                                ? RealUnitColors.basic.white
+                                : RealUnitColors.neutral900,
+                          ),
+                          Flexible(
+                            child: Text(
+                              supportMessage.fileName!,
+                              maxLines: 1,
+                              overflow: .ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: isFromCustomer
+                                    ? RealUnitColors.basic.white
+                                    : RealUnitColors.neutral900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     Text(
                       _formatTime(supportMessage.created),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
