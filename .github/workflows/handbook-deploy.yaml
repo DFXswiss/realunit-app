@@ -1,88 +1,51 @@
 name: Handbook CI/CD
 
-# Per-branch handbook deploy pipeline, one environment per branch:
-#   push to `staging` → build from staging → deploy DEV  (dev-handbook.realunit.app)
-#   push to `develop` → build from develop → deploy PRD  (handbook.realunit.app)
+# Handbook deploy pipeline: a push to `staging` deploys directly to PRD
+# (handbook.realunit.app). There is no separate DEV environment anymore —
+# the former dev-handbook.realunit.app instance is deliberately
+# decommissioned and no longer served.
 #
-# DEV and PRD are independent runs keyed by the pushed branch; they no
-# longer share a single run that fans out to both. The "DEV is green before
-# PRD ships" guarantee is now provided by the branch-promotion flow itself:
-# handbook content reaches `develop` only after it has been on `staging`
-# (auto-staging-pr.yaml opens the staging → develop PR), i.e. after it was
-# built and smoke-tested on DEV. Promoting to develop is what triggers PRD.
-#
-# This is a deliberate dev/prd-coupling exception scoped to the handbook
-# alone — the wallet app itself still follows the strict develop→main
-# separation.
+# This also means the previous "DEV is green before PRD ships" guarantee is
+# gone by design. The safety net for handbook CONTENT is now the PR check
+# (handbook-build-check.yaml), which runs on every handbook-relevant PR —
+# it gates screenshot-assembly, store-listing sync, legal-sync, and an
+# image build + container smoke test, not the deploy WIRING itself (SSH,
+# secrets, server rollout), which only the actual deploy run here
+# exercises. There is no intermediate staging-only deploy left to catch
+# problems before PRD sees them.
 #
 # All build/deploy/smoke logic lives in the reusable workflow
-# .github/workflows/handbook.yaml. This file only wires the per-env
-# parameters (source ref, image tag, smoke URL, deploy secrets) and routes
-# the pushed branch to its environment via the per-job `if:` guards below.
+# .github/workflows/handbook.yaml. This file only wires the PRD parameters
+# (source ref, image tag, smoke URL, deploy secrets) and gates the single
+# deploy job on the pushed branch via its `if:` guard below.
 
 on:
   push:
-    branches: [staging, develop]
-    paths:
-      - "docs/handbook/**"
-      - "test/goldens/**"
-      - "scripts/assemble-handbook-screenshots.sh"
-      - "scripts/assemble-handbook-store-listing.py"
-      - "scripts/templates/store-listing.html.tmpl"
-      # Store-listing section is baked into the image from the Fastlane
-      # metadata; a metadata- or screenshot-only change must redeploy too.
-      - "ios/fastlane/metadata/**"
-      - "ios/fastlane/screenshots/**"
-      - "android/fastlane/metadata/**"
-      - "Dockerfile.handbook"
-      - "handbook.nginx.conf"
-      - "handbook.htpasswd"
-      - ".github/workflows/handbook-deploy.yaml"
-      - ".github/workflows/handbook.yaml"
+    branches: [staging]
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# One concurrency lane PER BRANCH so a staging (DEV) deploy and a develop
-# (PRD) deploy never serialize against — or cancel — each other. Within a
-# single lane a manual workflow_dispatch still can't race a push: both would
-# build the same env's tag in parallel, the later build would win on Docker
-# Hub, and the target server could pull either depending on timing.
-# cancel-in-progress is false so a mid-rollout deploy is never killed (we'd
-# otherwise risk recreating the container halfway through).
+# One concurrency lane (keyed by branch) so a push and a manual
+# workflow_dispatch on the same branch never race — or cancel — each other:
+# both would otherwise build the same :latest tag in parallel, the later
+# build would win on Docker Hub, and the target server could pull either
+# depending on timing. cancel-in-progress is false so a mid-rollout deploy is
+# never killed (we'd otherwise risk recreating the container halfway
+# through).
 concurrency:
   group: handbook-deploy-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
-  # Push to staging → DEV. Distinct image tag (:beta) from PRD (:latest) so a
-  # staging build can never clobber the develop build on Docker Hub (both
-  # used to push :beta, which raced whenever the two branches were pushed
-  # close together).
-  deploy-dev:
+  # Push to staging → PRD.
+  deploy-prd:
     if: github.ref_name == 'staging'
     uses: ./.github/workflows/handbook.yaml
     with:
-      environment: DEV
-      ref: staging
-      docker_tag: dfxswiss/realunit-app-handbook:beta
-      smoke_url: https://dev-handbook.realunit.app/healthz
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_DEV_SSH_KEY }}
-      DEPLOY_SSH_KNOWN_HOSTS: ${{ secrets.DEPLOY_DEV_SSH_KNOWN_HOSTS }}
-      DEPLOY_USER: ${{ secrets.DEPLOY_DEV_USER }}
-      DEPLOY_HOST: ${{ secrets.DEPLOY_DEV_HOST }}
-
-  # Push to develop → PRD.
-  deploy-prd:
-    if: github.ref_name == 'develop'
-    uses: ./.github/workflows/handbook.yaml
-    with:
       environment: PRD
-      ref: develop
+      ref: staging
       docker_tag: dfxswiss/realunit-app-handbook:latest
       smoke_url: https://handbook.realunit.app/healthz
     secrets:

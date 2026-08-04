@@ -476,6 +476,30 @@
         flex-wrap: wrap;
         gap: 12px;
       }
+      .test .img.img-multi > div {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+      }
+      /* Must come after the unconditional base rules above (not inside the
+         earlier 700px media query near .tests.cols-2/.cols-3): two rules
+         with equal selector specificity resolve by source order, so an
+         override living in an earlier media-query block would otherwise
+         lose to this file's later, unconditional base rule regardless of
+         viewport width. */
+      @media (max-width: 700px) {
+        .test .img.img-multi {
+          flex-direction: column;
+          align-items: center;
+        }
+        .test .img.img-multi > div {
+          flex: none;
+          width: 100%;
+        }
+      }
+      .test .img.img-multi > div img {
+        max-width: 100%;
+      }
       .test .img img {
         max-width: 220px;
         height: auto;
@@ -1099,8 +1123,8 @@
               auf dem self-hosted Runner (Hardware-Determinismus) → neue Baseline committen →
               <code>handbook-deploy.yaml</code> baut das Docker-Image aus dem gepushten Branch
               und assembliert die 52 Slots aus <code>test/goldens/screens/</code> → Push auf
-              <code>staging</code> deployt das DEV-Image, Push auf <code>develop</code> das
-              PRD-Image, beide via Cloudflare Tunnel.
+              <code>staging</code> deployt das Handbook-Image nach Produktion, via
+              Cloudflare Tunnel.
             </p>
           </div>
         </section>
@@ -7983,6 +8007,27 @@
                 <button class="copy-link" type="button" data-target="insider-unlock" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
                 <span class="src">settings_page_default.png · dashboard_with_balance.png · dashboard_insider_unlocked.png</span>
               </div>
+              <div class="desc">
+                <p>Anleitung:</p>
+                <ol>
+                  <li>Einstellungen öffnen (Hamburger-Icon rechts oben im Dashboard).</li>
+                  <li>Ganz nach unten scrollen bis zur Versionsnummer.</li>
+                  <li>Siebenmal kurz hintereinander auf die Versionsnummer tippen.</li>
+                  <li>Es erscheint die Bestätigung „Insider-Funktionen freigeschaltet".</li>
+                  <li>
+                    Zurück im Dashboard stehen neben <b>Kaufen</b> und <b>Verkaufen</b> neu
+                    <b>Bezahlen</b> und <b>Senden</b>.
+                  </li>
+                </ol>
+                <p>
+                  Die Freischaltung bleibt dauerhaft auf dem Gerät erhalten (auch nach
+                  App-Neustart) — sie wird lokal per <code>SharedPreferences</code>
+                  gespeichert. Eine Neuinstallation der App setzt sie zurück.
+                  OpenCryptoPay-Zahlungslinks funktionieren unabhängig von der
+                  Freischaltung — der Deeplink bleibt bewusst immer offen. Tippen auf die
+                  Versionsnummer nach erfolgter Freischaltung hat keine Wirkung mehr.
+                </p>
+              </div>
               <div class="img img-multi">
                 <div>
                   <img
@@ -8005,27 +8050,6 @@
                   />
                   <p><em>Nachher: alle vier Aktionen.</em></p>
                 </div>
-              </div>
-              <div class="desc">
-                <p>Anleitung:</p>
-                <ol>
-                  <li>Einstellungen öffnen (Hamburger-Icon rechts oben im Dashboard).</li>
-                  <li>Ganz nach unten scrollen bis zur Versionsnummer.</li>
-                  <li>Siebenmal kurz hintereinander auf die Versionsnummer tippen.</li>
-                  <li>Es erscheint die Bestätigung „Insider-Funktionen freigeschaltet".</li>
-                  <li>
-                    Zurück im Dashboard stehen neben <b>Kaufen</b> und <b>Verkaufen</b> neu
-                    <b>Bezahlen</b> und <b>Senden</b>.
-                  </li>
-                </ol>
-                <p>
-                  Die Freischaltung bleibt dauerhaft auf dem Gerät erhalten (auch nach
-                  App-Neustart) — sie wird lokal per <code>SharedPreferences</code>
-                  gespeichert. Eine Neuinstallation der App setzt sie zurück.
-                  OpenCryptoPay-Zahlungslinks funktionieren unabhängig von der
-                  Freischaltung — der Deeplink bleibt bewusst immer offen. Tippen auf die
-                  Versionsnummer nach erfolgter Freischaltung hat keine Wirkung mehr.
-                </p>
               </div>
             </div>
             <div class="test" id="269-dashboard-insider-unlocked">
@@ -8472,9 +8496,8 @@
             Eine Änderung an der Website im
             <a href="https://github.com/RealUnitCH/web">RealUnitCH/web</a>-Repo löst
             hier <b>keinen</b> automatischen Rebuild aus. Die neuen Baselines werden
-            mit dem nächsten Handbook-Deploy (Push auf <code>staging</code> → DEV
-            bzw. <code>develop</code> → PRD mit handbook-relevanten Pfaden oder
-            manueller <code>workflow_dispatch</code> auf
+            mit dem nächsten Handbook-Deploy (Push auf <code>staging</code> → PRD,
+            oder manueller <code>workflow_dispatch --ref staging</code> auf
             <code>handbook-deploy.yaml</code> im realunit-app-Repo) reingezogen.
             Kommt im web-Repo eine View hinzu oder weg, failt der Handbook-Build am
             <code>EXPECTED_WEB_BASELINE_COUNT</code>-Guard, bis Zahl und Karten hier
@@ -8524,9 +8547,8 @@
             Eine Änderung an Mail-Vorlage, i18n-Übersetzung oder
             Generator-Skript im api-Repo löst hier <b>keinen</b> automatischen
             Rebuild aus. Die neue Version wird mit dem nächsten
-            Handbook-Deploy (Push auf <code>staging</code> → DEV bzw.
-            <code>develop</code> → PRD mit handbook-relevanten Pfaden oder
-            manueller <code>workflow_dispatch</code> auf
+            Handbook-Deploy (Push auf <code>staging</code> → PRD, oder
+            manueller <code>workflow_dispatch --ref staging</code> auf
             <code>handbook-deploy.yaml</code> im realunit-app-Repo) reingezogen.
           </p>
         </details>

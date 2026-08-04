@@ -1,8 +1,32 @@
 name: Handbook Build Check
 
-# PR-only build verification for Dockerfile.handbook + the Goldens-assembled
-# screenshots. Does NOT push to Docker Hub and does NOT deploy — that
-# remains the job of handbook-deploy.yaml (staging push → DEV, develop push → PRD).
+# PR-only build verification for the handbook CONTENT. Gates four things
+# before a staging merge, all pure content checks with no live deploy:
+#   - screenshot-assembly: scripts/assemble-handbook-screenshots.sh runs and
+#                           produces the expected PNG count
+#   - store-listing sync:  scripts/assemble-handbook-store-listing.py output
+#                           matches the committed handbook (+ its HTML
+#                           sanitizer strips injection payloads)
+#   - legal-sync:           scripts/assemble-handbook-legal.py output
+#                           matches the committed handbook
+#   - image build + container smoke:
+#                           `docker build` (no push) + a container smoke
+#                           test: /healthz answers and /de/ sits behind the
+#                           auth wall. The HTTP probes do not establish
+#                           per-file existence (the auth gate answers 401
+#                           before nginx ever looks a file up): screenshots
+#                           are proven by their explicit count guard above,
+#                           legal downloads by build-legal-downloads.sh's
+#                           fail-fast per-base existence check during the
+#                           image build
+#
+# Does NOT check out DFXswiss/api or RealUnitCH/web (those only happen in
+# the real build inside handbook.yaml) and does NOT push to Docker Hub or
+# deploy — that remains the job of handbook-deploy.yaml (staging push →
+# PRD). The paths filter below mirrors the CONTENT inputs of the handbook
+# image plus this workflow itself; the deploy WIRING (SSH, secrets,
+# server rollout) are exercised exclusively by the deploy run, not by this
+# check.
 #
 # Path filter covers everything that goes into the handbook image:
 #   - docs/handbook/**            handbook HTML, README, en/de subtrees

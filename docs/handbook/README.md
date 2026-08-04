@@ -17,7 +17,7 @@ open docs/handbook/de/index.html
 ```
 
 Den gleichen Multi-Stage-Build macht `Dockerfile.handbook` automatisch beim
-deployten Image (`handbook.realunit.app` / `dev-handbook.realunit.app`).
+deployten Image (`handbook.realunit.app`).
 
 ## Screenshots regenerieren
 
@@ -37,7 +37,7 @@ Workflow:
    `github-actions[bot]` zurück auf den Branch (siehe
    [`../visual-regression-tests.md`](../visual-regression-tests.md))
 4. Pullen → der nächste Handbook-Deploy zeigt die neue Baseline automatisch
-   (Push auf `staging` → DEV bzw. `develop` → PRD).
+   (Push auf `staging` → PRD).
 
 ## Selektive Läufe (Teilmenge)
 
@@ -117,32 +117,33 @@ divergieren Image-Stand und Source-of-Truth.
 
 ### Trigger
 
-Der Handbook-Deploy läuft pro Branch in genau ein Environment: ein `push`
-auf `staging` deployt nach **DEV** (`dev-handbook.realunit.app`), ein `push`
-auf `develop` nach **PRD** (`handbook.realunit.app`) — jeweils mit Änderungen
-unter handbook-relevanten Pfaden (siehe `handbook-deploy.yaml`) oder per
-manuellem `workflow_dispatch` auf `handbook-deploy.yaml` in **diesem** Repo
-(das Ziel-Environment richtet sich nach dem dispatchten Branch). DEV und PRD
-nutzen getrennte Image-Tags (`:beta` bzw. `:latest`), damit sich staging- und
-develop-Builds nicht gegenseitig überschreiben. Eine reine Mail-Template-,
-i18n- oder Generator-Änderung im api-Repo löst **keinen** automatischen
-Rebuild aus — sie fliesst erst mit dem nächsten Handbook-Deploy hier rein.
+Der Handbook-Deploy läuft in genau ein Environment (PRD): jeder `push` auf
+`staging` deployt `handbook.realunit.app` (Image `:latest`) — es gibt keinen
+Pfad-Filter mehr, jeder Merge nach `staging` löst den Deploy aus, unabhängig
+davon, welche Dateien er ändert. Alternativ per manuellem `workflow_dispatch`
+auf `handbook-deploy.yaml` in **diesem** Repo. Die frühere separate
+DEV-Instanz (`dev-handbook.realunit.app`, Image `:beta`) ist stillgelegt und
+wird nicht mehr bespielt; das Sicherheitsnetz für Handbook-INHALTE ist jetzt
+der PR-Check `handbook-build-check.yaml`, der bei jedem handbook-relevanten
+PR läuft (Screenshot-Assemblierung, Store-Listing-Sync, Legal-Sync sowie
+Image-Build + Container-Smoke) — die Deploy-VERDRAHTUNG selbst (SSH/Secrets/
+Rollout in `handbook-deploy.yaml`) prüft erst der Deploy-Lauf selbst. Eine
+reine Mail-Template-, i18n- oder Generator-Änderung im api-Repo löst
+**keinen** automatischen Rebuild aus — sie fliesst erst mit dem nächsten
+Handbook-Deploy hier rein.
 
 Wer eine reine Mail-Änderung sofort live haben will, hat zwei Optionen
 im realunit-app-Repo:
 
 ```bash
-# Variante A: No-op-Touch unter einem handbook-relevanten Pfad,
-# damit der path-Filter von handbook-deploy.yaml zieht. `--allow-empty`
-# alleine reicht NICHT — der Push muss eine Datei unter docs/handbook/
-# (oder Dockerfile.handbook / handbook.nginx.conf / handbook.htpasswd /
-# einen der beiden handbook-Workflows) tatsächlich anfassen.
+# Variante A: No-op-Touch, dann push auf staging — es gibt keinen
+# Pfad-Filter mehr, jeder Push auf staging löst den Deploy aus.
 touch docs/handbook/.sync && git add docs/handbook/.sync \
   && git commit -m "chore(handbook): pull latest mail templates from api" \
-  && git push origin develop
+  && git push origin staging
 
 # Variante B: manuell dispatchen (kein Commit nötig)
-gh workflow run handbook-deploy.yaml --ref develop
+gh workflow run handbook-deploy.yaml --ref staging
 ```
 
 ### Lokal regenerieren
@@ -236,15 +237,15 @@ Handbook-Build eingezogen: der Step "Stage web e2e baselines from web repo" in
 `tests/__screenshots__/{desktop-chromium,tablet-chromium,mobile-safari}/` nach
 `docs/handbook/web/` (gitignored). Single Source of Truth ist das web-Repo; die
 Ref bleibt — wie der api-Checkout — auf `develop` gepinnt (Integrations-Branch =
-aktuell akzeptierte Baselines), unabhängig vom DEV/PRD-Ziel.
+aktuell akzeptierte Baselines), unabhängig vom Deploy-Branch `staging`.
 
 Kommt im web-Repo eine View hinzu oder weg, failt der Build am
 `EXPECTED_WEB_BASELINE_COUNT`-Guard des Steps — dann die Zahl in `handbook.yaml`
 **und** die Bild-Karten in `#spec-web` (`docs/handbook/de/index.html`) im selben
 Zug anpassen. Eine reine Website-Änderung im web-Repo löst hier **keinen**
 automatischen Rebuild aus — sie fliesst erst mit dem nächsten Handbook-Deploy
-rein (Push auf `staging` → DEV bzw. `develop` → PRD, oder manueller
-`workflow_dispatch` auf `handbook-deploy.yaml`).
+rein (Push auf `staging` → PRD, oder manueller `workflow_dispatch --ref staging`
+auf `handbook-deploy.yaml`).
 
 ### Lokal ansehen
 
