@@ -37,7 +37,7 @@ Workflow:
    `github-actions[bot]` zurück auf den Branch (siehe
    [`../visual-regression-tests.md`](../visual-regression-tests.md))
 4. Pullen → der nächste Handbook-Deploy zeigt die neue Baseline automatisch
-   (Push auf `staging` → DEV bzw. `develop` → PRD).
+   (Push auf `staging` → PRD).
 
 ## Selektive Läufe (Teilmenge)
 
@@ -123,11 +123,13 @@ Pfad-Filter mehr, jeder Merge nach `staging` löst den Deploy aus, unabhängig
 davon, welche Dateien er ändert. Alternativ per manuellem `workflow_dispatch`
 auf `handbook-deploy.yaml` in **diesem** Repo. Die frühere separate
 DEV-Instanz (`dev-handbook.realunit.app`, Image `:beta`) ist stillgelegt und
-wird nicht mehr bespielt; das Sicherheitsnetz vor dem Deploy ist jetzt der
-PR-Check `handbook-build-check.yaml`, der vor jedem Merge nach `staging`
-laufen muss. Eine reine Mail-Template-, i18n- oder Generator-Änderung im
-api-Repo löst **keinen** automatischen Rebuild aus — sie fliesst erst mit
-dem nächsten Handbook-Deploy hier rein.
+wird nicht mehr bespielt; das Sicherheitsnetz für Handbook-INHALTE ist jetzt
+der PR-Check `handbook-build-check.yaml`, der bei jedem handbook-relevanten
+PR läuft (Image-Build + Smoke) — die Deploy-VERDRAHTUNG selbst (SSH/Secrets/
+Rollout in `handbook-deploy.yaml`) prüft erst der Deploy-Lauf selbst. Eine
+reine Mail-Template-, i18n- oder Generator-Änderung im api-Repo löst
+**keinen** automatischen Rebuild aus — sie fliesst erst mit dem nächsten
+Handbook-Deploy hier rein.
 
 Wer eine reine Mail-Änderung sofort live haben will, hat zwei Optionen
 im realunit-app-Repo:
@@ -234,15 +236,15 @@ Handbook-Build eingezogen: der Step "Stage web e2e baselines from web repo" in
 `tests/__screenshots__/{desktop-chromium,tablet-chromium,mobile-safari}/` nach
 `docs/handbook/web/` (gitignored). Single Source of Truth ist das web-Repo; die
 Ref bleibt — wie der api-Checkout — auf `develop` gepinnt (Integrations-Branch =
-aktuell akzeptierte Baselines), unabhängig vom DEV/PRD-Ziel.
+aktuell akzeptierte Baselines), unabhängig vom Deploy-Branch `staging`.
 
 Kommt im web-Repo eine View hinzu oder weg, failt der Build am
 `EXPECTED_WEB_BASELINE_COUNT`-Guard des Steps — dann die Zahl in `handbook.yaml`
 **und** die Bild-Karten in `#spec-web` (`docs/handbook/de/index.html`) im selben
 Zug anpassen. Eine reine Website-Änderung im web-Repo löst hier **keinen**
 automatischen Rebuild aus — sie fliesst erst mit dem nächsten Handbook-Deploy
-rein (Push auf `staging` → DEV bzw. `develop` → PRD, oder manueller
-`workflow_dispatch` auf `handbook-deploy.yaml`).
+rein (Push auf `staging` → PRD, oder manueller `workflow_dispatch --ref staging`
+auf `handbook-deploy.yaml`).
 
 ### Lokal ansehen
 

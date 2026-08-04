@@ -1,11 +1,12 @@
 name: Handbook Build Check
 
-# PR-only build verification for Dockerfile.handbook + the Goldens-assembled
-# screenshots. Does NOT push to Docker Hub and does NOT deploy — that
-# remains the job of handbook-deploy.yaml (staging push → PRD). This check
-# is the safety net before the merge: staging pushes now deploy directly to
-# PRD, so this must be green before a change reaches staging in the first
-# place.
+# PR-only build verification for the handbook CONTENT: Dockerfile.handbook +
+# the Goldens-assembled screenshots (image build + a container smoke test).
+# Does NOT push to Docker Hub and does NOT deploy — that remains the job of
+# handbook-deploy.yaml (staging push → PRD). This check gates handbook
+# CONTENT changes before a staging merge; it does not exercise the deploy
+# WIRING itself (SSH, secrets, server rollout) — that is only validated by
+# the actual deploy run.
 #
 # Path filter covers everything that goes into the handbook image:
 #   - docs/handbook/**            handbook HTML, README, en/de subtrees
@@ -43,6 +44,8 @@ on:
       - "Dockerfile.handbook"
       - "handbook.nginx.conf"
       - "handbook.htpasswd"
+      - ".github/workflows/handbook.yaml"
+      - ".github/workflows/handbook-deploy.yaml"
       - ".github/workflows/handbook-build-check.yaml"
 
 permissions:

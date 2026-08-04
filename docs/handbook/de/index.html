@@ -396,6 +396,14 @@
         .tests.cols-3 {
           grid-template-columns: 1fr;
         }
+        .test .img.img-multi {
+          flex-direction: column;
+          align-items: center;
+        }
+        .test .img.img-multi > div {
+          flex: none;
+          width: 100%;
+        }
       }
       .test {
         background: var(--surface);
@@ -480,6 +488,9 @@
         flex: 1 1 0;
         min-width: 0;
         text-align: center;
+      }
+      .test .img.img-multi > div img {
+        max-width: 100%;
       }
       .test .img img {
         max-width: 220px;

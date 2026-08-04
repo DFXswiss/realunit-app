@@ -299,8 +299,8 @@ jobs:
       # balance artifacts above, we pull them in at build time instead of
       # committing them here, so a re-accepted web baseline flows into the
       # handbook image on the next build without a manual sync PR. The web ref
-      # stays `develop` for both environments (it does not track the handbook's
-      # staging/develop split) — mirroring the api@develop pin above: develop is
+      # stays `develop` regardless of the handbook's single deploy branch
+      # (`staging`) — mirroring the api@develop pin above: develop is
       # RealUnitCH/web's integration branch, i.e. the latest accepted baselines.
       # RealUnitCH/web is a PUBLIC repo, so the runner's default GITHUB_TOKEN is
       # enough to clone it (no cross-repo PAT). If it is ever flipped to private,
