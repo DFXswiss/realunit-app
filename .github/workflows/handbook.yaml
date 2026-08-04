@@ -3,12 +3,13 @@ name: Handbook reusable CI/CD
 # Reusable workflow that builds the handbook nginx image, publishes it to
 # Docker Hub, and tells the target server to pull + recreate the container.
 #
-# Caller (handbook-deploy.yaml) provides the per-environment parameters
-# (source ref, tag, smoke URL, deploy secrets) so the deploy logic itself
-# lives in exactly one place. Each pushed branch is an independent caller
-# run — staging → DEV, develop → PRD — so there is no DEV→PRD `needs:`
-# ordering here; "DEV green before PRD" comes from the staging→develop
-# promotion flow (see handbook-deploy.yaml header).
+# Caller (handbook-deploy.yaml) provides the PRD parameters (source ref,
+# tag, smoke URL, deploy secrets) so the deploy logic itself lives in
+# exactly one place. A push to staging deploys directly to PRD
+# (handbook.realunit.app); the former DEV instance is retired. There is no
+# DEV→PRD `needs:` ordering here — the PR check (handbook-build-check.yaml)
+# is now what must pass before a change can reach staging in the first
+# place (see handbook-deploy.yaml header).
 #
 # Mirrors the shared SSH-deploy workflow templates from the internal ops repo.
 
@@ -20,11 +21,11 @@ on:
         required: true
         type: string
       ref:
-        description: "Git ref of THIS repo to build the handbook from — the pushed branch (staging for DEV, develop for PRD). Determines the deployed handbook 'Stand'."
+        description: "Git ref of THIS repo to build the handbook from — staging (the sole deploy source; DEV is retired). Determines the deployed handbook 'Stand'."
         required: true
         type: string
       docker_tag:
-        description: "Full Docker image tag, e.g. dfxswiss/realunit-app-handbook:beta (DEV) / :latest (PRD)"
+        description: "Full Docker image tag, e.g. dfxswiss/realunit-app-handbook:latest (PRD)"
         required: true
         type: string
       smoke_url:
@@ -63,25 +64,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Build the handbook from the environment's source branch: staging
-          # for DEV, develop for PRD (passed by handbook-deploy.yaml as the
-          # pushed branch). This ref governs the deployed handbook content;
-          # the DFXswiss/api checkout below is a SEPARATE, intentionally
-          # develop-pinned source for the mail previews and does not vary
-          # with this input.
+          # Build the handbook from staging — the only branch that deploys
+          # now (passed by handbook-deploy.yaml as the pushed branch; the
+          # former develop-triggered DEV/PRD split is retired). This ref
+          # governs the deployed handbook content; the DFXswiss/api checkout
+          # below is a SEPARATE, intentionally develop-pinned source for the
+          # mail previews and does not vary with this input.
           ref: ${{ inputs.ref }}
 
       # RealUnit mail previews are the single source of truth in DFXswiss/api
       # (scripts/generate-realunit-previews.js). We pull them in at build time
       # instead of checking them into this repo, so a change to a template or
       # i18n string in the api repo flows into the handbook image on the next
-      # build without a manual sync PR. A handbook-relevant push to staging
-      # (→DEV) or develop (→PRD) — or a manual workflow_dispatch on
-      # handbook-deploy.yaml in this repo — rebuilds the image and re-pulls
-      # api@develop here — so mail-template changes in the api repo only flow
-      # in after such a push/dispatch in this repo. There is NO auto-dispatch
-      # from the api repo. The api ref stays `develop` for both environments
-      # (it does not track the handbook's staging/develop split).
+      # build without a manual sync PR. A push to staging (→ PRD) — or a
+      # manual workflow_dispatch on handbook-deploy.yaml in this repo —
+      # rebuilds the image and re-pulls api@develop here — so mail-template
+      # changes in the api repo only flow in after such a push/dispatch in
+      # this repo. There is NO auto-dispatch from the api repo. The api ref
+      # stays `develop` regardless of the handbook's own deploy branch.
       - name: Check out DFXswiss/api at develop into _api-checkout/
         uses: actions/checkout@v4
         with:
