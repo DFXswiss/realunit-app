@@ -10,14 +10,18 @@ name: Handbook Build Check
 #   - legal-sync:           scripts/assemble-handbook-legal.py output
 #                           matches the committed handbook
 #   - image build + smoke:  `docker build` (no push) + a container smoke
-#                           test against /healthz, /de/ (auth wall), the
-#                           assembled screenshots, and the legal downloads
+#                           test: /healthz answers and /de/ sits behind the
+#                           auth wall. Per-file existence of screenshots and
+#                           legal downloads is proven by the assembly steps
+#                           and their count guards above, not by the HTTP
+#                           probes (the auth gate answers 401 before nginx
+#                           ever looks a file up)
 #
 # Does NOT check out DFXswiss/api or RealUnitCH/web (those only happen in
 # the real build inside handbook.yaml) and does NOT push to Docker Hub or
 # deploy — that remains the job of handbook-deploy.yaml (staging push →
-# PRD). The paths filter below mirrors exactly the CONTENT inputs of the
-# handbook image; the workflow files / deploy WIRING itself (SSH, secrets,
+# PRD). The paths filter below mirrors the CONTENT inputs of the handbook
+# image plus this workflow itself; the deploy WIRING (SSH, secrets,
 # server rollout) are exercised exclusively by the deploy run, not by this
 # check.
 #
