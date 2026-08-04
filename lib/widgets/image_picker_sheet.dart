@@ -1,3 +1,8 @@
+// @no-integration-test: ImagePickerSheet drives image_picker camera/gallery
+// MethodChannels and can only be exercised on a real device with live media
+// access. Callers (support attach path, KYC FilePickerField) are unit-tested
+// with injected XFiles above this boundary; the sheet itself is out of scope
+// for widget tests.
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:realunit_wallet/generated/i18n.dart';

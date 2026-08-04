@@ -149,6 +149,46 @@ void main() {
       expect(body!.containsKey('message'), isFalse);
     });
 
+    test('createTicket with attachment includes file and fileName in the body', () async {
+      Map<String, dynamic>? body;
+      final client = MockClient((request) async {
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode(_ticketJson(uid: 'with-file')), 201);
+      });
+
+      await build(client).createTicket(
+        type: SupportIssueType.bugReport,
+        reason: SupportIssueReason.other,
+        name: 'Bug Report',
+        message: 'see screenshot',
+        file: 'data:image/jpeg;base64,abc123',
+        fileName: 'shot.jpg',
+      );
+
+      expect(body!['file'], 'data:image/jpeg;base64,abc123');
+      expect(body!['fileName'], 'shot.jpg');
+      expect(body!['message'], 'see screenshot');
+    });
+
+    test('createTicket without attachment omits file and fileName entirely', () async {
+      Map<String, dynamic>? body;
+      final client = MockClient((request) async {
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response(jsonEncode(_ticketJson(uid: 'no-file')), 201);
+      });
+
+      await build(client).createTicket(
+        type: SupportIssueType.genericIssue,
+        reason: SupportIssueReason.other,
+        name: 'General Issue',
+        message: 'text only',
+      );
+
+      expect(body!.containsKey('file'), isFalse);
+      expect(body!.containsKey('fileName'), isFalse);
+      expect(body!['message'], 'text only');
+    });
+
     test('createTicket throws ApiException on non-201 (even on 200)', () async {
       final client = MockClient((_) async => http.Response(
             jsonEncode({'statusCode': 200, 'message': 'wrong code'}),
@@ -174,10 +214,30 @@ void main() {
         return http.Response('{}', 201);
       });
 
-      await build(client).sendMessage('uid-1', 'hello there');
+      await build(client).sendMessage('uid-1', message: 'hello there');
 
       expect(path, '/v1/support/issue/uid-1/message');
       expect(body!['message'], 'hello there');
+      expect(body!.containsKey('file'), isFalse);
+      expect(body!.containsKey('fileName'), isFalse);
+    });
+
+    test('sendMessage with attachment and no text sends file+fileName only', () async {
+      Map<String, dynamic>? body;
+      final client = MockClient((request) async {
+        body = jsonDecode(request.body) as Map<String, dynamic>;
+        return http.Response('{}', 201);
+      });
+
+      await build(client).sendMessage(
+        'uid-1',
+        file: 'data:image/png;base64,xyz',
+        fileName: 'img.png',
+      );
+
+      expect(body!['file'], 'data:image/png;base64,xyz');
+      expect(body!['fileName'], 'img.png');
+      expect(body!.containsKey('message'), isFalse);
     });
 
     test('sendMessage throws ApiException on non-201', () async {
@@ -187,7 +247,7 @@ void main() {
           ));
 
       expect(
-        () => build(client).sendMessage('uid', 'm'),
+        () => build(client).sendMessage('uid', message: 'm'),
         throwsA(isA<ApiException>()),
       );
     });
