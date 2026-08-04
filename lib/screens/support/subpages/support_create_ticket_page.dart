@@ -6,9 +6,11 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_support_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue_type.dart';
 import 'package:realunit_wallet/screens/support/cubits/support_create_ticket/support_create_ticket_cubit.dart';
 import 'package:realunit_wallet/screens/support/cubits/support_create_ticket/support_create_ticket_state.dart';
+import 'package:realunit_wallet/screens/support/widgets/support_attachment_field.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/image_picker_sheet.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 import 'package:realunit_wallet/widgets/tag_selection.dart';
 
@@ -97,7 +99,10 @@ class SupportCreateTicketView extends StatelessWidget {
                             ),
                           ],
                           selected: state.selectedType,
-                          onSelected: context.read<SupportCreateTicketCubit>().selectType,
+                          // null onSelected disables every ChoiceChip while submit runs.
+                          onSelected: state.isSubmitting
+                              ? null
+                              : context.read<SupportCreateTicketCubit>().selectType,
                         ),
                       ],
                     ),
@@ -113,6 +118,7 @@ class SupportCreateTicketView extends StatelessWidget {
                         ),
                         TextField(
                           onChanged: context.read<SupportCreateTicketCubit>().updateMessage,
+                          enabled: !state.isSubmitting,
                           maxLines: 5,
                           decoration: InputDecoration(
                             hintText: S.of(context).supportEnterMessage,
@@ -135,6 +141,18 @@ class SupportCreateTicketView extends StatelessWidget {
                               ),
                             ),
                           ),
+                        ),
+                        SupportAttachmentField(
+                          selectedFile: state.attachment,
+                          enabled: !state.isSubmitting,
+                          onTap: () async {
+                            final file = await ImagePickerSheet.show(context);
+                            if (file != null && context.mounted) {
+                              context.read<SupportCreateTicketCubit>().selectAttachment(file);
+                            }
+                          },
+                          onRemove: () =>
+                              context.read<SupportCreateTicketCubit>().clearAttachment(),
                         ),
                       ],
                     ),
