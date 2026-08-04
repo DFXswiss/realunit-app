@@ -50,7 +50,7 @@ class SupportCreateTicketCubit extends Cubit<SupportCreateTicketState> {
     final attachment = state.attachment;
     final selectedType = state.selectedType!;
     final selectedReason = state.selectedReason!;
-    final message = state.message;
+    final message = state.message.trim();
     if (isClosed) return;
     emit(state.copyWith(isSubmitting: true, error: null));
 
