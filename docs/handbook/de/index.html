@@ -476,6 +476,11 @@
         flex-wrap: wrap;
         gap: 12px;
       }
+      .test .img.img-multi > div {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+      }
       .test .img img {
         max-width: 220px;
         height: auto;
@@ -7983,6 +7988,27 @@
                 <button class="copy-link" type="button" data-target="insider-unlock" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
                 <span class="src">settings_page_default.png · dashboard_with_balance.png · dashboard_insider_unlocked.png</span>
               </div>
+              <div class="desc">
+                <p>Anleitung:</p>
+                <ol>
+                  <li>Einstellungen öffnen (Hamburger-Icon rechts oben im Dashboard).</li>
+                  <li>Ganz nach unten scrollen bis zur Versionsnummer.</li>
+                  <li>Siebenmal kurz hintereinander auf die Versionsnummer tippen.</li>
+                  <li>Es erscheint die Bestätigung „Insider-Funktionen freigeschaltet".</li>
+                  <li>
+                    Zurück im Dashboard stehen neben <b>Kaufen</b> und <b>Verkaufen</b> neu
+                    <b>Bezahlen</b> und <b>Senden</b>.
+                  </li>
+                </ol>
+                <p>
+                  Die Freischaltung bleibt dauerhaft auf dem Gerät erhalten (auch nach
+                  App-Neustart) — sie wird lokal per <code>SharedPreferences</code>
+                  gespeichert. Eine Neuinstallation der App setzt sie zurück.
+                  OpenCryptoPay-Zahlungslinks funktionieren unabhängig von der
+                  Freischaltung — der Deeplink bleibt bewusst immer offen. Tippen auf die
+                  Versionsnummer nach erfolgter Freischaltung hat keine Wirkung mehr.
+                </p>
+              </div>
               <div class="img img-multi">
                 <div>
                   <img
@@ -8005,27 +8031,6 @@
                   />
                   <p><em>Nachher: alle vier Aktionen.</em></p>
                 </div>
-              </div>
-              <div class="desc">
-                <p>Anleitung:</p>
-                <ol>
-                  <li>Einstellungen öffnen (Hamburger-Icon rechts oben im Dashboard).</li>
-                  <li>Ganz nach unten scrollen bis zur Versionsnummer.</li>
-                  <li>Siebenmal kurz hintereinander auf die Versionsnummer tippen.</li>
-                  <li>Es erscheint die Bestätigung „Insider-Funktionen freigeschaltet".</li>
-                  <li>
-                    Zurück im Dashboard stehen neben <b>Kaufen</b> und <b>Verkaufen</b> neu
-                    <b>Bezahlen</b> und <b>Senden</b>.
-                  </li>
-                </ol>
-                <p>
-                  Die Freischaltung bleibt dauerhaft auf dem Gerät erhalten (auch nach
-                  App-Neustart) — sie wird lokal per <code>SharedPreferences</code>
-                  gespeichert. Eine Neuinstallation der App setzt sie zurück.
-                  OpenCryptoPay-Zahlungslinks funktionieren unabhängig von der
-                  Freischaltung — der Deeplink bleibt bewusst immer offen. Tippen auf die
-                  Versionsnummer nach erfolgter Freischaltung hat keine Wirkung mehr.
-                </p>
               </div>
             </div>
             <div class="test" id="269-dashboard-insider-unlocked">
