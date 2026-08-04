@@ -63,6 +63,25 @@ void main() {
         verify(() => repo.write('cached_signature_message', 'sign-message')).called(1);
       });
 
+      test('re-saving the identical address+signature without a message keeps the stored message', () async {
+        await cache.saveSignature('0xabc', '0xsig', 'sign-message');
+
+        await cache.saveSignature('0xabc', '0xsig');
+
+        expect(cache.signedMessage, 'sign-message');
+        verify(() => repo.write('cached_signature_message', 'sign-message')).called(2);
+        verifyNever(() => repo.delete('cached_signature_message'));
+      });
+
+      test('saving a different signature without a message drops the persisted message', () async {
+        await cache.saveSignature('0xabc', '0xsig', 'sign-message');
+
+        await cache.saveSignature('0xabc', '0xother');
+
+        expect(cache.signedMessage, isNull);
+        verify(() => repo.delete('cached_signature_message')).called(1);
+      });
+
       test('loadSignature populates from the repo when memory is empty', () async {
         when(() => repo.read('cached_signature')).thenAnswer((_) async => '0xsig');
         when(() => repo.read('cached_signature_address')).thenAnswer((_) async => '0xabc');

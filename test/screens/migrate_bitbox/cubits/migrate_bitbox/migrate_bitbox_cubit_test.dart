@@ -853,6 +853,33 @@ void main() {
       });
     });
 
+    test('20 consecutive poll errors also time out without switching wallets', () {
+      // Pins the catch-branch timeout: fetch failures count as attempts and
+      // must reach the same fail-closed SettlingTimeout as unchanged balances.
+      fakeAsync((async) {
+        final cubit = buildCubit(addCloseTearDown: false);
+        cubit.onDevicePaired(draft);
+        drain(async);
+        cubit.startTransfer();
+        cubit.onTransferBroadcast();
+        drain(async);
+        clearInteractions(balanceService);
+        when(() => balanceService.fetchBalance(any()))
+            .thenAnswer((_) async => throw Exception('poll offline'));
+
+        for (var i = 0; i < 20; i++) {
+          async.elapse(const Duration(seconds: 3));
+          drain(async);
+        }
+
+        expect(cubit.state, const MigrateBitboxSettlingTimeout());
+        verifyNever(() => walletService.setCurrentWallet(any()));
+        verify(() => balanceService.fetchBalance(softwareAddress)).called(20);
+        cubit.close();
+        async.flushTimers();
+      });
+    });
+
     test('an unchanged balance times out after 20 attempts without switching wallets', () {
       fakeAsync((async) {
         final cubit = buildCubit(addCloseTearDown: false);
