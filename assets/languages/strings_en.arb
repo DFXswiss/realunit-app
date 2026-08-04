@@ -34,6 +34,7 @@
   "buyPaymentDetailsTitle": "Payment details",
   "buyPaymentInstructionEmail": "Please transfer the purchase amount via bank transfer. We have just sent you the following payment instructions by email as well.",
   "buyPaymentPurposeHint": "Note: The purpose of payment is important! Don't forget to enter it as the payment reference.",
+  "buyRecurringPaymentHint": "Tip: set up a recurring bank standing order with these details to invest regularly. You can also create several plans in parallel with different amounts or intervals.",
   "buyPrimaryEmailRequiredCaptureDescription": "This purchase requires a primary email address on your account. Please add one to continue.",
   "buyRealu": "Buy RealUnit stock tokens",
   "buyRealUnit": "Buy RealUnit",

@@ -70,6 +70,23 @@ class BuyPaymentDetailsPage extends StatelessWidget {
                     ),
                   ],
                 ),
+                Row(
+                  spacing: 12,
+                  crossAxisAlignment: .start,
+                  children: [
+                    const Icon(
+                      Icons.autorenew,
+                      size: 24,
+                      color: RealUnitColors.realUnitBlue,
+                    ),
+                    Expanded(
+                      child: Text(
+                        S.of(context).buyRecurringPaymentHint,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ),
+                  ],
+                ),
                 PaymentDetailsCard(
                   buyPaymentInfo: params.buyPaymentInfo,
                   amount: params.amount,

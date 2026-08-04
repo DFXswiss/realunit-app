@@ -7,6 +7,7 @@ import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/buy_paym
 import 'package:realunit_wallet/screens/buy/buy_payment_details_page.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_details_card.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
+import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/tab_selector.dart';
 
@@ -47,6 +48,16 @@ void main() {
       expect(find.text(S.current.buyPaymentInstructionEmail), findsOneWidget);
       expect(find.text(S.current.buyPaymentPurposeHint), findsOneWidget);
       expect(find.byType(PaymentDetailsCard), findsOneWidget);
+    });
+
+    testWidgets('renders the recurring savings-plan hint with autorenew icon',
+        (tester) async {
+      await tester.pumpApp(BuyPaymentDetailsPage(params: _params()));
+
+      expect(find.text(S.current.buyRecurringPaymentHint), findsOneWidget);
+      final icon = tester.widget<Icon>(find.byIcon(Icons.autorenew));
+      expect(icon.color, RealUnitColors.realUnitBlue);
+      expect(icon.size, 24);
     });
 
     testWidgets('renders the purpose of payment as the Verwendungszweck '
