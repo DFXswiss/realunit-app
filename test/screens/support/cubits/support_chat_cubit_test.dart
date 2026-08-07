@@ -163,6 +163,29 @@ void main() {
       expect((cubit.state as SupportChatLoaded).isSending, isFalse);
     });
 
+    test('sendMessage trims whitespace before posting the message body', () async {
+      when(() => service.getTicket(_ticketUid))
+          .thenAnswer((_) async => _ticket());
+      when(() => service.sendMessage(
+            any(),
+            message: any(named: 'message'),
+            file: any(named: 'file'),
+            fileName: any(named: 'fileName'),
+          )).thenAnswer((_) async {});
+      final cubit = SupportChatCubit(service, _ticketUid);
+      await cubit.stream.firstWhere((s) => s is SupportChatLoaded);
+
+      final ok = await cubit.sendMessage('  hallo  ');
+
+      expect(ok, isTrue);
+      verify(() => service.sendMessage(
+            _ticketUid,
+            message: 'hallo',
+            file: null,
+            fileName: null,
+          )).called(1);
+    });
+
     test('sendMessage clears isSending=true when the service fails', () async {
       when(() => service.getTicket(_ticketUid))
           .thenAnswer((_) async => _ticket());

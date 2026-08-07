@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
@@ -13,14 +16,34 @@ import 'package:realunit_wallet/screens/support/cubits/support_create_ticket/sup
 import 'package:realunit_wallet/screens/support/cubits/support_create_ticket/support_create_ticket_state.dart';
 import 'package:realunit_wallet/screens/support/subpages/support_create_ticket_page.dart';
 import 'package:realunit_wallet/styles/themes.dart';
+import 'package:realunit_wallet/widgets/form/file_preview_field.dart';
 
 import '../../../helper/helper.dart';
 
 class _MockSupportCreateTicketCubit extends MockCubit<SupportCreateTicketState>
     implements SupportCreateTicketCubit {}
 
+/// Stable name shown in the filled-attachment golden (no random/timestamp).
+const _attachedFileName = 'beleg.png';
+
 void main() {
   late _MockSupportCreateTicketCubit cubit;
+  late Directory tempDir;
+  late File imageFile;
+
+  setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('support_create_ticket_golden_');
+    imageFile = File('${tempDir.path}${Platform.pathSeparator}$_attachedFileName');
+    final bytes =
+        await File('assets/icons/realunit_wallet_logo_full.png').readAsBytes();
+    await imageFile.writeAsBytes(bytes);
+  });
+
+  tearDownAll(() async {
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
 
   setUp(() {
     cubit = _MockSupportCreateTicketCubit();
@@ -99,6 +122,57 @@ void main() {
             selectedType: SupportIssueType.genericIssue,
             selectedReason: SupportIssueReason.other,
             message: 'Ich habe eine Frage zu meinem Konto.',
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    // Filled form plus attachment — covers FilePreviewField with a selected
+    // file (cacheWidth / thumbnail path). Image.file decodes on the real async
+    // timeline; the default precacheImages ends in pumpAndSettle, which does
+    // not return here. Poll until RawImage.image is set (decode done), fail
+    // loudly if the budget elapses — never snapshot a blank thumbnail.
+    goldenTest(
+      'filled form with attachment selected',
+      fileName: 'support_create_ticket_page_attached',
+      constraints: phoneConstraints,
+      pumpBeforeTest: (tester) async {
+        final rawImage = find.descendant(
+          of: find.byType(FilePreviewField),
+          matching: find.byType(RawImage),
+        );
+        // Bounded: 60 × 50 ms ≈ 3 s. Breaks early when decode completes.
+        const maxAttempts = 60;
+        for (var i = 0; i < maxAttempts; i++) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 50)),
+          );
+          await tester.pump();
+          if (rawImage.evaluate().isNotEmpty &&
+              tester.widget<RawImage>(rawImage).image != null) {
+            break;
+          }
+        }
+        expect(
+          rawImage,
+          findsOneWidget,
+          reason: 'FilePreviewField should host a RawImage for the attachment',
+        );
+        expect(
+          tester.widget<RawImage>(rawImage).image,
+          isNotNull,
+          reason:
+              'Attachment thumbnail did not decode within ${maxAttempts * 50} ms',
+        );
+      },
+      builder: () {
+        when(() => cubit.state).thenReturn(
+          SupportCreateTicketState(
+            selectedType: SupportIssueType.genericIssue,
+            selectedReason: SupportIssueReason.other,
+            message: 'Ich habe eine Frage zu meinem Konto.',
+            attachment: XFile(imageFile.path),
           ),
         );
         return wrapForGolden(buildSubject());

@@ -7520,7 +7520,7 @@
             </div>
           </summary>
           <p class="spec-intro">
-            Das Formular zum Erfassen eines neuen Support-Tickets: Anliegen-Typ per Tag auswählen, Anliegen im Textfeld beschreiben und absenden.
+            Das Formular zum Erfassen eines neuen Support-Tickets: Anliegen-Typ per Tag auswählen, Anliegen im Textfeld beschreiben, optional ein Bild als <b>Anhang</b> wählen und absenden.
           </p>
 
           <div class="tests cols-2">
@@ -7533,11 +7533,11 @@
               <div class="img">
                 <img
                   src="../screenshots/250-support-create-ticket-page-default.png"
-                  alt="Leeres Formular für neues Ticket"
+                  alt="Leeres Ticket-Formular mit Anhang-Feld"
                 />
               </div>
               <div class="desc">
-                Das leere Formular <b>Neues Ticket erstellen</b> mit der Auswahl <b>Anliegen auswählen</b> (Tags Allgemeines Anliegen, Fehlerbericht, KYC-Problem), dem Nachrichtenfeld und der noch deaktivierten Schaltfläche <b>Senden</b>. So sieht der Nutzer das Formular direkt beim Öffnen, bevor er einen Typ wählt oder etwas eingibt.
+                Das leere Formular <b>Neues Ticket erstellen</b> mit der Auswahl <b>Anliegen auswählen</b> (Tags Allgemeines Anliegen, Fehlerbericht, KYC-Problem), dem Nachrichtenfeld, der Sektion <b>Anhang</b> mit dem Rahmenfeld und Platzhalter <b>Anhang wählen</b> sowie der noch deaktivierten Schaltfläche <b>Senden</b>. So sieht der Nutzer das Formular direkt beim Öffnen, bevor er einen Typ wählt oder etwas eingibt.
               </div>
             </div>
             <div class="test" id="251-support-create-ticket-page-filled">
@@ -7549,11 +7549,11 @@
               <div class="img">
                 <img
                   src="../screenshots/251-support-create-ticket-page-filled.png"
-                  alt="Ticket-Formular ausgefüllt, Senden aktiv"
+                  alt="Ticket-Formular ausgefüllt mit leerem Anhang-Feld, Senden aktiv"
                 />
               </div>
               <div class="desc">
-                Das ausgefüllte Formular mit ausgewähltem Anliegen-Typ und eingegebener Nachricht: Die Schaltfläche <b>Senden</b> ist nun aktiv. Der Nutzer sieht diesen Zustand, sobald er einen Typ gewählt und eine Nachricht erfasst hat und das Ticket abschicken kann.
+                Das ausgefüllte Formular mit ausgewähltem Anliegen-Typ und eingegebener Nachricht: Die Schaltfläche <b>Senden</b> ist nun aktiv. Das Anhang-Feld darunter bleibt leer — der Anhang ist optional und muss fürs Absenden nicht gesetzt sein. Der Nutzer sieht diesen Zustand, sobald er einen Typ gewählt und eine Nachricht erfasst hat und das Ticket abschicken kann.
               </div>
             </div>
             <div class="test" id="252-support-create-ticket-page-submitting">
@@ -7565,11 +7565,11 @@
               <div class="img">
                 <img
                   src="../screenshots/252-support-create-ticket-page-submitting.png"
-                  alt="Ticket wird abgesendet"
+                  alt="Ticket wird abgesendet, Anhang-Feld unverändert"
                 />
               </div>
               <div class="desc">
-                Das Ticket-Formular während des Absendens: Die Schaltfläche <b>Senden</b> zeigt eine Ladeanimation. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange das Ticket an den Server übermittelt wird.
+                Das Ticket-Formular während des Absendens: die Anliegen-Tags und das Nachrichtenfeld sind abgeblendet, die Schaltfläche <b>Senden</b> zeigt eine Ladeanimation. Das Anhang-Feld darunter bleibt unverändert sichtbar. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange das Ticket an den Server übermittelt wird.
               </div>
             </div>
           </div>
@@ -7688,7 +7688,7 @@
             </div>
           </summary>
           <p class="spec-intro">
-            Der Chat-Verlauf zu einem einzelnen Ticket: Nachrichten von Kunde und Support als Sprechblasen, mit Eingabefeld bei offenen Tickets und seinen Lade-, Sende-, Fehler- und Geschlossen-Zuständen.
+            Der Chat-Verlauf zu einem einzelnen Ticket: Nachrichten von Kunde und Support als Sprechblasen, mit Eingabefeld und Büroklammer zum Anhängen eines Bildes bei offenen Tickets sowie Lade-, Sende-, Fehler- und Geschlossen-Zuständen.
           </p>
 
           <div class="tests cols-2">
@@ -7717,11 +7717,11 @@
               <div class="img">
                 <img
                   src="../screenshots/258-support-chat-page-loaded.png"
-                  alt="Geladener Chat mit Nachrichten und Eingabefeld"
+                  alt="Geladener Chat mit Nachrichten, Büroklammer und Eingabefeld"
                 />
               </div>
               <div class="desc">
-                Der geladene Chat eines offenen Tickets: die Kunden-Nachricht als <b>blaue</b>, rechtsbündige Sprechblase und die Antwort des Supports als <b>graue</b>, linksbündige Sprechblase mit Label Support und Uhrzeit. Unten steht das Eingabefeld <b>Nachricht eingeben</b> mit Sende-Schaltfläche bereit.
+                Der geladene Chat eines offenen Tickets: die Kunden-Nachricht als <b>blaue</b>, rechtsbündige Sprechblase und die Antwort des Supports als <b>graue</b>, linksbündige Sprechblase mit Label Support und Uhrzeit. Unten steht links neben dem Eingabefeld <b>Nachricht eingeben</b> eine Büroklammer-Schaltfläche zum Anhängen eines Bildes, rechts die Sende-Schaltfläche.
               </div>
             </div>
             <div class="test" id="259-support-chat-page-sending">
@@ -7733,11 +7733,11 @@
               <div class="img">
                 <img
                   src="../screenshots/259-support-chat-page-sending.png"
-                  alt="Chat-Nachricht wird gesendet"
+                  alt="Chat-Nachricht wird gesendet, Büroklammer sichtbar"
                 />
               </div>
               <div class="desc">
-                Der offene Chat, während eine Nachricht gesendet wird: Das Eingabefeld ist deaktiviert und die Sende-Schaltfläche zeigt statt des Pfeils eine Ladeanimation. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange die Nachricht übermittelt wird.
+                Der offene Chat, während eine Nachricht gesendet wird: dieselbe Büroklammer-Schaltfläche bleibt sichtbar, das Eingabefeld ist deaktiviert und die Sende-Schaltfläche zeigt statt des Pfeils eine Ladeanimation. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange die Nachricht übermittelt wird.
               </div>
             </div>
             <div class="test" id="260-support-chat-page-closed">
