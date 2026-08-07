@@ -19,6 +19,13 @@ import 'package:flutter_test/flutter_test.dart';
 const appleFloorMajor = 15;
 const appleFloorMinor = 0;
 
+/// Build configurations declaring the target at project level: Debug, Release
+/// and Profile. The per-target configurations (Runner, RunnerTests) inherit it
+/// and deliberately carry no value of their own — so this is a count guard: a
+/// new project-level configuration added without a deployment target trips it
+/// instead of silently shipping an unset floor.
+const projectBuildConfigurations = 3;
+
 const podfilePath = 'ios/Podfile';
 const pbxprojPath = 'ios/Runner.xcodeproj/project.pbxproj';
 const appFrameworkInfoPath = 'ios/Flutter/AppFrameworkInfo.plist';
@@ -67,11 +74,14 @@ int comparable(String version, String source) {
 }
 
 void main() {
-  test('every Xcode build configuration declares a deployment target', () {
+  test('every project-level build configuration declares the target', () {
     expect(
       pbxprojTargets(),
-      isNotEmpty,
-      reason: 'no IPHONEOS_DEPLOYMENT_TARGET found in $pbxprojPath',
+      hasLength(projectBuildConfigurations),
+      reason: 'expected exactly $projectBuildConfigurations '
+          'IPHONEOS_DEPLOYMENT_TARGET entries in $pbxprojPath (Debug, Release, '
+          'Profile) — a build configuration was added or removed; give the new '
+          'one a deployment target and update projectBuildConfigurations',
     );
   });
 
