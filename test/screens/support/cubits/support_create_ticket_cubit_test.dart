@@ -228,6 +228,32 @@ void main() {
           )).called(1);
     });
 
+    test('submit() trims whitespace before posting the message body', () async {
+      when(() => service.createTicket(
+            type: any(named: 'type'),
+            reason: any(named: 'reason'),
+            name: any(named: 'name'),
+            message: any(named: 'message'),
+            file: any(named: 'file'),
+            fileName: any(named: 'fileName'),
+          )).thenAnswer((_) async => _ticket());
+      final cubit = SupportCreateTicketCubit(service);
+      cubit.selectType(SupportIssueType.bugReport);
+      cubit.selectReason(SupportIssueReason.other);
+      cubit.updateMessage('  hallo  ');
+
+      await cubit.submit();
+
+      verify(() => service.createTicket(
+            type: SupportIssueType.bugReport,
+            reason: SupportIssueReason.other,
+            name: 'Bug Report',
+            message: 'hallo',
+            file: null,
+            fileName: null,
+          )).called(1);
+    });
+
     test('submit() with attachment forwards data-URI file and fileName', () async {
       when(() => service.createTicket(
             type: any(named: 'type'),

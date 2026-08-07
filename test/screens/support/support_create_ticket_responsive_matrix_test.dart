@@ -4,11 +4,19 @@
 // text-scale matrix when a long German message expands the multiline field.
 // Regression lock for the iPhone SE + textScale 2.0 bug where the CTA was
 // scrolled below the fold inside the legacy Spacer layout.
+//
+// A second group covers the filled-attachment row (48 px thumbnail + long
+// ellipsized file name + 48×48 close target) under the same matrix pressure.
+// Close is scrolled into view first: the field lives in the scrollable body,
+// while the sticky CTA sits outside it.
+import 'dart:io';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue_reason.dart';
@@ -32,6 +40,10 @@ const _longGermanMessage =
     'Wallet und der Status bleibt seit mehreren Tagen auf „in Bearbeitung“. '
     'Können Sie bitte prüfen, was mit der Zahlung passiert ist und mir den '
     'aktuellen Stand mitteilen? Vielen Dank im Voraus.';
+
+/// Long file name so Expanded + ellipsis is under real pressure at large scales.
+const _longAttachmentName =
+    'screenshot_fehler_transaktion_maerz_2026_bankkonto_abgebucht_wallet_status_in_bearbeitung.png';
 
 const _submittableState = SupportCreateTicketState(
   selectedType: SupportIssueType.genericIssue,
@@ -69,6 +81,29 @@ Future<void> _pumpScreen(
 
 void main() {
   late _MockSupportCreateTicketCubit cubit;
+  late Directory tempDir;
+  late File imageFile;
+  late SupportCreateTicketState stateWithAttachment;
+
+  setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp('support_create_ticket_matrix_');
+    imageFile = File('${tempDir.path}${Platform.pathSeparator}$_longAttachmentName');
+    final bytes =
+        await File('assets/icons/realunit_wallet_logo_full.png').readAsBytes();
+    await imageFile.writeAsBytes(bytes);
+    stateWithAttachment = SupportCreateTicketState(
+      selectedType: SupportIssueType.genericIssue,
+      selectedReason: SupportIssueReason.other,
+      message: 'Ich habe ein Problem mit meiner Transaktion.',
+      attachment: XFile(imageFile.path),
+    );
+  });
+
+  tearDownAll(() async {
+    if (await tempDir.exists()) {
+      await tempDir.delete(recursive: true);
+    }
+  });
 
   setUp(() {
     cubit = _MockSupportCreateTicketCubit();
@@ -80,6 +115,7 @@ void main() {
     );
     when(() => cubit.submit()).thenAnswer((_) async {});
     when(() => cubit.updateMessage(any())).thenReturn(null);
+    when(() => cubit.clearAttachment()).thenReturn(null);
   });
 
   Widget buildSubject() => BlocProvider<SupportCreateTicketCubit>.value(
@@ -111,6 +147,55 @@ void main() {
       });
     }
   });
+
+  group(
+    'SupportCreateTicketView responsive matrix with filled attachment '
+    '(CTA + close target tappable after being scrolled into view, no overflow)',
+    () {
+      for (final cell in kFullResponsiveMatrix) {
+        testWidgets(cell.id, (tester) async {
+          when(() => cubit.state).thenReturn(stateWithAttachment);
+          whenListen(
+            cubit,
+            const Stream<SupportCreateTicketState>.empty(),
+            initialState: stateWithAttachment,
+          );
+
+          await withTargetPlatform(cell.device.platform, () async {
+            await expectNoLayoutOverflow(
+              tester,
+              () async {
+                await _pumpScreen(tester, buildSubject(), cell.mediaQuery);
+                await tester.enterText(find.byType(TextField), _longGermanMessage);
+                await tester.pump();
+              },
+              reason: 'overflow with attachment on ${cell.label}',
+            );
+
+            await expectFullyTappable(
+              tester,
+              find.byType(AppFilledButton),
+              within: find.byType(SupportCreateTicketView),
+              reason: '${cell.label}: CTA not tappable with attachment',
+            );
+
+            // Attachment is in the scrollable body (sticky CTA is outside it);
+            // at large text scales the close control may start off-screen.
+            final closeTarget = find.byIcon(Icons.close_rounded);
+            await tester.ensureVisible(closeTarget);
+            await tester.pumpAndSettle();
+
+            await expectFullyTappable(
+              tester,
+              closeTarget,
+              within: find.byType(SupportCreateTicketView),
+              reason: '${cell.label}: close target not tappable',
+            );
+          });
+        });
+      }
+    },
+  );
 
   // Focused regression: iPhone SE 375×667 DE + textScale 2.0 — proven fail
   // pre-fix when a long message expands the multiline field.

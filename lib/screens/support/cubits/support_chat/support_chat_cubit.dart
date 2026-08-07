@@ -64,7 +64,7 @@ class SupportChatCubit extends Cubit<SupportChatState> {
       final base64 = await attachment?.toBase64DataUri();
       await _supportService.sendMessage(
         _ticketUid,
-        message: trimmed.isEmpty ? null : message,
+        message: trimmed.isEmpty ? null : trimmed,
         file: base64,
         fileName: attachment?.name,
       );

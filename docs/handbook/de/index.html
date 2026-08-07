@@ -476,6 +476,30 @@
         flex-wrap: wrap;
         gap: 12px;
       }
+      .test .img.img-multi > div {
+        flex: 1 1 0;
+        min-width: 0;
+        text-align: center;
+      }
+      /* Must come after the unconditional base rules above (not inside the
+         earlier 700px media query near .tests.cols-2/.cols-3): two rules
+         with equal selector specificity resolve by source order, so an
+         override living in an earlier media-query block would otherwise
+         lose to this file's later, unconditional base rule regardless of
+         viewport width. */
+      @media (max-width: 700px) {
+        .test .img.img-multi {
+          flex-direction: column;
+          align-items: center;
+        }
+        .test .img.img-multi > div {
+          flex: none;
+          width: 100%;
+        }
+      }
+      .test .img.img-multi > div img {
+        max-width: 100%;
+      }
       .test .img img {
         max-width: 220px;
         height: auto;
@@ -1099,8 +1123,8 @@
               auf dem self-hosted Runner (Hardware-Determinismus) → neue Baseline committen →
               <code>handbook-deploy.yaml</code> baut das Docker-Image aus dem gepushten Branch
               und assembliert die 52 Slots aus <code>test/goldens/screens/</code> → Push auf
-              <code>staging</code> deployt das DEV-Image, Push auf <code>develop</code> das
-              PRD-Image, beide via Cloudflare Tunnel.
+              <code>staging</code> deployt das Handbook-Image nach Produktion, via
+              Cloudflare Tunnel.
             </p>
           </div>
         </section>
@@ -7496,7 +7520,7 @@
             </div>
           </summary>
           <p class="spec-intro">
-            Das Formular zum Erfassen eines neuen Support-Tickets: Anliegen-Typ per Tag auswählen, Anliegen im Textfeld beschreiben und absenden.
+            Das Formular zum Erfassen eines neuen Support-Tickets: Anliegen-Typ per Tag auswählen, Anliegen im Textfeld beschreiben, optional ein Bild als <b>Anhang</b> wählen und absenden.
           </p>
 
           <div class="tests cols-2">
@@ -7509,11 +7533,11 @@
               <div class="img">
                 <img
                   src="../screenshots/250-support-create-ticket-page-default.png"
-                  alt="Leeres Formular für neues Ticket"
+                  alt="Leeres Ticket-Formular mit Anhang-Feld"
                 />
               </div>
               <div class="desc">
-                Das leere Formular <b>Neues Ticket erstellen</b> mit der Auswahl <b>Anliegen auswählen</b> (Tags Allgemeines Anliegen, Fehlerbericht, KYC-Problem), dem Nachrichtenfeld und der noch deaktivierten Schaltfläche <b>Senden</b>. So sieht der Nutzer das Formular direkt beim Öffnen, bevor er einen Typ wählt oder etwas eingibt.
+                Das leere Formular <b>Neues Ticket erstellen</b> mit der Auswahl <b>Anliegen auswählen</b> (Tags Allgemeines Anliegen, Fehlerbericht, KYC-Problem), dem Nachrichtenfeld, der Sektion <b>Anhang</b> mit dem Rahmenfeld und Platzhalter <b>Anhang wählen</b> sowie der noch deaktivierten Schaltfläche <b>Senden</b>. So sieht der Nutzer das Formular direkt beim Öffnen, bevor er einen Typ wählt oder etwas eingibt.
               </div>
             </div>
             <div class="test" id="251-support-create-ticket-page-filled">
@@ -7525,11 +7549,11 @@
               <div class="img">
                 <img
                   src="../screenshots/251-support-create-ticket-page-filled.png"
-                  alt="Ticket-Formular ausgefüllt, Senden aktiv"
+                  alt="Ticket-Formular ausgefüllt mit leerem Anhang-Feld, Senden aktiv"
                 />
               </div>
               <div class="desc">
-                Das ausgefüllte Formular mit ausgewähltem Anliegen-Typ und eingegebener Nachricht: Die Schaltfläche <b>Senden</b> ist nun aktiv. Der Nutzer sieht diesen Zustand, sobald er einen Typ gewählt und eine Nachricht erfasst hat und das Ticket abschicken kann.
+                Das ausgefüllte Formular mit ausgewähltem Anliegen-Typ und eingegebener Nachricht: Die Schaltfläche <b>Senden</b> ist nun aktiv. Das Anhang-Feld darunter bleibt leer — der Anhang ist optional und muss fürs Absenden nicht gesetzt sein. Der Nutzer sieht diesen Zustand, sobald er einen Typ gewählt und eine Nachricht erfasst hat und das Ticket abschicken kann.
               </div>
             </div>
             <div class="test" id="252-support-create-ticket-page-submitting">
@@ -7541,11 +7565,11 @@
               <div class="img">
                 <img
                   src="../screenshots/252-support-create-ticket-page-submitting.png"
-                  alt="Ticket wird abgesendet"
+                  alt="Ticket wird abgesendet, Anhang-Feld unverändert"
                 />
               </div>
               <div class="desc">
-                Das Ticket-Formular während des Absendens: Die Schaltfläche <b>Senden</b> zeigt eine Ladeanimation. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange das Ticket an den Server übermittelt wird.
+                Das Ticket-Formular während des Absendens: die Anliegen-Tags und das Nachrichtenfeld sind abgeblendet, die Schaltfläche <b>Senden</b> zeigt eine Ladeanimation. Das Anhang-Feld darunter bleibt unverändert sichtbar. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange das Ticket an den Server übermittelt wird.
               </div>
             </div>
           </div>
@@ -7664,7 +7688,7 @@
             </div>
           </summary>
           <p class="spec-intro">
-            Der Chat-Verlauf zu einem einzelnen Ticket: Nachrichten von Kunde und Support als Sprechblasen, mit Eingabefeld bei offenen Tickets und seinen Lade-, Sende-, Fehler- und Geschlossen-Zuständen.
+            Der Chat-Verlauf zu einem einzelnen Ticket: Nachrichten von Kunde und Support als Sprechblasen, mit Eingabefeld und Büroklammer zum Anhängen eines Bildes bei offenen Tickets sowie Lade-, Sende-, Fehler- und Geschlossen-Zuständen.
           </p>
 
           <div class="tests cols-2">
@@ -7693,11 +7717,11 @@
               <div class="img">
                 <img
                   src="../screenshots/258-support-chat-page-loaded.png"
-                  alt="Geladener Chat mit Nachrichten und Eingabefeld"
+                  alt="Geladener Chat mit Nachrichten, Büroklammer und Eingabefeld"
                 />
               </div>
               <div class="desc">
-                Der geladene Chat eines offenen Tickets: die Kunden-Nachricht als <b>blaue</b>, rechtsbündige Sprechblase und die Antwort des Supports als <b>graue</b>, linksbündige Sprechblase mit Label Support und Uhrzeit. Unten steht das Eingabefeld <b>Nachricht eingeben</b> mit Sende-Schaltfläche bereit.
+                Der geladene Chat eines offenen Tickets: die Kunden-Nachricht als <b>blaue</b>, rechtsbündige Sprechblase und die Antwort des Supports als <b>graue</b>, linksbündige Sprechblase mit Label Support und Uhrzeit. Unten steht links neben dem Eingabefeld <b>Nachricht eingeben</b> eine Büroklammer-Schaltfläche zum Anhängen eines Bildes, rechts die Sende-Schaltfläche.
               </div>
             </div>
             <div class="test" id="259-support-chat-page-sending">
@@ -7709,11 +7733,11 @@
               <div class="img">
                 <img
                   src="../screenshots/259-support-chat-page-sending.png"
-                  alt="Chat-Nachricht wird gesendet"
+                  alt="Chat-Nachricht wird gesendet, Büroklammer sichtbar"
                 />
               </div>
               <div class="desc">
-                Der offene Chat, während eine Nachricht gesendet wird: Das Eingabefeld ist deaktiviert und die Sende-Schaltfläche zeigt statt des Pfeils eine Ladeanimation. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange die Nachricht übermittelt wird.
+                Der offene Chat, während eine Nachricht gesendet wird: dieselbe Büroklammer-Schaltfläche bleibt sichtbar, das Eingabefeld ist deaktiviert und die Sende-Schaltfläche zeigt statt des Pfeils eine Ladeanimation. Dieser Zustand erscheint, nachdem der Nutzer auf Senden getippt hat, solange die Nachricht übermittelt wird.
               </div>
             </div>
             <div class="test" id="260-support-chat-page-closed">
@@ -7983,6 +8007,27 @@
                 <button class="copy-link" type="button" data-target="insider-unlock" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
                 <span class="src">settings_page_default.png · dashboard_with_balance.png · dashboard_insider_unlocked.png</span>
               </div>
+              <div class="desc">
+                <p>Anleitung:</p>
+                <ol>
+                  <li>Einstellungen öffnen (Hamburger-Icon rechts oben im Dashboard).</li>
+                  <li>Ganz nach unten scrollen bis zur Versionsnummer.</li>
+                  <li>Siebenmal kurz hintereinander auf die Versionsnummer tippen.</li>
+                  <li>Es erscheint die Bestätigung „Insider-Funktionen freigeschaltet".</li>
+                  <li>
+                    Zurück im Dashboard stehen neben <b>Kaufen</b> und <b>Verkaufen</b> neu
+                    <b>Bezahlen</b> und <b>Senden</b>.
+                  </li>
+                </ol>
+                <p>
+                  Die Freischaltung bleibt dauerhaft auf dem Gerät erhalten (auch nach
+                  App-Neustart) — sie wird lokal per <code>SharedPreferences</code>
+                  gespeichert. Eine Neuinstallation der App setzt sie zurück.
+                  OpenCryptoPay-Zahlungslinks funktionieren unabhängig von der
+                  Freischaltung — der Deeplink bleibt bewusst immer offen. Tippen auf die
+                  Versionsnummer nach erfolgter Freischaltung hat keine Wirkung mehr.
+                </p>
+              </div>
               <div class="img img-multi">
                 <div>
                   <img
@@ -8005,27 +8050,6 @@
                   />
                   <p><em>Nachher: alle vier Aktionen.</em></p>
                 </div>
-              </div>
-              <div class="desc">
-                <p>Anleitung:</p>
-                <ol>
-                  <li>Einstellungen öffnen (Hamburger-Icon rechts oben im Dashboard).</li>
-                  <li>Ganz nach unten scrollen bis zur Versionsnummer.</li>
-                  <li>Siebenmal kurz hintereinander auf die Versionsnummer tippen.</li>
-                  <li>Es erscheint die Bestätigung „Insider-Funktionen freigeschaltet".</li>
-                  <li>
-                    Zurück im Dashboard stehen neben <b>Kaufen</b> und <b>Verkaufen</b> neu
-                    <b>Bezahlen</b> und <b>Senden</b>.
-                  </li>
-                </ol>
-                <p>
-                  Die Freischaltung bleibt dauerhaft auf dem Gerät erhalten (auch nach
-                  App-Neustart) — sie wird lokal per <code>SharedPreferences</code>
-                  gespeichert. Eine Neuinstallation der App setzt sie zurück.
-                  OpenCryptoPay-Zahlungslinks funktionieren unabhängig von der
-                  Freischaltung — der Deeplink bleibt bewusst immer offen. Tippen auf die
-                  Versionsnummer nach erfolgter Freischaltung hat keine Wirkung mehr.
-                </p>
               </div>
             </div>
             <div class="test" id="269-dashboard-insider-unlocked">
@@ -8472,9 +8496,8 @@
             Eine Änderung an der Website im
             <a href="https://github.com/RealUnitCH/web">RealUnitCH/web</a>-Repo löst
             hier <b>keinen</b> automatischen Rebuild aus. Die neuen Baselines werden
-            mit dem nächsten Handbook-Deploy (Push auf <code>staging</code> → DEV
-            bzw. <code>develop</code> → PRD mit handbook-relevanten Pfaden oder
-            manueller <code>workflow_dispatch</code> auf
+            mit dem nächsten Handbook-Deploy (Push auf <code>staging</code> → PRD,
+            oder manueller <code>workflow_dispatch --ref staging</code> auf
             <code>handbook-deploy.yaml</code> im realunit-app-Repo) reingezogen.
             Kommt im web-Repo eine View hinzu oder weg, failt der Handbook-Build am
             <code>EXPECTED_WEB_BASELINE_COUNT</code>-Guard, bis Zahl und Karten hier
@@ -8524,9 +8547,8 @@
             Eine Änderung an Mail-Vorlage, i18n-Übersetzung oder
             Generator-Skript im api-Repo löst hier <b>keinen</b> automatischen
             Rebuild aus. Die neue Version wird mit dem nächsten
-            Handbook-Deploy (Push auf <code>staging</code> → DEV bzw.
-            <code>develop</code> → PRD mit handbook-relevanten Pfaden oder
-            manueller <code>workflow_dispatch</code> auf
+            Handbook-Deploy (Push auf <code>staging</code> → PRD, oder
+            manueller <code>workflow_dispatch --ref staging</code> auf
             <code>handbook-deploy.yaml</code> im realunit-app-Repo) reingezogen.
           </p>
         </details>
