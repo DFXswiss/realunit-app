@@ -160,25 +160,31 @@ class _SellConverterState extends State<SellConverter> {
                           height: 24,
                           width: 24,
                         ),
-                        Column(
-                          crossAxisAlignment: .start,
-                          children: [
-                            Text(
-                              realUnitAsset.symbol,
-                              style: const TextStyle(
-                                fontWeight: .bold,
-                                fontSize: 16,
-                                height: 20 / 16,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: .start,
+                            children: [
+                              Text(
+                                realUnitAsset.symbol,
+                                maxLines: 1,
+                                overflow: .ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: .bold,
+                                  fontSize: 16,
+                                  height: 20 / 16,
+                                ),
                               ),
-                            ),
-                            Text(
-                              realUnitAsset.name,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                height: 16 / 12,
+                              Text(
+                                realUnitAsset.name,
+                                maxLines: 1,
+                                overflow: .ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 16 / 12,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),

@@ -16,6 +16,7 @@ import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_text_button.dart';
 import 'package:realunit_wallet/widgets/number_pad.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class VerifyPinParams {
   final String? description;
@@ -116,121 +117,119 @@ class _VerifyPinViewState extends State<VerifyPinView> {
         appBar: AppBar(),
         backgroundColor: RealUnitColors.brand700,
         body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
+          child: ScrollableActionsLayout(
+            centerBody: true,
+            body: Column(
+              spacing: 4.0,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
                   child: Column(
-                    spacing: 4.0,
                     children: [
-                      const Spacer(),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Column(
-                              spacing: 8.0,
-                              children: [
-                                Text(
-                                  S.of(context).pinVerify,
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.headlineMedium,
-                                ),
-                                Text(
-                                  widget.description ?? S.of(context).pinVerifyDescription,
-                                  textAlign: TextAlign.center,
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: RealUnitColors.neutral500,
-                                  ),
-                                ),
-                              ],
+                      Column(
+                        spacing: 8.0,
+                        children: [
+                          Text(
+                            S.of(context).pinVerify,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          Text(
+                            widget.description ?? S.of(context).pinVerifyDescription,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: RealUnitColors.neutral500,
                             ),
-                            const SizedBox(height: 32),
-                            Column(
-                              spacing: 16.0,
-                              children: [
-                                PinIndicator(
-                                  pinLength: isVerifying ? pinLength : state.pin.length,
-                                  expectedPinLength: pinLength,
-                                  wrongPin: state is VerifyPinFailure || isLocked || isUnverifiable,
-                                ),
-                                Visibility(
-                                  visible: showsError,
-                                  maintainSize: true,
-                                  maintainAnimation: true,
-                                  maintainState: true,
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(minHeight: 40.0),
-                                    child: Text(
-                                      switch (state) {
-                                        VerifyPinTemporarilyLocked s =>
-                                          S
-                                              .of(context)
-                                              .pinVerifyLockedTemporarily(
-                                                _formatRemaining(s.lockedUntil),
-                                              ),
-                                        VerifyPinLocked _ => S.of(context).pinVerifyLocked,
-                                        // The 'Forgot PIN?' button only exists in
-                                        // the appLock variant (bottom != null);
-                                        // gate flows get a text without that
-                                        // dangling button reference.
-                                        VerifyPinUnverifiable _ => widget.bottom != null
-                                            ? S.of(context).pinVerifyUnverifiable
-                                            : S.of(context).pinVerifyUnverifiableGate,
-                                        _ => S.of(context).pinVerifyFailed,
-                                      },
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: RealUnitColors.status.red600,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                ),
-                                if (biometricHint != null)
-                                  Text(
-                                    biometricHint,
-                                    textAlign: TextAlign.center,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: RealUnitColors.neutral500,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      if (isVerifying)
-                        const VerifyingIndicator()
-                      else
-                        NumberPad(
-                          onNumberPressed: context.read<VerifyPinCubit>().addDigit,
-                          onDeletePressed: context.read<VerifyPinCubit>().deleteDigit,
-                          inputEnabled: !(isLocked || isUnverifiable),
-                          onBiometricPressed: biometricAvailable
-                              ? context.read<VerifyPinCubit>().promptBiometric
-                              : null,
-                          biometricIcon: biometricAvailable
-                              ? Icon(
-                                  // Face-ID phones expect a face glyph; everything
-                                  // else keeps the fingerprint affordance.
-                                  Theme.of(context).platform == TargetPlatform.iOS
-                                      ? Icons.face
-                                      : Icons.fingerprint,
-                                  size: 28,
-                                  color: RealUnitColors.realUnitBlack,
-                                  semanticLabel: S.of(context).pinVerifyBiometricButton,
-                                )
-                              : null,
-                        ),
-                      if (widget.bottom != null) widget.bottom! else const SizedBox(height: 60.0),
+                      const SizedBox(height: 32),
+                      Column(
+                        spacing: 16.0,
+                        children: [
+                          PinIndicator(
+                            pinLength: isVerifying ? pinLength : state.pin.length,
+                            expectedPinLength: pinLength,
+                            wrongPin: state is VerifyPinFailure || isLocked || isUnverifiable,
+                          ),
+                          Visibility(
+                            visible: showsError,
+                            maintainSize: true,
+                            maintainAnimation: true,
+                            maintainState: true,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 40.0),
+                              child: Text(
+                                switch (state) {
+                                  VerifyPinTemporarilyLocked s =>
+                                    S
+                                        .of(context)
+                                        .pinVerifyLockedTemporarily(
+                                          _formatRemaining(s.lockedUntil),
+                                        ),
+                                  // The 'Forgot PIN?' button only exists in
+                                  // the appLock variant (bottom != null); gate
+                                  // flows get a text without that dangling
+                                  // button reference — both the permanent-lock
+                                  // and the unverifiable messages branch on it.
+                                  VerifyPinLocked _ => widget.bottom != null
+                                      ? S.of(context).pinVerifyLocked
+                                      : S.of(context).pinVerifyLockedGate,
+                                  VerifyPinUnverifiable _ => widget.bottom != null
+                                      ? S.of(context).pinVerifyUnverifiable
+                                      : S.of(context).pinVerifyUnverifiableGate,
+                                  _ => S.of(context).pinVerifyFailed,
+                                },
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: RealUnitColors.status.red600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          if (biometricHint != null)
+                            Text(
+                              biometricHint,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: RealUnitColors.neutral500,
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-              ),
+              ],
             ),
+            actions: [
+              // Sticky primary surface: NumberPad must stay fully visible at
+              // high text scales (shape 2 — not inside the scrollable body).
+              if (isVerifying)
+                const VerifyingIndicator()
+              else
+                NumberPad(
+                  onNumberPressed: context.read<VerifyPinCubit>().addDigit,
+                  onDeletePressed: context.read<VerifyPinCubit>().deleteDigit,
+                  inputEnabled: !(isLocked || isUnverifiable),
+                  onBiometricPressed: biometricAvailable
+                      ? context.read<VerifyPinCubit>().promptBiometric
+                      : null,
+                  biometricIcon: biometricAvailable
+                      ? Icon(
+                          // Face-ID phones expect a face glyph; everything
+                          // else keeps the fingerprint affordance.
+                          Theme.of(context).platform == TargetPlatform.iOS
+                              ? Icons.face
+                              : Icons.fingerprint,
+                          size: 28,
+                          color: RealUnitColors.realUnitBlack,
+                          semanticLabel: S.of(context).pinVerifyBiometricButton,
+                        )
+                      : null,
+                ),
+              widget.bottom ?? const SizedBox(height: 60.0),
+            ],
           ),
         ),
       );

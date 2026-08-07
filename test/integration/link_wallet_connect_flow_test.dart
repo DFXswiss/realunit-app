@@ -109,7 +109,10 @@ void main() {
       () async {
         credentials.behavior = FakeBitboxBehavior.disconnect;
         var posts = 0;
-        final client = MockClient((_) async {
+        final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           posts++;
           return http.Response(jsonEncode({'status': 'completed'}), 201);
         });
@@ -122,7 +125,7 @@ void main() {
         expect(
           posts,
           0,
-          reason: 'the EIP-712 sign throws BitboxNotConnectedException before the POST',
+          reason: 'the EIP-712 sign throws BitboxNotConnectedException before the register POST',
         );
         // The wallet is unlocked for the ceremony and re-locked in the finally
         // even though signing throws.
@@ -138,6 +141,9 @@ void main() {
         Uri? sentUri;
         Map<String, dynamic>? body;
         final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           sentUri = request.url;
           body = jsonDecode(request.body) as Map<String, dynamic>;
           return http.Response(jsonEncode({'status': 'completed'}), 201);
@@ -152,7 +158,8 @@ void main() {
         expect(body!['walletAddress'], credentials.address.hexEip55);
         // 65-byte ECDSA signature → 0x + 130 hex chars.
         expect((body!['signature'] as String).length, 132);
-        expect((body!['registrationDate'] as String).length, 10);
+        // The signed registrationDate is the server-provided date.
+        expect(body!['registrationDate'], '2026-07-13');
       },
     );
 
@@ -161,6 +168,9 @@ void main() {
       () async {
         Uri? sentUri;
         final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           sentUri = request.url;
           return http.Response(jsonEncode({'status': 'completed'}), 201);
         });

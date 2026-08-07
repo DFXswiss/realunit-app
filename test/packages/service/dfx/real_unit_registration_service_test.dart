@@ -10,6 +10,8 @@ import 'package:realunit_wallet/packages/repository/cache_repository.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/buy_exceptions.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/registration_rejected_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_email_status.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_user_type.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_state.dart';
@@ -204,11 +206,126 @@ void main() {
       when(() => account.primaryAddress).thenReturn(
         FakeBitboxCredentials(behavior: FakeBitboxBehavior.disconnect)..bitboxManager = null,
       );
-      final client = MockClient((_) async => http.Response('{}', 201));
+      // The date fetch happens before signing, so it must succeed for the flow
+      // to reach the signing step where the disconnected BitBox surfaces.
+      final client = MockClient((request) async {
+        if (request.url.path == '/v1/realunit/register/date') {
+          return http.Response('{"date":"2026-07-13"}', 200);
+        }
+        return http.Response('{}', 201);
+      });
 
       expect(
         () => build(client).completeRegistration(buildRegistration()),
         throwsA(isA<BitboxNotConnectedException>()),
+      );
+    });
+
+    // Error mapping of the register/complete response itself: only a non-auth
+    // 4xx becomes the typed RegistrationRejectedException the UI attributes
+    // to the user's entries; everything else stays a plain (or code-specific)
+    // ApiException. A working signer so the flow reaches the POST.
+    MockClient completionErrorClient(int status, Map<String, dynamic> body) =>
+        MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response('{"date":"2026-07-13"}', 200);
+          }
+          return http.Response(jsonEncode(body), status);
+        });
+
+    test('types a non-auth 4xx as RegistrationRejectedException', () async {
+      when(() => account.primaryAddress).thenReturn(FakeBitboxCredentials());
+      final client = completionErrorClient(400, {
+        'statusCode': 400,
+        'message': 'Registration date must be today',
+      });
+
+      expect(
+        () => build(client).completeRegistration(buildRegistration()),
+        throwsA(
+          isA<RegistrationRejectedException>().having(
+            (e) => e.message,
+            'message',
+            'Registration date must be today',
+          ),
+        ),
+      );
+    });
+
+    test('keeps a 401 a plain ApiException (auth, not a content rejection)', () async {
+      when(() => account.primaryAddress).thenReturn(FakeBitboxCredentials());
+      // A 401 triggers _authenticated's one-shot refresh (re-sign + /v1/auth)
+      // before the retried response is surfaced — stub the signature cache,
+      // the auth wallet accessor, and serve the auth endpoint so the SECOND
+      // 401 reaches the mapping.
+      when(() => wallet.currentAccount).thenReturn(account);
+      when(() => account.signMessage(any())).thenAnswer((_) async => '0xsig');
+      final repo = _MockCacheRepository();
+      when(() => repo.read(any())).thenAnswer((_) async => null);
+      when(() => repo.write(any(), any())).thenAnswer((_) async => 1);
+      session = SessionCache(repo)..setAuthToken('jwt-1');
+      when(() => appStore.sessionCache).thenReturn(session);
+
+      final client = MockClient((request) async {
+        if (request.url.path == '/v1/realunit/register/date') {
+          return http.Response('{"date":"2026-07-13"}', 200);
+        }
+        if (request.url.path == '/v1/auth') {
+          return http.Response(jsonEncode({'accessToken': 'jwt-2'}), 201);
+        }
+        return http.Response(
+          jsonEncode({'statusCode': 401, 'message': 'Unauthorized'}),
+          401,
+        );
+      });
+
+      expect(
+        () => build(client).completeRegistration(buildRegistration()),
+        throwsA(
+          allOf(
+            isA<ApiException>(),
+            isNot(isA<RegistrationRejectedException>()),
+          ),
+        ),
+      );
+    });
+
+    test('keeps a 5xx a plain ApiException', () async {
+      when(() => account.primaryAddress).thenReturn(FakeBitboxCredentials());
+      final client = completionErrorClient(500, {
+        'statusCode': 500,
+        'message': 'Internal server error',
+      });
+
+      expect(
+        () => build(client).completeRegistration(buildRegistration()),
+        throwsA(
+          allOf(
+            isA<ApiException>(),
+            isNot(isA<RegistrationRejectedException>()),
+          ),
+        ),
+      );
+    });
+
+    test('preserves the code-specific subclass for KYC_LEVEL_REQUIRED', () async {
+      when(() => account.primaryAddress).thenReturn(FakeBitboxCredentials());
+      final client = completionErrorClient(400, {
+        'statusCode': 400,
+        'code': 'KYC_LEVEL_REQUIRED',
+        'message': 'KYC level 10 required',
+        'requiredLevel': 10,
+        'currentLevel': 0,
+      });
+
+      expect(
+        () => build(client).completeRegistration(buildRegistration()),
+        throwsA(
+          allOf(
+            isA<KycLevelRequiredException>(),
+            isNot(isA<RegistrationRejectedException>()),
+          ),
+        ),
       );
     });
   });
@@ -245,7 +362,14 @@ void main() {
       when(() => account.primaryAddress).thenReturn(
         FakeBitboxCredentials(behavior: FakeBitboxBehavior.disconnect)..bitboxManager = null,
       );
-      final client = MockClient((_) async => http.Response('{}', 201));
+      // The date fetch happens before signing, so it must succeed for the flow
+      // to reach the signing step where the disconnected BitBox surfaces.
+      final client = MockClient((request) async {
+        if (request.url.path == '/v1/realunit/register/date') {
+          return http.Response('{"date":"2026-07-13"}', 200);
+        }
+        return http.Response('{}', 201);
+      });
 
       expect(
         () => build(client).registerWallet(buildUserData()),

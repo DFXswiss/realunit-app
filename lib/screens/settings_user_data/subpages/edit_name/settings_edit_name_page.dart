@@ -16,6 +16,7 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/form/file_picker_field.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
 import 'package:realunit_wallet/widgets/image_picker_sheet.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class SettingsEditNamePage extends StatelessWidget {
   const SettingsEditNamePage({super.key});
@@ -74,79 +75,71 @@ class _SettingsEditNameViewState extends State<SettingsEditNameView> {
         ),
         SettingsEditNameReady() || SettingsEditNameSubmitting() => Scaffold(
           appBar: AppBar(title: Text(S.of(context).changeName)),
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isSubmitting = state is SettingsEditNameSubmitting;
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const .symmetric(horizontal: 20),
-                        child: GestureDetector(
-                          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                          behavior: .opaque,
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              spacing: 16,
-                              children: [
-                                LabeledTextField(
-                                  label: S.of(context).firstName,
-                                  hintText: 'Max',
-                                  controller: _firstNameCtrl,
-                                  textCapitalization: .words,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) return '';
-                                    if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
-                                    return null;
-                                  },
-                                ),
-                                LabeledTextField(
-                                  label: S.of(context).lastName,
-                                  hintText: 'Mustermann',
-                                  controller: _lastNameCtrl,
-                                  textCapitalization: .words,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) return '';
-                                    if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
-                                    return null;
-                                  },
-                                ),
-                                FilePickerField(
-                                  label: S.of(context).proofDocument,
-                                  selectedFile: _selectedFile,
-                                  onTap: () async {
-                                    final file = await ImagePickerSheet.show(context);
-                                    if (file != null) setState(() => _selectedFile = file);
-                                  },
-                                  validator: () {
-                                    if (_fileValidationTriggered && _selectedFile == null) {
-                                      return '';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const Spacer(),
-                                Padding(
-                                  padding: const .symmetric(vertical: 16.0),
-                                  child: AppFilledButton(
-                                    onPressed: _onSubmit,
-                                    state: isSubmitting ? .loading : .idle,
-                                    label: S.of(context).save,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+          body: SafeArea(
+            child: Padding(
+              padding: const .symmetric(horizontal: 20),
+              child: GestureDetector(
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                behavior: .opaque,
+                child: Form(
+                  key: _formKey,
+                  child: ScrollableActionsLayout(
+                    centerBody: false,
+                    body: Column(
+                      spacing: 16,
+                      children: [
+                        LabeledTextField(
+                          label: S.of(context).firstName,
+                          hintText: 'Max',
+                          controller: _firstNameCtrl,
+                          textCapitalization: .words,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return '';
+                            if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
+                            return null;
+                          },
+                        ),
+                        LabeledTextField(
+                          label: S.of(context).lastName,
+                          hintText: 'Mustermann',
+                          controller: _lastNameCtrl,
+                          textCapitalization: .words,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return '';
+                            if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
+                            return null;
+                          },
+                        ),
+                        FilePickerField(
+                          label: S.of(context).proofDocument,
+                          selectedFile: _selectedFile,
+                          onTap: () async {
+                            final file = await ImagePickerSheet.show(context);
+                            if (file != null) setState(() => _selectedFile = file);
+                          },
+                          validator: () {
+                            if (_fileValidationTriggered && _selectedFile == null) {
+                              return '';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      Padding(
+                        padding: const .symmetric(vertical: 16.0),
+                        child: AppFilledButton(
+                          onPressed: _onSubmit,
+                          state: state is SettingsEditNameSubmitting ? .loading : .idle,
+                          label: S.of(context).save,
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
         _ => const Scaffold(),

@@ -8,7 +8,10 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
+import 'package:realunit_wallet/packages/service/dfx/dfx_widget_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
+import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
+import 'package:realunit_wallet/screens/kyc/steps/email/subpages/kyc_email_verification_page.dart';
 import 'package:realunit_wallet/screens/support/cubits/support_email_capture/support_email_capture_cubit.dart';
 import 'package:realunit_wallet/screens/support/subpages/support_email_capture_page.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
@@ -18,8 +21,39 @@ class _MockSupportEmailCaptureCubit extends MockCubit<SupportEmailCaptureState>
 
 class _MockRegistrationService extends Mock implements RealUnitRegistrationService {}
 
+class _MockDfxWidgetService extends Mock implements DfxWidgetService {}
+
+class _MockHomeBloc extends MockBloc<HomeEvent, HomeState> implements HomeBloc {}
+
+/// Pops the second pushed sub-route with [value]. The merge branch pushes the
+/// shared [KycEmailVerificationPage] on top of the capture page; this lets a
+/// test simulate the user confirming (`true`) — or backing out (`null`) — of
+/// that page without fully driving it. The root/home route
+/// (`previousRoute == null`) and the first sub-route (the capture page) are
+/// skipped; the pop happens on the next microtask so the verification route
+/// mounts first, matching a real user tapping "I've confirmed".
+class _AutoPopVerificationObserver extends NavigatorObserver {
+  _AutoPopVerificationObserver({this.value});
+
+  final Object? value;
+  int _subPushes = 0;
+  bool _popped = false;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    if (previousRoute == null) return; // root/home route
+    _subPushes++;
+    if (_subPushes == 2 && !_popped) {
+      _popped = true;
+      Future.microtask(() => route.navigator?.pop<bool>(value as bool?));
+    }
+  }
+}
+
 void main() {
   late SupportEmailCaptureCubit cubit;
+  late HomeBloc homeBloc;
 
   setUpAll(() {
     final getIt = GetIt.instance;
@@ -28,11 +62,18 @@ void main() {
         _MockRegistrationService(),
       );
     }
+    // The merge branch routes to KycEmailVerificationPage, which resolves its
+    // cubit's DFXAuthService from getIt<DfxWidgetService>.
+    if (!getIt.isRegistered<DfxWidgetService>()) {
+      getIt.registerSingleton<DfxWidgetService>(_MockDfxWidgetService());
+    }
   });
 
   setUp(() {
     cubit = _MockSupportEmailCaptureCubit();
     when(() => cubit.state).thenReturn(const SupportEmailCaptureInitial());
+    homeBloc = _MockHomeBloc();
+    when(() => homeBloc.state).thenReturn(const HomeState());
   });
 
   Widget pumpView() {
@@ -48,6 +89,35 @@ void main() {
       ),
     );
   }
+
+  // Hosts the capture page under a Navigator so the merge branch's
+  // Navigator.push (and the capture page's own pop) are observable, with
+  // HomeBloc provided above MaterialApp so the pushed verification page can
+  // read it.
+  Widget mergeHarness({
+    required List<NavigatorObserver> observers,
+    required Future<void> Function(BuildContext) onLaunch,
+  }) {
+    return BlocProvider<HomeBloc>.value(
+      value: homeBloc,
+      child: MaterialApp(
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        navigatorObservers: observers,
+        home: _LauncherPage(onLaunch: onLaunch),
+      ),
+    );
+  }
+
+  Widget captureRoute() => BlocProvider<SupportEmailCaptureCubit>.value(
+        value: cubit,
+        child: const SupportEmailCaptureView(),
+      );
 
   group('$SupportEmailCapturePage', () {
     testWidgets('builds the view via BlocProvider create', (tester) async {
@@ -116,9 +186,24 @@ void main() {
 
       expect(find.byType(CupertinoActivityIndicator), findsOne);
     });
+
+    testWidgets('tapping the form background unfocuses the email field', (tester) async {
+      await tester.pumpWidget(pumpView());
+
+      await tester.tap(find.byType(TextFormField));
+      await tester.pump();
+      final field = tester.widget<EditableText>(find.byType(EditableText));
+      expect(field.focusNode.hasFocus, isTrue);
+
+      // The GestureDetector wrapping the form dismisses the keyboard.
+      await tester.tap(find.text(S.current.supportEmailCaptureDescription));
+      await tester.pump();
+
+      expect(field.focusNode.hasFocus, isFalse);
+    });
   });
 
-  group('$SupportEmailCaptureView pop & snackbar behavior', () {
+  group('$SupportEmailCaptureView navigation & snackbar behavior', () {
     testWidgets('Success state pops the route with true', (tester) async {
       // Wire the view inside a GoRouter so the page's
       // `Navigator.pop(true)` is observable via the parent
@@ -170,36 +255,97 @@ void main() {
       expect(popResult, isTrue);
     });
 
-    testWidgets('Failure with mergeRequested shows the merge-required snackbar', (tester) async {
+    testWidgets('MergeRequested routes to the email-verification page', (tester) async {
       whenListen(
         cubit,
-        Stream.fromIterable(const [
-          SupportEmailCaptureFailure(
-            error: SupportEmailCaptureError.mergeRequested,
-            message: '',
-          ),
-        ]),
+        Stream.fromIterable(const [SupportEmailCaptureMergeRequested()]),
         initialState: const SupportEmailCaptureInitial(),
       );
 
-      await tester.pumpWidget(pumpView());
-      await tester.pump();
-      await tester.pump();
-
-      expect(
-        find.text(S.current.supportEmailMergeRequiresVerification),
-        findsOne,
+      await tester.pumpWidget(
+        BlocProvider<HomeBloc>.value(
+          value: homeBloc,
+          child: MaterialApp(
+            localizationsDelegates: const [
+              S.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: S.delegate.supportedLocales,
+            home: captureRoute(),
+          ),
+        ),
       );
+      await tester.pumpAndSettle();
+
+      // The merge branch pushes the shared verification flow, not a red error.
+      expect(find.byType(KycEmailVerificationPage), findsOne);
     });
 
-    testWidgets('Failure with unknown error shows the raw error message', (tester) async {
+    testWidgets('MergeRequested + confirmation pops the capture route with true', (tester) async {
+      whenListen(
+        cubit,
+        Stream.fromIterable(const [SupportEmailCaptureMergeRequested()]),
+        initialState: const SupportEmailCaptureInitial(),
+      );
+      Object? popResult;
+
+      await tester.pumpWidget(
+        mergeHarness(
+          observers: [_AutoPopVerificationObserver(value: true)],
+          onLaunch: (ctx) async {
+            popResult = await Navigator.of(ctx).push<bool>(
+              MaterialPageRoute<bool>(builder: (_) => captureRoute()),
+            );
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('LAUNCH'));
+      await tester.pumpAndSettle();
+
+      expect(popResult, isTrue);
+    });
+
+    testWidgets('MergeRequested + back-out keeps the form and does not pop', (tester) async {
+      whenListen(
+        cubit,
+        Stream.fromIterable(const [SupportEmailCaptureMergeRequested()]),
+        initialState: const SupportEmailCaptureInitial(),
+      );
+      var capturePopped = false;
+
+      await tester.pumpWidget(
+        mergeHarness(
+          observers: [_AutoPopVerificationObserver(value: null)],
+          onLaunch: (ctx) async {
+            await Navigator.of(ctx).push<bool>(
+              MaterialPageRoute<bool>(builder: (_) => captureRoute()),
+            );
+            capturePopped = true; // only runs once the capture route pops
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('LAUNCH'));
+      await tester.pumpAndSettle();
+
+      // Verification was dismissed without confirmation (await returned null),
+      // so the confirm guard's false branch ran and the capture route did NOT
+      // pop — it stays on the stack (offstage beneath nothing now).
+      expect(find.byType(KycEmailVerificationPage), findsNothing);
+      expect(capturePopped, isFalse);
+      expect(find.byType(SupportEmailCaptureView, skipOffstage: false), findsOne);
+    });
+
+    testWidgets('Failure state shows the raw error message', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable(const [
-          SupportEmailCaptureFailure(
-            error: SupportEmailCaptureError.unknown,
-            message: 'something broke',
-          ),
+          SupportEmailCaptureFailure('something broke'),
         ]),
         initialState: const SupportEmailCaptureInitial(),
       );

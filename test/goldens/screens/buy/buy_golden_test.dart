@@ -208,6 +208,25 @@ void main() {
     );
 
     goldenTest(
+      'primary email not confirmed failure',
+      fileName: 'buy_primary_email_not_confirmed',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailNotConfirmed),
+        );
+        when(() => converterCubit.state).thenReturn(
+          const BuyConverterState(
+            fiatText: '100',
+            sharesText: '1.00',
+            currency: Currency.chf,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
       'min amount not met failure',
       fileName: 'buy_min_amount_not_met',
       constraints: const BoxConstraints.tightFor(width: 390, height: 844),

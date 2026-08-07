@@ -4,6 +4,7 @@ enum KycStep {
   email,
   confirmEmail,
   registration,
+  personalData,
   linkWallet,
   legalDisclaimer,
   nationality,
@@ -43,7 +44,9 @@ class KycSuccess extends KycState {
 
   /// Server-side user record attached to the routing decision. Populated when
   /// `RealUnitRegistrationService.getRegistrationInfo()` returns userData
-  /// alongside the state (`AddWallet` always, `NewRegistration` when the
+  /// alongside the state (`AddWallet` always, `AlreadyRegistered` whenever the
+  /// registration carries a signed payload — which is what the `personalData`
+  /// step seeds its correction form from — and `NewRegistration` when the
   /// backend has fallback data). The cubit forwards the DTO so downstream
   /// pages do not need to re-fetch — see CONTRIBUTING.md "Single round-trip
   /// per decision".
@@ -72,6 +75,15 @@ class KycAccountMergeRequested extends KycState {
 /// waiting state instead of interpreting the polling timeout as a failure.
 class KycMergeProcessing extends KycState {
   const KycMergeProcessing();
+}
+
+/// Emitted when the API reports this wallet's RealUnit registration is parked in
+/// manual review (`RealUnitRegistrationInfoDto.manualReview == true`) — the
+/// Aktionariat forward failed and staff must re-forward it before onboarding can
+/// complete. A terminal waiting state: the user cannot act, so the app renders a
+/// "registration under review" screen with a refresh instead of routing further.
+class KycManualReview extends KycState {
+  const KycManualReview();
 }
 
 class KycUnsupportedStepFailure extends KycState {

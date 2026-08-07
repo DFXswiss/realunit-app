@@ -1,0 +1,30 @@
+# Coverage visibility allowlist — see scripts/check-coverage-visibility.sh.
+#
+# In-scope .dart files that legitimately produce NO coverable lines, so they
+# never emit an `SF:` record in the scoped tracefile and would otherwise trip
+# the visibility gate. Every entry here is a pure abstract interface / port, an
+# enum, const-only data, or a Drift table schema — there is no executable body
+# to cover.
+#
+# This is a ratchet: a NEW in-scope file that carries no coverage fails the
+# build. Fix it by adding a test that exercises it (preferred). Only add a line
+# here if the file genuinely has no coverable lines, and say why in a comment.
+# Blank lines and `#` comments are ignored. Paths are repo-relative.
+
+# Abstract interfaces / ports (implementations live elsewhere and are tested):
+lib/packages/io/backup_exclusion_port.dart
+lib/packages/io/documents_directory_port.dart
+lib/packages/service/biometric/biometric_port.dart
+lib/packages/service/price_service.dart
+lib/screens/kyc/steps/ident/cubits/kyc_ident/sumsub_ident_port.dart
+
+# Enums (no bodies):
+lib/packages/service/biometric/biometric_auth_outcome.dart
+lib/packages/service/dfx/models/payment/payment_info_error.dart
+lib/screens/restore_wallet/cubit/validate_seed/validate_seed_state.dart
+
+# Const-only data (covered as values by default_assets_test.dart, no lines):
+lib/packages/utils/default_assets.dart
+
+# Drift table schema (column getters carry coverage:ignore-line):
+lib/packages/storage/node_storage.dart

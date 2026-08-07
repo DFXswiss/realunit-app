@@ -84,6 +84,31 @@ void main() {
 
       expect(find.byIcon(Icons.star), findsOneWidget);
     });
+
+    testWidgets('null onSelected disables every ChoiceChip and ignores taps',
+        (tester) async {
+      String? picked;
+      await tester.pumpWidget(_host(
+        const TagSelection<String>(
+          items: [
+            ('a', 'Alpha', null),
+            ('b', 'Bravo', null),
+          ],
+          selected: 'a',
+          onSelected: null,
+        ),
+      ));
+
+      final chips = tester.widgetList<ChoiceChip>(find.byType(ChoiceChip)).toList();
+      expect(chips, hasLength(2));
+      for (final chip in chips) {
+        expect(chip.onSelected, isNull);
+      }
+
+      await tester.tap(find.text('Bravo'));
+      await tester.pump();
+      expect(picked, isNull);
+    });
   });
 
   group('$TabSelector<String>', () {

@@ -51,6 +51,27 @@ void main() {
       expect(c.isConnected, isFalse);
     });
 
+    // The two synchronous web3dart entry points are never used on a BitBox
+    // (every sign path is awaitable). They exist only to satisfy the interface
+    // and must fail loud if a future refactor wires a sync caller onto BitBox
+    // credentials by accident — the same guard `_DebugCredentials` carries in
+    // wallet.dart.
+    test('signToEcSignature throws UnimplementedError (sync path is never used)', () {
+      final c = BitboxCredentials('0x000000000000000000000000000000000000dead');
+      expect(
+        () => c.signToEcSignature(Uint8List.fromList([1, 2, 3])),
+        throwsA(isA<UnimplementedError>()),
+      );
+    });
+
+    test('signPersonalMessageToUint8List throws UnimplementedError (sync path is never used)', () {
+      final c = BitboxCredentials('0x000000000000000000000000000000000000dead');
+      expect(
+        () => c.signPersonalMessageToUint8List(Uint8List.fromList([1, 2, 3])),
+        throwsA(isA<UnimplementedError>()),
+      );
+    });
+
     test('signToSignature throws BitboxNotConnectedException when bitboxManager is null', () {
       final c = BitboxCredentials('0x000000000000000000000000000000000000dead');
       expect(
@@ -118,6 +139,30 @@ void main() {
 
       final sig = await connected().signToSignature(Uint8List.fromList([0xDE, 0xAD]), chainId: 1);
       expect(sig.v, 38);
+    });
+
+    // The EIP-155 parity check truncates chainIds wider than 32 bits before
+    // matching the low byte of v. chainId 2^32 + 1 is 33 bits, so the
+    // truncation loop runs once (`>> 8` → 2^24, which is ≤ 32 bits and stops
+    // it). The device returns v = 35, which matches (2^24 * 2 + 35) & 0xff ==
+    // 35, so parity resolves to 0 and the final v is computed from the FULL,
+    // untruncated chainId.
+    test('signToSignature truncates a >2^32 chainId for the EIP-155 parity check', () async {
+      const chainId = 0x100000001; // 2^32 + 1, 33 bits — forces one loop iteration
+      final fakeSig = Uint8List.fromList(
+        List<int>.filled(32, 0x11) + List<int>.filled(32, 0x22) + [35],
+      );
+      when(
+        () => manager.signETHRLPTransaction(any(), any(), any(), any()),
+      ).thenAnswer((_) async => fakeSig);
+
+      final sig = await connected().signToSignature(
+        Uint8List.fromList([0xDE, 0xAD]),
+        chainId: chainId,
+      );
+
+      // parity 0 → v = chainId * 2 + 35, derived from the untruncated chainId.
+      expect(sig.v, chainId * 2 + 35);
     });
 
     test('signPersonalMessage throws BitboxNotConnectedException when not connected', () {

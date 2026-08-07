@@ -9,6 +9,7 @@ import 'package:realunit_wallet/screens/buy/widgets/payment_action_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_converter.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_information.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class BuyPage extends StatelessWidget {
   const BuyPage({super.key});
@@ -65,36 +66,30 @@ class _BuyViewState extends State<BuyView> {
         builder: (context, state) {
           return GestureDetector(
             onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-            child: LayoutBuilder(
-              builder: (context, constraint) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraint.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Padding(
-                        padding: const .symmetric(horizontal: 20.0),
-                        child: SafeArea(
-                          child: Column(
-                            crossAxisAlignment: .start,
-                            children: [
-                              PaymentConverter(
-                                amountController: _amountController,
-                                resultController: _resultController,
-                              ),
-                              const SizedBox(height: 32),
-                              const PaymentInformation(),
-                              const Spacer(),
-                              PaymentActionButton(
-                                amountController: _amountController,
-                              ),
-                            ],
-                          ),
-                        ),
+            child: Padding(
+              padding: const .symmetric(horizontal: 20.0),
+              child: SafeArea(
+                child: ScrollableActionsLayout(
+                  centerBody: false,
+                  body: Column(
+                    crossAxisAlignment: .start,
+                    mainAxisAlignment: .start,
+                    children: [
+                      PaymentConverter(
+                        amountController: _amountController,
+                        resultController: _resultController,
                       ),
-                    ),
+                      const SizedBox(height: 32),
+                      const PaymentInformation(),
+                    ],
                   ),
-                );
-              },
+                  actions: [
+                    PaymentActionButton(
+                      amountController: _amountController,
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },

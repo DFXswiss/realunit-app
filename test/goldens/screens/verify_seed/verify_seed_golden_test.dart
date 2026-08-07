@@ -61,5 +61,86 @@ void main() {
         return wrapForGolden(buildSubject());
       },
     );
+
+    goldenTest(
+      'wrong words paint the fields red and show the invalid button',
+      fileName: 'verify_seed_page_error',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => verifySeedCubit.state).thenReturn(
+          const VerifySeedState(
+            wordIndices: [1, 3, 5, 7],
+            enteredWords: ['abandon', 'ability', 'about', 'above'],
+            hasError: true,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'verifying state shows the loading button',
+      fileName: 'verify_seed_page_verifying',
+      // The loading button hosts a CupertinoActivityIndicator that never
+      // settles; pump once to capture the initial frame.
+      pumpBeforeTest: pumpOnce,
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => verifySeedCubit.state).thenReturn(
+          const VerifySeedState(
+            wordIndices: [1, 3, 5, 7],
+            enteredWords: ['abandon', 'ability', 'about', 'above'],
+            isVerifying: true,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    // The success button is visible for 2s before navigation. The mocked cubit
+    // emits no state change, so the isVerified listener (which would await that
+    // 2s delay, then dispatch LoadWalletEvent) never fires and the green
+    // success button renders stably.
+    goldenTest(
+      'verified state shows the green success button',
+      fileName: 'verify_seed_page_verified',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => verifySeedCubit.state).thenReturn(
+          const VerifySeedState(
+            wordIndices: [1, 3, 5, 7],
+            enteredWords: ['abandon', 'ability', 'about', 'above'],
+            isVerified: true,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'commit failure shows an idle retry button with a refresh icon',
+      fileName: 'verify_seed_page_commit_failed',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => verifySeedCubit.state).thenReturn(
+          const VerifySeedState(
+            wordIndices: [1, 3, 5, 7],
+            enteredWords: ['abandon', 'ability', 'about', 'above'],
+            commitFailed: true,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'empty word indices render nothing but the scaffold',
+      fileName: 'verify_seed_page_empty',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => verifySeedCubit.state).thenReturn(const VerifySeedState());
+        return wrapForGolden(buildSubject());
+      },
+    );
   });
 }

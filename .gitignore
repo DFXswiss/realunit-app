@@ -40,6 +40,15 @@ coverage/
 !android/Gemfile.lock
 !ios/Gemfile.lock
 
+# Gem bundle installed when running a store lane with the bundler configuration
+# CI uses (`path vendor/bundle`, `deployment true` — see the "Set up Ruby" steps
+# in .github/workflows/release.yaml). Mirrors the paths CI produces so the gem
+# bundle from a local repro does not show up in `git status`.
+android/.bundle/
+android/vendor/bundle/
+ios/.bundle/
+ios/vendor/bundle/
+
 # Symbolication related
 app.*.symbols
 
@@ -103,3 +112,5 @@ docs/handbook/legal/
 _api-checkout/
 _handlebars-only/
 _web-checkout/
+# Alchemist/flutter golden failure dumps
+**/goldens/**/failures/

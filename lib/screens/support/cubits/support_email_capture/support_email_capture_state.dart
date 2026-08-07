@@ -19,17 +19,21 @@ class SupportEmailCaptureSuccess extends SupportEmailCaptureState {
   const SupportEmailCaptureSuccess();
 }
 
-enum SupportEmailCaptureError { mergeRequested, unknown }
+/// The email belongs to an existing account and the API has sent an
+/// account-merge confirmation email (register/email returns `merge_requested`).
+/// The user must confirm that email to link this wallet to the existing
+/// account — the view routes to the shared KYC email-verification flow, not to
+/// an error. Distinct from [SupportEmailCaptureFailure]: this is a normal,
+/// recoverable branch, not a failure.
+class SupportEmailCaptureMergeRequested extends SupportEmailCaptureState {
+  const SupportEmailCaptureMergeRequested();
+}
 
 class SupportEmailCaptureFailure extends SupportEmailCaptureState {
-  final SupportEmailCaptureError error;
   final String message;
 
-  const SupportEmailCaptureFailure({
-    required this.error,
-    required this.message,
-  });
+  const SupportEmailCaptureFailure(this.message);
 
   @override
-  List<Object?> get props => [error, message];
+  List<Object?> get props => [message];
 }

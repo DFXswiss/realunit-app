@@ -8,6 +8,7 @@ import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/form/phone_number_field.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class SettingsEditPhoneNumberPage extends StatelessWidget {
   const SettingsEditPhoneNumberPage({super.key});
@@ -53,50 +54,43 @@ class _SettingsEditPhoneNumberViewState extends State<SettingsEditPhoneNumberVie
         builder: (context, state) {
           final isSubmitting = state is SettingsEditPhoneNumberSubmitting;
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const .symmetric(horizontal: 20),
-                        child: GestureDetector(
-                          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                          behavior: .opaque,
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              spacing: 16,
-                              children: [
-                                PhoneNumberField(controller: _phoneCtrl),
-                                if (state is SettingsEditPhoneNumberFailure)
-                                  Text(
-                                    state.message,
-                                    style: TextStyle(
-                                      color: Theme.of(context).colorScheme.error,
-                                    ),
-                                  ),
-                                const Spacer(),
-                                Padding(
-                                  padding: const .symmetric(vertical: 16.0),
-                                  child: AppFilledButton(
-                                    onPressed: _onSubmit,
-                                    state: isSubmitting ? .loading : .idle,
-                                    label: S.of(context).save,
-                                  ),
-                                ),
-                              ],
+          return SafeArea(
+            child: Padding(
+              padding: const .symmetric(horizontal: 20),
+              child: GestureDetector(
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                behavior: .opaque,
+                child: Form(
+                  key: _formKey,
+                  child: ScrollableActionsLayout(
+                    centerBody: false,
+                    body: Column(
+                      spacing: 16,
+                      children: [
+                        PhoneNumberField(controller: _phoneCtrl),
+                        if (state is SettingsEditPhoneNumberFailure)
+                          Text(
+                            state.message,
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.error,
                             ),
                           ),
+                      ],
+                    ),
+                    actions: [
+                      Padding(
+                        padding: const .symmetric(vertical: 16.0),
+                        child: AppFilledButton(
+                          onPressed: _onSubmit,
+                          state: isSubmitting ? .loading : .idle,
+                          label: S.of(context).save,
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           );
         },
       ),

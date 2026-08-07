@@ -3,5 +3,8 @@ export 'golden_constants.dart';
 export 'golden_mocks.dart';
 export 'golden_plugin_stubs.dart';
 export 'golden_test_with_assets.dart';
+export 'layout_assertions.dart';
 export 'pump_app.dart';
 export 'pump_golden_app.dart';
+export 'responsive_matrix.dart';
+export 'responsive_surface_catalog.dart';

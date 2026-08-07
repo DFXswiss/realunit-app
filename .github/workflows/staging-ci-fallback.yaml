@@ -1,0 +1,77 @@
+name: Staging CI Router
+
+# A staging push normally produces a `synchronize` event on the open
+# staging → develop promotion PR. That PR run owns the canonical required
+# checks. If the PR is missing, draft, stale, or cannot be queried, this
+# workflow dispatches the canonical RealUnit Build as a fail-safe.
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+# Only the newest staging SHA needs routing. This group is deliberately
+# isolated from RealUnit Build, so it can never cancel required PR checks.
+concurrency:
+  group: staging-ci-router-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  route:
+    name: Route staging CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Use PR CI or dispatch fail-safe CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          SHOULD_DISPATCH=true
+          REASON="manual routing request"
+
+          if [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            REASON="promotion PR lookup failed"
+            if PULLS_JSON="$(
+              gh api --method GET "/repos/${GITHUB_REPOSITORY}/pulls" \
+                -f state=open \
+                -f base=develop \
+                -f head="${GITHUB_REPOSITORY_OWNER}:staging" \
+                -f per_page=100
+            )"; then
+              if jq -e \
+                --arg repo "${GITHUB_REPOSITORY}" \
+                --arg sha "${GITHUB_SHA}" \
+                'any(.[]; .draft == false and .head.repo.full_name == $repo and .head.sha == $sha)' \
+                <<<"${PULLS_JSON}" >/dev/null; then
+                SHOULD_DISPATCH=false
+                REASON="ready promotion PR at this SHA owns canonical CI"
+              else
+                REASON="no ready promotion PR at this SHA"
+              fi
+            else
+              echo "::warning::Could not query the staging promotion PR; dispatching fail-safe CI"
+            fi
+          fi
+
+          if [ "${SHOULD_DISPATCH}" = "true" ]; then
+            gh workflow run pull-request.yaml \
+              --repo "${GITHUB_REPOSITORY}" \
+              --ref staging
+            echo "::notice::Dispatched RealUnit Build on staging (${REASON})"
+          else
+            echo "::notice::No fallback dispatch needed (${REASON})"
+          fi
+
+          {
+            echo "### Staging CI routing"
+            echo
+            echo "- Fallback dispatched: \`${SHOULD_DISPATCH}\`"
+            echo "- Reason: ${REASON}"
+            echo "- SHA: \`${GITHUB_SHA}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"

@@ -4,6 +4,7 @@
 // not visible to the line-coverage instrumentation.
 // ignore_for_file: prefer_const_constructors
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue_reason.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue_state.dart';
@@ -53,7 +54,7 @@ void main() {
       final b = SupportChatLoaded(ticket: ticket);
       expect(a, equals(b));
       expect(a.hashCode, b.hashCode);
-      expect(a.props, [ticket, false]);
+      expect(a.props, [ticket, false, null]);
     });
 
     test('different isSending flags are unequal', () {
@@ -69,6 +70,7 @@ void main() {
       final next = base.copyWith(isSending: true);
       expect(next.ticket, ticket);
       expect(next.isSending, isTrue);
+      expect(next.attachment, isNull);
     });
 
     test('copyWith with ticket changes only that field', () {
@@ -85,6 +87,15 @@ void main() {
       final base = SupportChatLoaded(ticket: ticket, isSending: true);
       final next = base.copyWith();
       expect(next, equals(base));
+    });
+
+    test('copyWith clearAttachment removes the attachment', () {
+      final ticket = _ticket();
+      final attachment = XFile('path/to/img.jpg');
+      final base = SupportChatLoaded(ticket: ticket, attachment: attachment);
+      final next = base.copyWith(clearAttachment: true);
+      expect(next.attachment, isNull);
+      expect(next.ticket, ticket);
     });
   });
 

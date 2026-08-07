@@ -37,3 +37,7 @@ final class SetNetworkModeEvent extends SettingsEvent {
 final class ToggleHideAmountEvent extends SettingsEvent {
   const ToggleHideAmountEvent();
 }
+
+final class UnlockInsiderFeaturesEvent extends SettingsEvent {
+  const UnlockInsiderFeaturesEvent();
+}

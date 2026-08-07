@@ -79,6 +79,7 @@ class SellButton extends StatelessWidget {
             if (confirmedSuccess ?? false) {
               if (context.mounted) {
                 await showModalBottomSheet(
+                  isScrollControlled: true,
                   context: context,
                   builder: (_) => const SellExecutedSheet(),
                 );

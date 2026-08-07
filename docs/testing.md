@@ -44,7 +44,7 @@ Test layout mirrors `lib/`. Stack: [`flutter_test`](https://pub.dev/packages/flu
 | `test/screens/<feature>/cubit(s)/**` and `test/screens/<feature>/bloc/**` | Cubit/Bloc state-transition specs (in the activated surface for line-coverage) |
 | `test/screens/<feature>/**/*_page_test.dart` | `testWidgets` view specs (cover the page, not the cubit logic) |
 | `test/integration/` | Cross-layer Tier-1 specs using `FakeBitboxCredentials` (e.g. `kyc_sign_flow_test.dart`) |
-| `test/helper/` | Shared test infra: [`pump_app.dart`](../test/helper/pump_app.dart), [`fake_bitbox_credentials.dart`](../test/helper/fake_bitbox_credentials.dart) |
+| `test/helper/` | Shared test infra: [`pump_app.dart`](../test/helper/pump_app.dart), [`fake_bitbox_credentials.dart`](../test/helper/fake_bitbox_credentials.dart), [`responsive_matrix.dart`](../test/helper/responsive_matrix.dart), [`layout_assertions.dart`](../test/helper/layout_assertions.dart), [`responsive_surface_catalog.dart`](../test/helper/responsive_surface_catalog.dart) |
 | `test/models/` | DTO / marshalling specs (`asset_test.dart`, `balance_test.dart`, `transaction_test.dart`, …) |
 | `test/setup/` | App lifecycle / bootstrap specs (`lifecycle_initializer_test.dart`) |
 | `test/styles/` | Currency / language fixtures (`currency_test.dart`, `language_test.dart`) |
@@ -110,6 +110,37 @@ testWidgets('shows SnackBar if submitting fails', (tester) async {
 ```
 
 See `test/screens/kyc/steps/kyc_email_page_test.dart`.
+
+### Responsive layout / sticky CTAs (required)
+
+**Bug class this gates:** content taller than the sheet/viewport (long locale, large accessibility text, small phone) pushes bottom buttons outside the clip → they paint or look tappable but **receive no hits**. Reproduced on BitBox pairing (`Bestätigen` on iOS).
+
+**Production contract**
+
+1. Sticky-CTA screens/sheets use [`ScrollableActionsLayout`](../lib/widgets/scrollable_actions_layout.dart): **scrollable body + actions outside the scroll view**.
+2. Do **not** put a bare `Spacer()` above buttons and hope content fits. `Spacer()` inside the body is also illegal (unbounded main axis → RenderFlex crash); use `centerBody: true` to vertically center content that still fits the viewport.
+3. Do **not** rely on a fixed fraction of screen height without scroll inside it.
+4. Host must give the layout a **bounded height** (bottom sheet, `Expanded`, or fixed `SizedBox`). Unbounded height throws a `FlutterError` in every build mode — fail-loud, not a silent broken layout.
+
+**Test contract (gates every catalogued surface against this bug class)**
+
+| Piece | Role |
+|---|---|
+| [`responsive_matrix.dart`](../test/helper/responsive_matrix.dart) | Standard phones (iPhone SE → Pro Max, Android compact → large) × text scales `0.85…3.0` |
+| [`layout_assertions.dart`](../test/helper/layout_assertions.dart) | `expectNoLayoutOverflow`, `expectFullyTappable` (**real** `tester.tap`, not `onPressed?.call()`; `within` is required and the hit-test path is verified against the target's own render objects) |
+| [`responsive_surface_catalog.dart`](../test/helper/responsive_surface_catalog.dart) | Living list of surfaces that **must** have a matrix test and a production file that references `ScrollableActionsLayout`; catalog self-test fails if either file is missing or the reference regresses |
+| Matrix specs (e.g. `connect_bitbox_responsive_matrix_test.dart`) | Full `kFullResponsiveMatrix` × every button-bearing state |
+
+The catalog is a living list, not a completeness proof: it does not automatically ensure every sticky-CTA surface in the app is registered. Authors must add new sticky-CTA surfaces to the catalog (with a matrix test); that is a review responsibility.
+
+Rules for PRs:
+
+- Any new bottom sheet / page with a bottom primary action **must** use `ScrollableActionsLayout` (or equivalent Expanded + scroll + sticky actions).
+- Register the surface in `kResponsiveSurfaceCatalog` and add a matrix test **in the same PR**.
+- Interactive widget tests must prefer `tester.tap` / `expectFullyTappable` over calling `onPressed` on the widget.
+- Worst-case content: longest locale you ship (`de`), longest dynamic strings (e.g. real channel-hash shape), not golden-friendly short stubs alone.
+
+Reference implementation: `test/screens/hardware_connect_bitbox/connect_bitbox_responsive_matrix_test.dart` (7 devices × 5 text scales × 5 button states + focused regressions). 29 surfaces are catalogued in [`responsive_surface_catalog.dart`](../test/helper/responsive_surface_catalog.dart) (living list — not a completeness proof; see above).
 
 ### Service + HTTP
 
@@ -385,11 +416,14 @@ flutter analyze
 flutter test --coverage
 ```
 
-The workflow runs three jobs:
+The workflow runs four CI jobs:
 
 - **`Analyze & Test`** — the block above, plus a `lcov --extract` step that narrows `coverage/lcov.info` to the activated surface (`lib/packages/**`, `lib/screens/**/cubit(s)/**`, `lib/screens/**/bloc/**`), followed by `lcov --remove '*.g.dart'` to strip generator output (Drift schema mirror) before summarising. The filtered tracefile (`coverage-lcov`) and a one-line summary (`coverage-summary`) are uploaded as artifacts.
-- **`Coverage Floor Gate`** — downloads `coverage-summary` and fails the build when scoped line/function coverage drops below the integers committed to `.coverage-floor-lines` and `.coverage-floor-functions`. Required status check on `develop` + `main` (ruleset `PRs` / id `11317379`) alongside `Analyze & Test` and `Visual Regression` — a coverage regression blocks the merge. Ratchet protocol is documented in `README.md`.
+- **`Coverage Floor Gate`** — downloads `coverage-summary` and fails the build when scoped line/function coverage drops below the integers committed to `.coverage-floor-lines` and `.coverage-floor-functions`. Required status check on `develop` + `main` (ruleset `PRs` / id `11317379`) alongside `Analyze & Test` and `Visual Regression` — a coverage regression blocks the merge. Ratchet protocol is documented in `README.md`. The same job also runs `scripts/check-coverage-visibility.sh`, which fails the build when an in-scope file produced no coverage at all: a file that no test loads is absent from `lcov.info` and therefore invisible to the scoped %, so the floor number alone cannot catch it. Files with genuinely no coverable lines (interfaces/ports, barrels) are ratcheted in `.coverage-visibility-allowlist`.
+- **`Visual Regression`** — validates committed golden baselines on the deterministic self-hosted macOS runner and uploads render diffs on failure.
 - **`BitBox quirks audit`** — runs `bitbox-audit` against the diff and inlines its report into the workflow run summary; uploaded as `bitbox-audit-report`.
+
+Staging deduplication lives in the separate `Staging CI Router` workflow (`staging-ci-fallback.yaml`). On each staging push it verifies that an open, non-draft, same-repository `staging → develop` PR already points at the pushed SHA. That PR's `synchronize` run owns the canonical required checks. If the PR is missing, draft, stale, or cannot be queried, the router dispatches `RealUnit Build` on `staging` as a fail-safe. The router has its own concurrency group and never cancels a PR run, so cancelled checks cannot be attached to the current promotion-PR head.
 
 Tier 3 runs separately under `tier3-handbook.yaml` (push to `develop`, manual, or any PR labelled `tier3:full` except PRs targeting `main`). Its only artifact is `handbook-captures`, the per-flow diagnostic recordings — coverage data is owned by `Analyze & Test` instead.
 
@@ -403,6 +437,11 @@ Some files are deliberately uncovered today because exercising them would change
 |---|---|---|
 | `lib/screens/*/`-Page widgets that call `getIt<X>()` directly (Dashboard, Receive, Settings sub-pages) | Service locator usage inside `build` makes the cubits the page wires up impossible to swap | Move the `BlocProvider(create: (_) => Cubit(getIt<X>()))` lookup up one layer so tests can `BlocProvider.value` a mock |
 | `lib/widgets/chain_asset_icon.dart`, `lib/widgets/image_picker_sheet.dart` | `Image.asset` / `ImagePicker` need a real asset bundle / platform channel | Mock the asset loader / use the platform-interface fake |
+
+The two logic-bearing boot paths in `lib/setup/di.dart` are now covered by `test/setup/di_test.dart` (the `finishSetup` / `setupRepositories` / `setupServices` / `setupBlocs` wiring is pure service-locator plumbing and stays out of scope):
+
+- `_migrateSecurityFlags` was promoted to `@visibleForTesting migrateSecurityFlags(prefs, secureStorage)` — covering the biometric / lockout-counter / lock-until migrations, the unparseable-timestamp branch, the `isPinEnabled` cleanup, the `0`-attempts boundary, and idempotency.
+- `setupEssentials`' SQLCipher **encryption-key lifecycle** is exercised via two injection seams with production defaults (`SecureStorage secureStorage = const SecureStorage()` and `Future<bool> Function() databaseFileExists = _existsDatabaseFile` — the same default-injection pattern as `const PathProviderAdapter()`, not a silent fallback). The specs drive all three branches against `SecureStorage.withStorage(mock)` + `SharedPreferences.setMockInitialValues` with a per-test `getIt.reset()`: an existing key is returned untouched; a clean first boot (no key, no db) mints + persists a fresh key and drops the stale current-wallet id; and a database present WITHOUT its key fails loud instead of silently re-keying.
 
 Drift-backed repositories under `lib/packages/repository/*` are fully covered: `AppDatabase.forTesting` (`lib/packages/storage/database.dart`) accepts `NativeDatabase.memory()`, and `test/packages/repository/{asset,balance,cache,transaction,wallet}_repository_test.dart` exercise every wrapper. The SharedPreferences-backed `SettingsRepository` and the service-backed `SupportedFiat`/`SupportedLanguage` repositories have specs alongside them too.
 

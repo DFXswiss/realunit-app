@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_country_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/registration_rejected_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/dto/real_unit_registration_request_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_status.dart';
@@ -80,11 +82,10 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
   final postalCodeCtrl = TextEditingController();
   final cityCtrl = TextEditingController();
   final countryCtrl = ValueNotifier<Country?>(null);
-  final taxCountryCtrl = ValueNotifier<Country?>(null);
-  final tinCtrl = TextEditingController();
 
   Country? _initialNationality;
   Country? _initialAddressCountry;
+  List<KycTaxResidenceSeed> _initialTaxResidences = const [];
 
   @override
   void initState() {
@@ -114,16 +115,28 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
       addressStreetNumberCtrl.text = dto.kycData.address.houseNumber ?? '';
       postalCodeCtrl.text = dto.kycData.address.zip;
       cityCtrl.text = dto.kycData.address.city;
-      unawaited(_resolveInitialCountries(dto.nationality, dto.addressCountry));
+      unawaited(
+        _resolveInitialCountries(
+          dto.nationality,
+          dto.addressCountry,
+          swissTaxResidence: dto.swissTaxResidence,
+          countryAndTINs: dto.countryAndTINs,
+        ),
+      );
     }
   }
 
   Future<void> _resolveInitialCountries(
     String nationalitySymbol,
-    String addressCountrySymbol,
-  ) async {
+    String addressCountrySymbol, {
+    required bool swissTaxResidence,
+    List<CountryAndTin>? countryAndTINs,
+  }) async {
+    final countryService = getIt<DfxCountryService>();
+
+    // Nationality/address prefill: independent of the tax-residence lookup. A failure here degrades
+    // to empty pickers (pre-existing behaviour) and must not take the tax seeding down with it.
     try {
-      final countryService = getIt<DfxCountryService>();
       final countries = await Future.wait([
         countryService.getCountryBySymbol(nationalitySymbol),
         countryService.getCountryBySymbol(addressCountrySymbol),
@@ -136,9 +149,32 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
         _initialAddressCountry = countries[1];
       });
     } catch (_) {
-      // Country lookup failed (unknown symbol or network error): degrade
-      // gracefully to the empty country fields — the user can pick manually
-      // and the form still submits.
+      // Country lookup failed (unknown symbol or network error): degrade to empty pickers; the
+      // user can pick manually and the form still submits.
+    }
+
+    // Tax-residence seeds resolved separately: a single unknown tax country must not wipe the
+    // nationality/address prefill, and a failure is logged LOUDLY rather than swallowed — dropping a
+    // seed silently would re-introduce the tax-residence loss this seeding exists to prevent (the API
+    // overwrites the stored set with the form submit).
+    try {
+      final taxSeeds = <KycTaxResidenceSeed>[];
+      if (swissTaxResidence) {
+        final ch = await countryService.getCountryBySymbol('CH');
+        taxSeeds.add(KycTaxResidenceSeed(country: ch, tin: ''));
+      }
+      if (countryAndTINs != null) {
+        for (final entry in countryAndTINs) {
+          final country = await countryService.getCountryBySymbol(entry.country);
+          taxSeeds.add(KycTaxResidenceSeed(country: country, tin: entry.tin));
+        }
+      }
+      if (!mounted) return;
+      setState(() {
+        _initialTaxResidences = taxSeeds;
+      });
+    } catch (e) {
+      developer.log('Failed to resolve prefilled tax residences: $e');
     }
   }
 
@@ -189,9 +225,23 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
             }
           }
           if (state is KycRegistrationSubmitFailure) {
-            final message = state.cause is SigningCancelledException
-                ? S.of(context).signingCancelled
-                : S.of(context).registrationFailed(state.message);
+            final cause = state.cause;
+            final String message;
+            if (cause is SigningCancelledException) {
+              message = S.of(context).signingCancelled;
+            } else if (cause is RegistrationRejectedException) {
+              // Thrown only for a content-level (non-auth) 4xx of
+              // register/complete itself — surface the server reason with the
+              // "nothing was saved" context so it is not mistaken for a hang
+              // (the wizard state is purely local and a rejected submit
+              // persists nothing). Auth/rate-limit/5xx/transport errors and
+              // pre-submit failures (getUser, register/date) stay on the
+              // generic message: "check your entries" would be the wrong
+              // instruction there.
+              message = S.of(context).registrationRejected(cause.message);
+            } else {
+              message = S.of(context).registrationFailed(state.message);
+            }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(message),
@@ -273,37 +323,30 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
         );
 
       case KycRegistrationStep.taxResidence:
-        // Default the tax-residence country to the residence country entered on
-        // the address step, rebuilding when it changes — most people are
-        // tax-resident where they live. The field stays editable; CountryField
-        // propagates the default into `taxCountryCtrl` and reveals the TIN for a
-        // non-Swiss default.
+        // The address-step residence country is hard-wired into the tax list as
+        // a locked primary entry (API: tax residences must include addressCountry).
+        // Rebuild when the residence changes so the locked row stays in sync.
+        // ValueKey forces a new State when async seed resolution lands: the tax
+        // step only reads initialTaxResidences in initState, so a late prefill
+        // would otherwise never appear in the form.
         return ValueListenableBuilder<Country?>(
           valueListenable: countryCtrl,
           builder: (context, residenceCountry, _) => KycRegistrationTaxStep(
-            taxCountryCtrl: taxCountryCtrl,
-            tinCtrl: tinCtrl,
-            initialCountry: residenceCountry,
-            onSubmit: _onSubmit,
+            key: ValueKey(
+              'tax-${_initialTaxResidences.map((s) => s.country.symbol).join(",")}',
+            ),
+            residenceCountry: residenceCountry,
+            initialTaxResidences: _initialTaxResidences,
+            onSubmit: _onSubmitTax,
           ),
         );
     }
   }
 
-  Future<void> _onSubmit() async {
-    // `swissTaxResidence` is derived from the tax-residence country picked on
-    // the final step: a Swiss (CH) tax residence is Swiss-only, and the TIN is
-    // forwarded only for a non-Swiss tax residence (matching the backend
-    // contract).
-    final swissTaxResidence = taxCountryCtrl.value!.symbol == 'CH';
-    final countryAndTINs = swissTaxResidence
-        ? null
-        : [
-            CountryAndTin(
-              country: taxCountryCtrl.value!.symbol,
-              tin: tinCtrl.text.trim(),
-            ),
-          ];
+  Future<void> _onSubmitTax(KycTaxResidenceSubmit tax) async {
+    // `swissTaxResidence` + `countryAndTINs` are derived inside the tax step so
+    // multi-residence and the locked address-country entry stay consistent with
+    // the backend contract (tax residences must include addressCountry).
     await context.read<KycRegistrationSubmitCubit>().submit(
       type: typeCtrl.value,
       firstName: firstnameCtrl.text.trim(),
@@ -316,8 +359,8 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
       addressPostalCode: postalCodeCtrl.text.trim(),
       addressCity: cityCtrl.text.trim(),
       addressCountry: countryCtrl.value!,
-      swissTaxResidence: swissTaxResidence,
-      countryAndTINs: countryAndTINs,
+      swissTaxResidence: tax.swissTaxResidence,
+      countryAndTINs: tax.countryAndTINs,
     );
   }
 
@@ -335,8 +378,6 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
     postalCodeCtrl.dispose();
     cityCtrl.dispose();
     countryCtrl.dispose();
-    taxCountryCtrl.dispose();
-    tinCtrl.dispose();
     super.dispose();
   }
 }

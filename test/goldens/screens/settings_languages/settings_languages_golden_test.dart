@@ -27,6 +27,7 @@ void main() {
     when(() => settingsRepo.language).thenReturn('en');
     when(() => settingsRepo.currency).thenReturn('CHF');
     when(() => settingsRepo.networkMode).thenReturn(NetworkMode.mainnet);
+    when(() => settingsRepo.insiderFeaturesUnlocked).thenReturn(false);
     when(() => langRepo.getEnabled())
         .thenAnswer((_) async => const [Language.en, Language.de]);
     settingsBloc = SettingsBloc(settingsRepo, () async {});

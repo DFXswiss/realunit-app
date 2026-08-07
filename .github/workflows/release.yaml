@@ -39,6 +39,7 @@ jobs:
     outputs:
       proceed: ${{ steps.check.outputs.proceed }}
       is_prerelease: ${{ steps.check.outputs.is_prerelease }}
+      sentry_environment: ${{ steps.check.outputs.sentry_environment }}
     steps:
       - name: Inspect tag
         id: check
@@ -48,19 +49,28 @@ jobs:
           # Strict shape: vX.Y.Z with all parts numeric, no suffix.
           if ! echo "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::notice::Tag $TAG is not a plain vX.Y.Z tag; skipping release."
-            echo "proceed=false" >> $GITHUB_OUTPUT
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            {
+              echo "proceed=false"
+              echo "is_prerelease=false"
+              echo "sentry_environment=internal"
+            } >> "$GITHUB_OUTPUT"
             exit 0
           fi
           PATCH=$(echo "$TAG" | cut -d. -f3)
           if [ "$PATCH" -eq 0 ]; then
             echo "::notice::Tag $TAG has PATCH=0; running production-candidate release."
-            echo "proceed=true" >> $GITHUB_OUTPUT
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            {
+              echo "proceed=true"
+              echo "is_prerelease=false"
+              echo "sentry_environment=production"
+            } >> "$GITHUB_OUTPUT"
           else
             echo "::notice::Tag $TAG has PATCH=$PATCH; running internal release."
-            echo "proceed=true" >> $GITHUB_OUTPUT
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+            {
+              echo "proceed=true"
+              echo "is_prerelease=true"
+              echo "sentry_environment=internal"
+            } >> "$GITHUB_OUTPUT"
           fi
 
   store-metadata-preflight:
@@ -172,6 +182,9 @@ jobs:
         working-directory: android
         env:
           NEW_VERSION: ${{ github.ref_name }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_ENVIRONMENT: ${{ needs.guard.outputs.sentry_environment }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -269,6 +282,9 @@ jobs:
         working-directory: ios
         env:
           NEW_VERSION: ${{ github.ref_name }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          SENTRY_ENVIRONMENT: ${{ needs.guard.outputs.sentry_environment }}
 
       - name: Upload IPA artifact
         uses: actions/upload-artifact@v4

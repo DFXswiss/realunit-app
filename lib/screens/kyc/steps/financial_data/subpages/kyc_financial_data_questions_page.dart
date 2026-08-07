@@ -14,6 +14,7 @@ import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/support_routes.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class KycFinancialDataQuestionsPage extends StatelessWidget {
   final KycFinancialDataLoadedSuccess state;
@@ -34,73 +35,64 @@ class KycFinancialDataQuestionsPage extends StatelessWidget {
       ),
       body: Padding(
         padding: const .symmetric(horizontal: 20),
-        child: LayoutBuilder(
-          builder: (context, constraint) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraint.maxHeight,
-                ),
-                child: IntrinsicHeight(
-                  child: SafeArea(
-                    child: Column(
-                      spacing: 16.0,
-                      crossAxisAlignment: .start,
-                      children: [
-                        Column(
-                          spacing: 24.0,
-                          crossAxisAlignment: .start,
-                          children: [
-                            Text(
-                              S
-                                  .of(context)
-                                  .financialDataQuestion(
-                                    '${state.currentIndex + 1}',
-                                    '${state.visibleQuestions.length}',
-                                  ),
-                              style:
-                                  Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.copyWith(
-                                    color: RealUnitColors.neutral500,
-                                  ),
-                            ),
-                            Column(
-                              crossAxisAlignment: .start,
-                              spacing: 16.0,
-                              children: [
-                                Text(
-                                  state.currentQuestion.title,
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.headlineSmall,
-                                ),
-                                if (state.currentQuestion.description != null)
-                                  _buildDescription(context, state.currentQuestion),
-                              ],
-                            ),
-                          ],
-                        ),
-                        _buildQuestionWidget(context, state),
-                        const Spacer(),
-                        Padding(
-                          padding: const .symmetric(vertical: 16.0),
-                          child: AppFilledButton(
-                            onPressed: state.hasAnswer
-                                ? () => context.read<KycFinancialDataCubit>().submitAndNext()
-                                : null,
-                            label: state.isLastQuestion
-                                ? S.of(context).complete
-                                : S.of(context).next,
+        child: SafeArea(
+          child: ScrollableActionsLayout(
+            body: Column(
+              spacing: 16.0,
+              crossAxisAlignment: .start,
+              mainAxisAlignment: .start,
+              children: [
+                Column(
+                  spacing: 24.0,
+                  crossAxisAlignment: .start,
+                  children: [
+                    Text(
+                      S
+                          .of(context)
+                          .financialDataQuestion(
+                            '${state.currentIndex + 1}',
+                            '${state.visibleQuestions.length}',
                           ),
+                      style:
+                          Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.copyWith(
+                            color: RealUnitColors.neutral500,
+                          ),
+                    ),
+                    Column(
+                      crossAxisAlignment: .start,
+                      spacing: 16.0,
+                      children: [
+                        Text(
+                          state.currentQuestion.title,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.headlineSmall,
                         ),
+                        if (state.currentQuestion.description != null)
+                          _buildDescription(context, state.currentQuestion),
                       ],
                     ),
-                  ),
+                  ],
+                ),
+                _buildQuestionWidget(context, state),
+              ],
+            ),
+            actions: [
+              Padding(
+                padding: const .symmetric(vertical: 16.0),
+                child: AppFilledButton(
+                  onPressed: state.hasAnswer
+                      ? () => context.read<KycFinancialDataCubit>().submitAndNext()
+                      : null,
+                  label: state.isLastQuestion
+                      ? S.of(context).complete
+                      : S.of(context).next,
                 ),
               ),
-            );
-          },
+            ],
+          ),
         ),
       ),
     );

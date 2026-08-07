@@ -1,6 +1,6 @@
 part of 'buy_confirm_cubit.dart';
 
-enum BuyConfirmError { aktionariat, amountTooLow, unknown }
+enum BuyConfirmError { aktionariat, amountTooLow, primaryEmailRequired, unknown }
 
 abstract class BuyConfirmState extends Equatable {
   const BuyConfirmState();

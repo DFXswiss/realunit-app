@@ -11,6 +11,7 @@ import 'package:realunit_wallet/screens/restore_wallet/widgets/restore_wallet_in
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/styles/icons.dart';
 import 'package:realunit_wallet/widgets/mnemonic_field.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 import 'package:realunit_wallet/widgets/text_substring_highlighting.dart';
 
 class RestoreWalletView extends StatefulWidget {
@@ -63,66 +64,60 @@ class _RestoreWalletViewState extends State<RestoreWalletView> {
           behavior: HitTestBehavior.opaque,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: LayoutBuilder(
-              builder: (context, constraint) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraint.maxHeight),
-                    child: IntrinsicHeight(
-                      child: Column(
-                        children: <Widget>[
-                          SvgPicture.asset(
-                            'assets/images/illustrations/restore_wallet.svg',
-                            height: 124,
-                          ),
-                          const SizedBox(
-                            height: 20,
-                          ),
-                          Text(
-                            S.of(context).restoreWallet,
-                            style: const TextStyle(
-                              fontSize: 26,
-                              color: RealUnitColors.realUnitBlack,
-                              fontWeight: FontWeight.bold,
-                              height: 30 / 26,
-                              letterSpacing: -0.52,
-                            ),
-                          ),
-                          const SizedBox(
-                            height: 40,
-                          ),
-                          Row(
-                            spacing: 8.0,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const RecoveryKeyIcon(size: 20, color: RealUnitColors.realUnitBlue),
-                              Expanded(
-                                child: TextSubstringHighlighting(
-                                  text: S.of(context).restoreWalletFromSeedDescription,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    color: RealUnitColors.neutral500,
-                                  ),
-                                  highlightedText: '12 ${S.of(context).recoveryWords}',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          RestoreWalletInputField(
-                            controllers: _controllers,
-                            focusNodes: _focusNodes,
-                          ),
-                          const Spacer(),
-                          RestoreWalletButton(
-                            controllers: _controllers,
-                          ),
-                        ],
-                      ),
+            child: ScrollableActionsLayout(
+              centerBody: false,
+              body: Column(
+                mainAxisAlignment: .start,
+                children: <Widget>[
+                  SvgPicture.asset(
+                    'assets/images/illustrations/restore_wallet.svg',
+                    height: 124,
+                  ),
+                  const SizedBox(
+                    height: 20,
+                  ),
+                  Text(
+                    S.of(context).restoreWallet,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      color: RealUnitColors.realUnitBlack,
+                      fontWeight: FontWeight.bold,
+                      height: 30 / 26,
+                      letterSpacing: -0.52,
                     ),
                   ),
-                );
-              },
+                  const SizedBox(
+                    height: 40,
+                  ),
+                  Row(
+                    spacing: 8.0,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const RecoveryKeyIcon(size: 20, color: RealUnitColors.realUnitBlue),
+                      Expanded(
+                        child: TextSubstringHighlighting(
+                          text: S.of(context).restoreWalletFromSeedDescription,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: RealUnitColors.neutral500,
+                          ),
+                          highlightedText: '12 ${S.of(context).recoveryWords}',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  RestoreWalletInputField(
+                    controllers: _controllers,
+                    focusNodes: _focusNodes,
+                  ),
+                ],
+              ),
+              actions: [
+                RestoreWalletButton(
+                  controllers: _controllers,
+                ),
+              ],
             ),
           ),
         ),

@@ -13,6 +13,7 @@ import 'package:realunit_wallet/screens/sell/widgets/sell_bank_account_field.dar
 import 'package:realunit_wallet/screens/sell/widgets/sell_button.dart';
 import 'package:realunit_wallet/screens/sell/widgets/sell_converter.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class SellPage extends StatelessWidget {
   const SellPage({super.key});
@@ -77,34 +78,28 @@ class _SellViewState extends State<SellView> {
             child: GestureDetector(
               behavior: .opaque,
               onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                      child: IntrinsicHeight(
-                        child: Padding(
-                          padding: const .symmetric(horizontal: 20.0),
-                          child: Column(
-                            spacing: 32,
-                            children: [
-                              SellConverter(
-                                amountController: _amountController,
-                                resultController: _resultController,
-                              ),
-                              const SellBankAccountField(),
-                              const Spacer(),
-                              SellButton(
-                                amount: _amountController.text,
-                                bankAccount: context.watch<SellSelectedBankAccountCubit>().state,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+              child: ScrollableActionsLayout(
+                centerBody: false,
+                // Horizontal 20 applied to body + sticky actions so the CTA
+                // stays inset like the pre-migration Column-wide Padding.
+                padding: const .symmetric(horizontal: 20.0),
+                body: Column(
+                  mainAxisAlignment: .start,
+                  spacing: 32,
+                  children: [
+                    SellConverter(
+                      amountController: _amountController,
+                      resultController: _resultController,
                     ),
-                  );
-                },
+                    const SellBankAccountField(),
+                  ],
+                ),
+                actions: [
+                  SellButton(
+                    amount: _amountController.text,
+                    bankAccount: context.watch<SellSelectedBankAccountCubit>().state,
+                  ),
+                ],
               ),
             ),
           );

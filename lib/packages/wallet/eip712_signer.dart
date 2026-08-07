@@ -24,11 +24,20 @@ class Eip712Signer {
     required bool swissTaxResidence,
     required String registrationDate,
   }) {
+    // The BitBox02 firmware refuses to sign typed data whose EIP712Domain has
+    // no chainId ("typed data has no chain ID" shown on the device), so
+    // hardware wallets sign with the chainId-extended domain. Software wallets
+    // keep the legacy chainId-less domain until Aktionariat has confirmed its
+    // signature re-verification accepts the extended variant — the API
+    // accepts both (pair PR DFXswiss/api#4542).
+    final includeChainIdInDomain = credentials is BitboxCredentials;
+
     final Map<String, dynamic> typedDataMap = {
       'types': {
         'EIP712Domain': [
           {'name': 'name', 'type': 'string'},
           {'name': 'version', 'type': 'string'},
+          if (includeChainIdInDomain) {'name': 'chainId', 'type': 'uint256'},
         ],
         'RealUnitUser': [
           {'name': 'email', 'type': 'string'},
@@ -47,7 +56,11 @@ class Eip712Signer {
         ],
       },
       'primaryType': 'RealUnitUser',
-      'domain': {'name': 'RealUnitUser', 'version': '1'},
+      'domain': {
+        'name': 'RealUnitUser',
+        'version': '1',
+        if (includeChainIdInDomain) 'chainId': chainId,
+      },
       'message': {
         'email': email,
         'name': name,

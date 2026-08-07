@@ -41,24 +41,20 @@ void main() {
     );
 
     blocTest<SupportEmailCaptureCubit, SupportEmailCaptureState>(
-      'mergeRequested → Loading → Failure(mergeRequested)',
+      'mergeRequested → Loading → MergeRequested',
       setUp: () => when(() => service.registerEmail(any())).thenAnswer(
         (_) async => RegistrationEmailStatus.mergeRequested,
       ),
       build: build,
       act: (c) => c.submit('a@b.com'),
-      expect: () => [
-        const SupportEmailCaptureLoading(),
-        isA<SupportEmailCaptureFailure>().having(
-          (s) => s.error,
-          'error',
-          SupportEmailCaptureError.mergeRequested,
-        ),
+      expect: () => const [
+        SupportEmailCaptureLoading(),
+        SupportEmailCaptureMergeRequested(),
       ],
     );
 
     blocTest<SupportEmailCaptureCubit, SupportEmailCaptureState>(
-      'ApiException → Failure(unknown) carrying the api message',
+      'ApiException → Failure carrying the api message',
       setUp: () => when(() => service.registerEmail(any())).thenAnswer(
         (_) async => throw const ApiException(
           code: 'SOMETHING_ELSE',
@@ -70,13 +66,12 @@ void main() {
       expect: () => [
         const SupportEmailCaptureLoading(),
         isA<SupportEmailCaptureFailure>()
-            .having((s) => s.error, 'error', SupportEmailCaptureError.unknown)
             .having((s) => s.message, 'message', 'rejected by server'),
       ],
     );
 
     blocTest<SupportEmailCaptureCubit, SupportEmailCaptureState>(
-      'non-Api exception → Failure(unknown) carrying e.toString()',
+      'non-Api exception → Failure carrying e.toString()',
       setUp: () => when(() => service.registerEmail(any())).thenAnswer(
         (_) async => throw Exception('socket down'),
       ),
@@ -85,7 +80,6 @@ void main() {
       expect: () => [
         const SupportEmailCaptureLoading(),
         isA<SupportEmailCaptureFailure>()
-            .having((s) => s.error, 'error', SupportEmailCaptureError.unknown)
             .having((s) => s.message, 'message', contains('socket down')),
       ],
     );

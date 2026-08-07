@@ -24,33 +24,18 @@ class SupportEmailCaptureCubit extends Cubit<SupportEmailCaptureState> {
         case RegistrationEmailStatus.emailRegistered:
           emit(const SupportEmailCaptureSuccess());
         case RegistrationEmailStatus.mergeRequested:
-          // The email-merge resolution path is a multi-step
-          // verification flow we don't want to drag into this minimal
-          // capture page. The user is told to pick a different
-          // address or contact support by email instead.
-          emit(
-            const SupportEmailCaptureFailure(
-              error: SupportEmailCaptureError.mergeRequested,
-              message: '',
-            ),
-          );
+          // The email is already known to DFX, so the API has sent an
+          // account-merge confirmation email. Signal the view to route to the
+          // shared email-verification flow so the user can confirm and link
+          // this wallet to the existing account.
+          emit(const SupportEmailCaptureMergeRequested());
       }
     } on ApiException catch (e) {
       developer.log(e.toString());
-      emit(
-        SupportEmailCaptureFailure(
-          error: SupportEmailCaptureError.unknown,
-          message: e.message,
-        ),
-      );
+      emit(SupportEmailCaptureFailure(e.message));
     } catch (e) {
       developer.log(e.toString());
-      emit(
-        SupportEmailCaptureFailure(
-          error: SupportEmailCaptureError.unknown,
-          message: e.toString(),
-        ),
-      );
+      emit(SupportEmailCaptureFailure(e.toString()));
     }
   }
 }

@@ -8,9 +8,11 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/dto/kyc_level_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/legal/real_unit_legal_agreement.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/user_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_state.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 
@@ -21,11 +23,24 @@ class KycCubit extends Cubit<KycState> {
 
   final DfxKycService _kycService;
   final RealUnitRegistrationService _registrationService;
+  final RealUnitLegalService _legalService;
   final AppStore _appStore;
 
+  /// Offline fallback ONLY. The legal disclaimer gate is server-driven via
+  /// `_legalService.getLegalInfo()`; this per-session flag is used solely when
+  /// that endpoint is unreachable (pre-rollout backend or outage) so the
+  /// disclaimer is not re-shown for the rest of the session — see the gate in
+  /// `_runCheckKyc` and CONTRIBUTING.md "API as Decision Authority" (legacy
+  /// tolerance).
   bool _legalDisclaimerAccepted = false;
   bool _emailRegistrationAttempted = false;
   String? _kycContext;
+
+  /// Agreements the server last reported as outstanding, remembered so
+  /// `acceptLegalDisclaimer` records exactly those on `PUT /v1/realunit/legal`.
+  /// `null` until the first successful `getLegalInfo()` — the accept path then
+  /// falls back to all agreements.
+  List<RealUnitLegalAgreement>? _outstandingLegalAgreements;
 
   // `Future.timeout` does not cancel the underlying work, so a late HTTP
   // response from an earlier call can still resume and emit state after a
@@ -37,9 +52,11 @@ class KycCubit extends Cubit<KycState> {
   KycCubit(
     DfxKycService kycService,
     RealUnitRegistrationService registrationService,
+    RealUnitLegalService legalService,
     AppStore appStore,
   ) : _kycService = kycService,
       _registrationService = registrationService,
+      _legalService = legalService,
       _appStore = appStore,
       super(const KycInitial());
 
@@ -94,11 +111,26 @@ class KycCubit extends Cubit<KycState> {
         return;
       }
 
-      // Disclaimer is a local session gate that must precede every sensitive
-      // call. It does not encode business routing — the API does — it just
-      // enforces a per-session ceremony on this device before the cubit
-      // forwards anything that requires a signed user identity.
-      if (!_legalDisclaimerAccepted) {
+      // The legal disclaimer gate is server-driven: the API is the single
+      // source of truth for whether this user still has outstanding agreements
+      // to accept — see CONTRIBUTING.md "API as Decision Authority". A 404 means
+      // the `/legal` endpoint is not deployed yet (pre-rollout backend): fall
+      // back to the local per-session `_legalDisclaimerAccepted` ceremony
+      // (legacy tolerance, mirrors the `emailConfirmed` gate below). Any OTHER
+      // error must fail closed on this compliance gate — rethrow so it surfaces
+      // as a KycFailure instead of silently letting the user past the disclaimer.
+      bool showDisclaimer;
+      try {
+        final legalInfo = await _legalService.getLegalInfo();
+        if (isClosed || generation != _runGeneration) return;
+        showDisclaimer = !legalInfo.allAccepted;
+        _outstandingLegalAgreements = legalInfo.outstandingAgreements;
+      } on ApiException catch (e) {
+        if (isClosed || generation != _runGeneration) return;
+        if (e.statusCode != 404) rethrow;
+        showDisclaimer = !_legalDisclaimerAccepted;
+      }
+      if (showDisclaimer) {
         emit(const KycSuccess(currentStep: KycStep.legalDisclaimer));
         return;
       }
@@ -127,11 +159,23 @@ class KycCubit extends Cubit<KycState> {
 
       switch (registrationInfo.state) {
         case RealUnitRegistrationState.alreadyRegistered:
+          // The API owns the manual-review gate. When the Aktionariat forward
+          // failed and staff must re-forward the registration, the backend
+          // reports `manualReview == true` and we park the user on a dedicated
+          // waiting screen. Takes precedence over the e-mail gate below. `false`
+          // and `null` (pre-rollout backend) both mean "no gate" — proceed
+          // exactly as before. Purely additive, API-driven; see CONTRIBUTING.md
+          // "API as Decision Authority" (legacy tolerance).
+          if (registrationInfo.manualReview == true) {
+            emit(const KycManualReview());
+            return;
+          }
           // The API owns the confirmation gate. When it reports the account
-          // e-mail is not yet confirmed, route to the confirm step. `null`
-          // (pre-rollout backend / grandfathered account) and `true` both mean
-          // "no gate" — proceed exactly as before. Purely additive, API-driven;
-          // see CONTRIBUTING.md "API as Decision Authority" (legacy tolerance).
+          // e-mail is not yet confirmed, route to the confirm step. `true`
+          // (confirmed, or a grandfathered account) and `null` (pre-rollout
+          // backend) both mean "no gate" — proceed exactly as before. Purely
+          // additive, API-driven; see CONTRIBUTING.md "API as Decision
+          // Authority" (legacy tolerance).
           if (registrationInfo.emailConfirmed == false) {
             emit(const KycSuccess(currentStep: KycStep.confirmEmail));
             return;
@@ -143,6 +187,10 @@ class KycCubit extends Cubit<KycState> {
           // Forward the server-supplied userData so `KycLinkWalletPage` does
           // not have to re-fetch — see CONTRIBUTING.md "Single round-trip per
           // decision". The backend always populates this for `AddWallet`.
+          // `emailConfirmed` is deliberately not gated here: in `AddWallet` it
+          // describes the *other* wallet's registration, not this one. After the
+          // link-wallet round-trip `checkKyc()` re-fetches and the gate then
+          // applies to the resulting `AlreadyRegistered` registration.
           emit(
             KycSuccess(
               currentStep: KycStep.linkWallet,
@@ -208,7 +256,7 @@ class KycCubit extends Cubit<KycState> {
           emit(KycPending(step));
           return;
         case KycProcessStatus.inProgress:
-          await _continueKyc(generation);
+          await _continueKyc(generation, registrationInfo.realUnitUserDataDto);
           return;
         case KycProcessStatus.mergeProcessing:
           // The user confirmed a merge and the backend is still processing it.
@@ -233,12 +281,37 @@ class KycCubit extends Cubit<KycState> {
     }
   }
 
-  void markLegalDisclaimerAccepted() {
+  /// Records acceptance of the legal disclaimer. Sets the local per-session
+  /// flag first (the offline fallback for a pre-rollout backend), then durably
+  /// records acceptance server-side via `PUT /v1/realunit/legal` for whatever
+  /// the server last reported as outstanding (all agreements when we never got
+  /// a successful `getLegalInfo()`). A 404 (endpoint not deployed yet) is
+  /// tolerated — the local flag carries the session; any other PUT failure
+  /// surfaces as `KycFailure` rather than being swallowed into a silent
+  /// re-prompt loop. On success the following `checkKyc()` re-reads the
+  /// authoritative server state, which drives the next routing decision.
+  Future<void> acceptLegalDisclaimer() async {
     _legalDisclaimerAccepted = true;
+    try {
+      await _legalService.acceptLegal(
+        _outstandingLegalAgreements ?? RealUnitLegalAgreement.values,
+      );
+    } on ApiException catch (e) {
+      if (isClosed) return;
+      if (e.statusCode != 404) {
+        emit(KycFailure(e.toString()));
+        return;
+      }
+    } catch (e) {
+      if (isClosed) return;
+      emit(KycFailure(e.toString()));
+      return;
+    }
+    await checkKyc();
   }
 
   /// should only be called after realunit registration was completed
-  Future<void> _continueKyc(int generation) async {
+  Future<void> _continueKyc(int generation, [RealUnitUserDataDto? realUnitUserData]) async {
     final kycStatus = await _kycService.continueKyc(context: _kycContext);
     if (isClosed || generation != _runGeneration) return;
 
@@ -265,12 +338,14 @@ class KycCubit extends Cubit<KycState> {
       KycSuccess(
         currentStep: kycStep,
         urlOrToken: currentStep.session.url,
+        realUnitUserData: realUnitUserData,
       ),
     );
   }
 
   KycStep? _mapStepName(KycStepName name) => switch (name) {
     KycStepName.contactData => KycStep.registration,
+    KycStepName.personalData => KycStep.personalData,
     KycStepName.nationalityData => KycStep.nationality,
     KycStepName.ident => KycStep.ident,
     KycStepName.financialData => KycStep.financialData,

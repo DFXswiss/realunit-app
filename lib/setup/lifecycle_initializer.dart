@@ -7,6 +7,8 @@ import 'package:realunit_wallet/packages/service/balance_service.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
+import 'package:realunit_wallet/setup/routing/router_config.dart';
 
 class LifecycleInitializer extends StatefulWidget {
   final Widget child;
@@ -84,7 +86,10 @@ class _LifecycleInitializerState extends State<LifecycleInitializer> {
     if (_armedForBackground) return;
     _armedForBackground = true;
 
-    getIt<PinAuthCubit>().onAppHidden();
+    // effectiveLocation, not currentConfiguration.uri: the KYC flow is pushed
+    // imperatively, and the raw uri would capture the base route underneath.
+    final location = effectiveLocation(routerConfig.routerDelegate.currentConfiguration);
+    getIt<PinAuthCubit>().onAppHidden(resumeCaptureFor(location));
     // Drop the mnemonic before the OS suspends the isolate. `lockCurrentWallet`
     // is defensive on its own — no try/catch / catchError by design, so a
     // Future.error surfaces in the Zone instead of being silently swallowed.

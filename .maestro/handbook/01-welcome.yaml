@@ -1,6 +1,22 @@
 # Tier-3 navigation smoke. The handbook screenshot for this flow is the
 # visual-regression Golden mapped in scripts/assemble-handbook-screenshots.sh;
 # this flow's diagnostic capture lands in build/handbook-captures/01-welcome.png.
+#
+# Timeout — why 120s here and not the suite-wide 30s:
+#   This is the FIRST flow, so it runs against a cold XCUITest driver on a
+#   freshly `simctl erase`-d device. On iOS 26 simulators, retrieving the
+#   view hierarchy of the deep Flutter semantics tree is pathologically slow
+#   when cold — a single snapshot has been observed taking 45-64s on a loaded
+#   `macos-latest` runner (see the driver post-mortem in a #824 run: the assert
+#   spent 64s inside one hierarchy fetch that only returned after the old 30s
+#   timeout had already elapsed, so it failed even though "Start" WAS in the
+#   tree). "Start" is a plain AppFilledButton label that is always present and
+#   accessible — the app is not slow, the XCUITest snapshot is. Every later
+#   flow reuses the now-warm driver (`--reinstall-driver=false`), so their 30s
+#   assertions retrieve the hierarchy fast enough; only this cold first fetch
+#   needs the head-room. 120s comfortably absorbs the worst observed single
+#   fetch while still failing a genuinely broken welcome screen well inside the
+#   flow's budget.
 appId: swiss.realunit.app
 ---
 - launchApp:
@@ -9,4 +25,4 @@ appId: swiss.realunit.app
 - waitForAnimationToEnd
 - extendedWaitUntil:
     visible: 'Start'
-    timeout: 30000
+    timeout: 120000

@@ -9,6 +9,7 @@ class DropdownField<T> extends StatelessWidget {
   final String? Function(T?)? validator;
   final List<DropdownMenuItem<T>> items;
   final bool hideErrorText;
+  final AutovalidateMode? autovalidateMode;
 
   const DropdownField({
     super.key,
@@ -19,6 +20,7 @@ class DropdownField<T> extends StatelessWidget {
     this.validator,
     required this.items,
     this.hideErrorText = true,
+    this.autovalidateMode,
   });
 
   @override
@@ -46,6 +48,7 @@ class DropdownField<T> extends StatelessWidget {
           child: DropdownButtonFormField<T>(
             initialValue: initialValue,
             validator: validator,
+            autovalidateMode: autovalidateMode,
             onChanged: onChanged,
             items: items,
             isExpanded: true,

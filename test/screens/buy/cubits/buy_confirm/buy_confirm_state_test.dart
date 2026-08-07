@@ -83,6 +83,17 @@ void main() {
       final b = BuyConfirmFailure(BuyConfirmError.unknown);
       expect(a, isNot(equals(b)));
     });
+
+    test('primaryEmailRequired props match', () {
+      final a = BuyConfirmFailure(BuyConfirmError.primaryEmailRequired);
+      expect(a.props, [BuyConfirmError.primaryEmailRequired]);
+    });
+
+    test('primaryEmailRequired is unequal to aktionariat', () {
+      final a = BuyConfirmFailure(BuyConfirmError.primaryEmailRequired);
+      final b = BuyConfirmFailure(BuyConfirmError.aktionariat);
+      expect(a, isNot(equals(b)));
+    });
   });
 
   group('BuyConfirmState (cross-subclass identity)', () {

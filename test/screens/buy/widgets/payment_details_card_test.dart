@@ -24,13 +24,31 @@ const _info = BuyPaymentInfo(
   currency: Currency.chf,
 );
 
+const _rawIbanInfo = BuyPaymentInfo(
+  amount: 300,
+  id: 1,
+  iban: 'CH9300762011623852957',
+  bic: 'BICCBIC',
+  name: 'RealUnit AG',
+  street: 'Bahnhofstrasse',
+  number: '1',
+  zip: '8001',
+  city: 'Zurich',
+  country: 'Switzerland',
+  currency: Currency.chf,
+);
+
 // The card uses InkWell (needs a Material ancestor) and renders a tall list of
 // rows — host it in a scrollable Scaffold so it lays out without overflow.
-Widget _host({String purposeOfPayment = '', String? paymentRequest}) =>
+Widget _host({
+  String purposeOfPayment = '',
+  String? paymentRequest,
+  BuyPaymentInfo buyPaymentInfo = _info,
+}) =>
     Scaffold(
       body: SingleChildScrollView(
         child: PaymentDetailsCard(
-          buyPaymentInfo: _info,
+          buyPaymentInfo: buyPaymentInfo,
           amount: '100',
           purposeOfPayment: purposeOfPayment,
           paymentRequest: paymentRequest,
@@ -92,6 +110,47 @@ void main() {
 
       expect(copied, isNotNull);
     });
+
+    testWidgets(
+      'copies the raw (ungrouped) IBAN to the clipboard even though the on-screen text is '
+      'grouped',
+      (tester) async {
+        String? copied;
+        final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        });
+        addTearDown(() {
+          messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+        });
+
+        await tester.pumpApp(_host(buyPaymentInfo: _rawIbanInfo));
+
+        // Displayed value is grouped...
+        expect(find.text('CH93 0076 2011 6238 5295 7'), findsOneWidget);
+        expect(find.text(_rawIbanInfo.iban), findsNothing);
+
+        // ...but the copy button for that same row must copy the RAW value.
+        final ibanRow = find.ancestor(
+          of: find.text(S.current.iban),
+          matching: find.byType(Row),
+        );
+        await tester.tap(
+          find.descendant(of: ibanRow, matching: find.byIcon(Icons.copy_outlined)),
+        );
+        await tester.pump();
+
+        expect(
+          copied,
+          _rawIbanInfo.iban,
+          reason: 'The clipboard must receive the raw, ungrouped IBAN — a grouped IBAN with '
+              'spaces can fail validation in some banking transfer forms.',
+        );
+      },
+    );
 
     testWidgets('shows no tab selector when there is no payment request',
         (tester) async {

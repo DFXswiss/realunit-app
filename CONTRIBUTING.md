@@ -13,6 +13,26 @@ flutter analyze                             # lint check
 
 After changing ARB files, always regenerate: `dart run tool/generate_localization.dart`
 
+## Responsive UI & sticky CTAs — CRITICAL
+
+The app must stay fully usable on every **standard phone** we support (smallest iPhone SE / compact Android → largest Pro Max / large Android) and at every **system text scale** from smaller than default through extreme accessibility (`textScale` 0.85–3.0).
+
+**Layout rule**
+
+- Flows with long content + bottom actions (bottom sheets, onboarding, confirmations) use [`ScrollableActionsLayout`](lib/widgets/scrollable_actions_layout.dart): scrollable body, **CTAs fixed outside** the scroll view.
+- Never rely on `Spacer()` + fixed sheet height alone — that is how the BitBox pairing `Bestätigen` button became untappable on iOS.
+- `Spacer()` inside the body is illegal (unbounded main axis in the scroll view → RenderFlex crash). Use `centerBody: true` to vertically center content that still fits.
+- Host must provide **bounded height** (bottom sheet, `Expanded`, or fixed `SizedBox`); unbounded height throws `FlutterError` in every build mode.
+
+**Test rule (gate for this bug class)**
+
+- Matrix: [`test/helper/responsive_matrix.dart`](test/helper/responsive_matrix.dart) × [`layout_assertions.dart`](test/helper/layout_assertions.dart) (`expectNoLayoutOverflow`, `expectFullyTappable`).
+- Catalog: sticky-CTA surfaces listed in [`responsive_surface_catalog.dart`](test/helper/responsive_surface_catalog.dart) have a matrix test path and a production path; the catalog self-test fails if either file is missing or the production file no longer references `ScrollableActionsLayout`. Listing every sticky-CTA surface is a review responsibility.
+- Prefer real `tester.tap` / `expectFullyTappable` over `onPressed?.call()`.
+- Details and PR checklist: [`docs/testing.md`](docs/testing.md) § *Responsive layout / sticky CTAs*.
+
+New sticky-CTA UI without `ScrollableActionsLayout` + matrix entry is a **blocking** review finding.
+
 ## Branch Flow
 
 Three branches participate in the release lane:
@@ -33,6 +53,7 @@ The auto-opened promotion PRs are idempotent — only one is open per branch pai
 - **No third-party APIs**: no direct Ethereum JSON-RPC calls (Infura, Alchemy, public nodes, etc.), no block explorer APIs (Etherscan, …), no price feeds, no analytics endpoints, no third-party SDKs that call out over the network.
 - If a feature needs on-chain data (e.g. native ETH balance, transaction status, token balance), add a new endpoint to [`DFXswiss/api`](https://github.com/DFXswiss/api) and let the app call that endpoint. The API is the single gateway.
 - All network calls must go through `AppStore.httpClient` with `buildUri(_host, …)` — `_host` resolves to the DFX API host via `ApiConfig`. Do not instantiate `http.Client`/`Dio`/`Web3Client` against other hosts.
+- **One scoped exception — crash reporting.** Builds that inject `--dart-define=SENTRY_DSN=...` deliver crash reports to the company-operated crash-reporting service ([`lib/setup/error_handling/crash_reporting.dart`](lib/setup/error_handling/crash_reporting.dart)). This is first-party infrastructure telemetry, not a third-party service: without an injected DSN (all local and test builds) the SDK never starts and produces no network traffic, and the delivered data is limited to error events — no PII, no screenshots, no performance tracing, no session telemetry (the exact pinned option surface lives in `crash_reporting.dart`). Widening what is sent (breadcrumbs with request URLs, user context, attachments) is a review-blocking change, not a config tweak.
 
 ## API as Decision Authority — CRITICAL
 

@@ -39,12 +39,11 @@ void main() {
 
   tearDown(() => GetIt.instance.reset());
 
-  Future<void> pumpLifecycle(WidgetTester tester) =>
-      tester.pumpWidget(
-        const LifecycleInitializer(
-          child: SizedBox.shrink(),
-        ),
-      );
+  Future<void> pumpLifecycle(WidgetTester tester) => tester.pumpWidget(
+    const LifecycleInitializer(
+      child: SizedBox.shrink(),
+    ),
+  );
 
   testWidgets(
     'AppLifecycleState.hidden drops the mnemonic via WalletService.lockCurrentWallet',
@@ -80,7 +79,7 @@ void main() {
       // paused must now drop the mnemonic and arm the PIN gate too, so a
       // platform that never emits `hidden` still locks.
       verify(() => walletService.lockCurrentWallet()).called(1);
-      verify(() => pinAuthCubit.onAppHidden()).called(1);
+      verify(() => pinAuthCubit.onAppHidden(any())).called(1);
       // and it still cancels the balance sync it always did.
       verify(() => balanceService.cancelSync()).called(1);
     },
@@ -96,7 +95,7 @@ void main() {
       await tester.pump();
 
       verify(() => walletService.lockCurrentWallet()).called(1);
-      verify(() => pinAuthCubit.onAppHidden()).called(1);
+      verify(() => pinAuthCubit.onAppHidden(any())).called(1);
     },
   );
 
@@ -110,7 +109,7 @@ void main() {
       await tester.pump();
 
       verify(() => walletService.lockCurrentWallet()).called(1);
-      verify(() => pinAuthCubit.onAppHidden()).called(1);
+      verify(() => pinAuthCubit.onAppHidden(any())).called(1);
     },
   );
 
@@ -123,7 +122,7 @@ void main() {
       await tester.pump();
 
       verifyNever(() => walletService.lockCurrentWallet());
-      verifyNever(() => pinAuthCubit.onAppHidden());
+      verifyNever(() => pinAuthCubit.onAppHidden(any()));
     },
   );
 

@@ -11,6 +11,7 @@ import 'package:realunit_wallet/screens/buy/cubits/buy_converter/buy_converter_c
 import 'package:realunit_wallet/screens/buy/cubits/buy_payment_info/buy_payment_info_cubit.dart';
 import 'package:realunit_wallet/screens/buy/widgets/buy_confirm_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_action_button.dart';
+import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/support_routes.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 
@@ -84,6 +85,20 @@ void main() {
             );
           },
         ),
+        GoRoute(
+          name: AppRoutes.kyc,
+          path: '/kyc',
+          builder: (_, _) {
+            pushedRoutes.add(AppRoutes.kyc);
+            return _EmailCaptureStub(
+              onReady: (popContext) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (popContext.mounted) popContext.pop();
+                });
+              },
+            );
+          },
+        ),
       ],
     );
   }
@@ -137,6 +152,49 @@ void main() {
         expect(pushedRoutes, [SupportRoutes.emailCapture]);
         // After the capture flow returns, the quote is re-fetched with the
         // current amount + currency so a now-valid quote surfaces the CTA.
+        verify(
+          () => paymentInfoCubit.getPaymentInfo(
+            amount: '250',
+            currency: Currency.eur,
+          ),
+        ).called(1);
+      },
+    );
+  });
+
+  group('$PaymentActionButton primaryEmailNotConfirmed gate', () {
+    testWidgets(
+      'renders the Weiter CTA, not the binding-buy button',
+      (tester) async {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailNotConfirmed),
+        );
+
+        await pumpButton(tester);
+
+        expect(find.text(S.current.next), findsOne);
+        // Pre-tap gate must NOT surface the confirm affordance.
+        expect(find.byType(BuyConfirmButton), findsNothing);
+        expect(find.text(S.current.buyPaymentConfirm), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'tap pushes kyc (never email capture) and re-fetches the quote',
+      (tester) async {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailNotConfirmed),
+        );
+
+        await pumpButton(tester);
+
+        await tester.tap(find.text(S.current.next));
+        await tester.pumpAndSettle();
+
+        // Routed to KYC confirm-email, not to email capture.
+        expect(pushedRoutes, [AppRoutes.kyc]);
+        // After the KYC flow returns, the quote is re-fetched with the
+        // current amount + currency so a now-confirmed email surfaces the CTA.
         verify(
           () => paymentInfoCubit.getPaymentInfo(
             amount: '250',

@@ -182,15 +182,16 @@ void main() {
   });
 
   group('$PaymentInfoError', () {
-    test('has the seven documented variants', () {
+    test('has the eight documented variants', () {
       // Pin the wire contract — any new variant has to be added intentionally.
-      expect(PaymentInfoError.values, hasLength(7));
+      expect(PaymentInfoError.values, hasLength(8));
       expect(
         PaymentInfoError.values.toSet(),
         {
           PaymentInfoError.registrationRequired,
           PaymentInfoError.kycRequired,
           PaymentInfoError.primaryEmailRequired,
+          PaymentInfoError.primaryEmailNotConfirmed,
           PaymentInfoError.minAmountNotMet,
           PaymentInfoError.bitboxDisconnected,
           PaymentInfoError.priceSourceUnavailable,

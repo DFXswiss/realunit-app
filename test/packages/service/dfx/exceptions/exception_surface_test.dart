@@ -3,7 +3,10 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.da
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_address_unavailable_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/buy_exceptions.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/pay_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/sell_exceptions.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/transfer_exceptions.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/registration_rejected_exception.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/packages/wallet/exceptions/signing_cancelled_exception.dart';
 
@@ -21,6 +24,7 @@ void main() {
       const BitboxAddressUnavailableException(),
       const SigningCancelledException(),
       const ApiException(code: 'TEST', message: 'test'),
+      const RegistrationRejectedException(code: 'TEST', message: 'test'),
       const RegistrationRequiredException(code: 'TEST', message: 'test'),
       const KycLevelRequiredException(
         code: 'TEST',
@@ -30,6 +34,14 @@ void main() {
       ),
       const SeedDecryptionException('test'),
       const AlreadyConfirmedException(code: 'TEST', message: 'test'),
+      const InvalidPaymentLinkException('test'),
+      const PaySignatureUnsupportedException(),
+      const PayUnsignedTxMismatchException('test'),
+      const InvalidRecipientAddressException('test'),
+      const TransferSignatureUnsupportedException(),
+      const TransferGasFundingUnavailableException(),
+      const TransferConfirmMismatchException(),
+      const TransferAlreadyConfirmedException(code: 'TEST', message: 'test'),
     ];
 
     for (final ex in exceptions) {

@@ -13,7 +13,50 @@
 # Uncomment the line if you want fastlane to automatically update itself
 # update_fastlane
 
+require "json"
+require "tempfile"
+
 default_platform(:android)
+
+# Keeps the DSN out of the process arguments Fastlane prints. Flutter reads
+# both compile-time values from this short-lived, mode-0600 JSON file.
+def with_crash_reporting_defines
+  dsn = ENV.fetch("SENTRY_DSN", "")
+  UI.user_error!("SENTRY_DSN is required for store release builds") if dsn.empty?
+
+  environment = ENV.fetch("SENTRY_ENVIRONMENT", "production")
+  file = Tempfile.new(["sentry-defines", ".json"])
+  File.chmod(0o600, file.path)
+  file.write(JSON.generate({
+    "SENTRY_DSN" => dsn,
+    "SENTRY_ENVIRONMENT" => environment,
+  }))
+  file.flush
+  yield file.path
+ensure
+  file&.close!
+end
+
+def upload_sentry_symbols(marketing_version:, version_code:, symbols_path:, dart_symbol_map_path:)
+  ENV["SENTRY_RELEASE"] = "swiss.realunit.app@#{marketing_version}+#{version_code}"
+  ENV["SENTRY_DIST"] = version_code.to_s
+  Dir.chdir("../..") do
+    # The plugin only warns and continues on missing input, which would ship
+    # a release with degraded (or no) crash symbolication silently. Fail the
+    # build instead.
+    if Dir.glob("#{symbols_path}/**/*").select { |f| File.file?(f) }.empty?
+      UI.user_error!("Sentry upload: no native debug symbols found under #{symbols_path}")
+    end
+    unless File.exist?(dart_symbol_map_path)
+      UI.user_error!("Sentry upload: Dart obfuscation map not found at #{dart_symbol_map_path}")
+    end
+
+    sh("dart", "run", "sentry_dart_plugin",
+       "--sentry-define=symbols_path=#{symbols_path}",
+       "--sentry-define=dart_symbol_map_path=#{dart_symbol_map_path}"
+    )
+  end
+end
 
 # Runs tool/generate_release_info.dart (single source of truth for tag →
 # marketing version + version code) and reads the values back from the
@@ -61,28 +104,47 @@ platform :android do
     marketing_version = info["marketing_version"]
     version_code = info["version_code"]
 
-    Dir.chdir("..") do
-      sh("flutter", "build", "appbundle",
-         "--release",
-         "--build-name=#{marketing_version}",
-         "--build-number=#{version_code}",
-         "--no-tree-shake-icons",
-         "--obfuscate",
-         "--split-debug-info=build/debug_info"
-      )
-      sh("flutter", "build", "apk",
-         "--release",
-         "--build-name=#{marketing_version}",
-         "--build-number=#{version_code}",
-         "--no-tree-shake-icons",
-         "--obfuscate",
-         "--split-debug-info=build/debug_info"
-      )
-      File.rename(
-        "../build/app/outputs/flutter-apk/app-release.apk",
-        "../build/app/outputs/flutter-apk/realunit-#{tag_name}.apk"
-      )
+    with_crash_reporting_defines do |defines_file|
+      Dir.chdir("..") do
+        sh("flutter", "build", "appbundle",
+           "--release",
+           "--build-name=#{marketing_version}",
+           "--build-number=#{version_code}",
+           "--dart-define-from-file=#{defines_file}",
+           "--no-tree-shake-icons",
+           "--obfuscate",
+           "--split-debug-info=build/debug_info/appbundle",
+           "--extra-gen-snapshot-options=--save-obfuscation-map=build/appbundle-obfuscation-map.json"
+        )
+        sh("flutter", "build", "apk",
+           "--release",
+           "--build-name=#{marketing_version}",
+           "--build-number=#{version_code}",
+           "--dart-define-from-file=#{defines_file}",
+           "--no-tree-shake-icons",
+           "--obfuscate",
+           "--split-debug-info=build/debug_info/apk",
+           "--extra-gen-snapshot-options=--save-obfuscation-map=build/apk-obfuscation-map.json"
+        )
+        File.rename(
+          "../build/app/outputs/flutter-apk/app-release.apk",
+          "../build/app/outputs/flutter-apk/realunit-#{tag_name}.apk"
+        )
+      end
     end
+
+    upload_sentry_symbols(
+      marketing_version: marketing_version,
+      version_code: version_code,
+      symbols_path: "build/debug_info/appbundle",
+      dart_symbol_map_path: "build/appbundle-obfuscation-map.json"
+    )
+    upload_sentry_symbols(
+      marketing_version: marketing_version,
+      version_code: version_code,
+      symbols_path: "build/debug_info/apk",
+      dart_symbol_map_path: "build/apk-obfuscation-map.json"
+    )
 
     # Upload the binary + changelog only. The changelog is tied to this
     # build's version code (taken from the AAB); the listing metadata and

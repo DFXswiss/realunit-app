@@ -104,11 +104,12 @@ class BitboxCredentials extends CredentialsWithKnownAddress {
   // call requires an awaitable BLE/USB round-trip. The sync overrides exist
   // only to satisfy the interface and surface as `UnimplementedError` if a
   // future refactor wires a sync caller onto BitBox credentials by accident.
-  // coverage:ignore-start
+  // Covered by a `throwsA(isA<UnimplementedError>())` test rather than hidden
+  // behind `coverage:ignore` — same convention as `_DebugCredentials` in
+  // `wallet.dart`, whose sync entry points are also unit-tested.
   @override
   MsgSignature signToEcSignature(Uint8List payload, {int? chainId, bool isEIP1559 = false}) =>
       throw UnimplementedError('EvmLedgerCredentials.signToEcSignature');
-  // coverage:ignore-end
 
   @override
   Future<MsgSignature> signToSignature(
@@ -146,14 +147,13 @@ class BitboxCredentials extends CredentialsWithKnownAddress {
 
       var truncChainId = chainId ?? 1;
       // Truncate chainIds wider than 32 bits down to the low byte for the
-      // EIP-155 parity check — defensive against future >2^32 chainIds. Every
-      // chain we currently target (Mainnet=1, Polygon=137, Citrea, …) is
-      // <2^32, so this loop never iterates in test or production today.
-      // coverage:ignore-start
+      // EIP-155 parity check — defensive against future >2^32 chainIds. No
+      // chain we currently target (Mainnet=1, Polygon=137, Citrea, …) reaches
+      // 2^32, so this loop does not iterate in production today, but it is real
+      // testable arithmetic and is exercised by a >2^32-chainId unit test.
       while (truncChainId.bitLength > 32) {
         truncChainId >>= 8;
       }
-      // coverage:ignore-end
 
       final truncTarget = truncChainId * 2 + 35;
 
@@ -189,12 +189,10 @@ class BitboxCredentials extends CredentialsWithKnownAddress {
   // See the block comment on `signToEcSignature` above — same rationale: the
   // synchronous variant is never used on a Bitbox, every sign path goes
   // through the awaitable `signPersonalMessage` because the native call
-  // crosses the BLE/USB transport.
-  // coverage:ignore-start
+  // crosses the BLE/USB transport. Covered by a unit test, not ignored.
   @override
   Uint8List signPersonalMessageToUint8List(Uint8List payload, {int? chainId}) =>
       throw UnimplementedError('EvmLedgerCredentials.signPersonalMessageToUint8List');
-  // coverage:ignore-end
 
   Future<String> signTypedDataV4(int chainId, String jsonData) {
     return _synchronizeBoundedSign(() async {

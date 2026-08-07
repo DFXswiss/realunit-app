@@ -73,11 +73,12 @@ void main() {
       expect(a, isNot(c));
     });
 
-    test('BuyConfirmError enum has exactly aktionariat + amountTooLow + unknown', () {
+    test('BuyConfirmError enum has exactly aktionariat + amountTooLow + primaryEmailRequired + unknown', () {
       // Pin the variants — the listener in BuyButton switches on these.
       expect(BuyConfirmError.values.toSet(), {
         BuyConfirmError.aktionariat,
         BuyConfirmError.amountTooLow,
+        BuyConfirmError.primaryEmailRequired,
         BuyConfirmError.unknown,
       });
     });

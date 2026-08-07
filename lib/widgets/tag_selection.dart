@@ -11,7 +11,8 @@ class TagSelection<T> extends StatelessWidget {
 
   final List<(T, String, IconData?)> items;
   final T? selected;
-  final ValueChanged<T> onSelected;
+  /// Pass `null` to disable every chip (Flutter's ChoiceChip pattern).
+  final ValueChanged<T>? onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -30,12 +31,18 @@ class TagSelection<T> extends StatelessWidget {
                       size: 18,
                       color: isSelected ? RealUnitColors.basic.white : RealUnitColors.neutral600,
                     ),
-                    Text(item.$2),
+                    Flexible(
+                      child: Text(
+                        item.$2,
+                        maxLines: 1,
+                        overflow: .ellipsis,
+                      ),
+                    ),
                   ],
                 )
               : Text(item.$2),
           selected: isSelected,
-          onSelected: (_) => onSelected(item.$1),
+          onSelected: onSelected == null ? null : (_) => onSelected!(item.$1),
           selectedColor: RealUnitColors.realUnitBlue,
           backgroundColor: RealUnitColors.basic.white,
           labelStyle: TextStyle(

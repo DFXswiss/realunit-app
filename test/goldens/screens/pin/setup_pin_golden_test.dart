@@ -60,5 +60,29 @@ void main() {
         return wrapForGolden(buildSubject());
       },
     );
+
+    goldenTest(
+      'confirm mismatch marks the dots red and shows the mismatch message',
+      fileName: 'setup_pin_page_confirm_mismatch',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => setupPinCubit.state).thenReturn(
+          const SetupPinState(mode: SetupPinMode.confirm, mismatch: true),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'store failure keeps the pad and shows the save-failed message',
+      fileName: 'setup_pin_page_store_failed',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => setupPinCubit.state).thenReturn(
+          const SetupPinState(mode: SetupPinMode.confirm, storeFailed: true),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
   });
 }

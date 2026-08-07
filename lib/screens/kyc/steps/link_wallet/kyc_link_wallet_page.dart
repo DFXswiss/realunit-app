@@ -13,6 +13,7 @@ import 'package:realunit_wallet/screens/kyc/steps/link_wallet/cubits/kyc_link_wa
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class KycLinkWalletPage extends StatelessWidget {
   /// Server-supplied user data the parent `KycCubit` already fetched as part
@@ -124,18 +125,22 @@ class _LinkWalletBody extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: SafeArea(
-        child: Column(
-          spacing: 16.0,
-          children: [
-            const SizedBox(height: 16.0),
-            Text(
-              S.of(context).kycLinkWalletDescription,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            _LinkWalletInfoRow(label: S.of(context).name, value: userData.name),
-            _LinkWalletInfoRow(label: S.of(context).walletAddress, value: walletAddress),
-            const Spacer(),
+        child: ScrollableActionsLayout(
+          centerBody: false,
+          body: Column(
+            spacing: 16.0,
+            children: [
+              const SizedBox(height: 16.0),
+              Text(
+                S.of(context).kycLinkWalletDescription,
+                style: Theme.of(context).textTheme.bodyMedium,
+                textAlign: TextAlign.center,
+              ),
+              _LinkWalletInfoRow(label: S.of(context).name, value: userData.name),
+              _LinkWalletInfoRow(label: S.of(context).walletAddress, value: walletAddress),
+            ],
+          ),
+          actions: [
             AppFilledButton(
               state: isSubmitting ? FilledButtonState.loading : FilledButtonState.idle,
               onPressed: isSubmitting
@@ -187,20 +192,18 @@ class _LinkWalletMissingUserDataPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20.0),
         child: SafeArea(
-          child: Column(
-            spacing: 16.0,
-            children: [
-              const Spacer(),
-              Text(
-                S.of(context).kycFailure,
-                style: Theme.of(context).textTheme.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
+          child: ScrollableActionsLayout(
+            centerBody: true,
+            body: Text(
+              S.of(context).kycFailure,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            actions: [
               AppFilledButton(
                 onPressed: () => context.read<KycCubit>().checkKyc(),
                 label: S.of(context).refresh,
               ),
-              const Spacer(),
             ],
           ),
         ),

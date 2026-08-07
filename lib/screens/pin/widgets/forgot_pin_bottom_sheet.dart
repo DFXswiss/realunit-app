@@ -4,6 +4,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/handlebars.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class ForgotPinBottomSheet extends StatelessWidget {
   const ForgotPinBottomSheet({super.key});
@@ -11,19 +12,22 @@ class ForgotPinBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: SizedBox(
-        width: double.infinity,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Handlebars.horizontal(
-              context,
-              margin: const EdgeInsets.only(top: 5),
-              width: 36,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Handlebars.horizontal(
+            context,
+            margin: const EdgeInsets.only(top: 5),
+            width: 36,
+          ),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.9,
             ),
-            Padding(
+            child: ScrollableActionsLayout(
+              shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 40.0, horizontal: 30.0),
-              child: Column(
+              body: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
@@ -47,13 +51,17 @@ class ForgotPinBottomSheet extends StatelessWidget {
                       letterSpacing: 0.0,
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  Row(
+                ],
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 28.0),
+                  child: Row(
                     spacing: 12.0,
                     children: [
                       Expanded(
                         child: AppFilledButton(
-                          variant: .secondary,
+                          variant: FilledButtonVariant.secondary,
                           onPressed: () => context.pop(false),
                           label: S.of(context).close,
                         ),
@@ -66,11 +74,11 @@ class ForgotPinBottomSheet extends StatelessWidget {
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

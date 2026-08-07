@@ -31,19 +31,32 @@ class ActionButton extends StatelessWidget {
             ? CupertinoActivityIndicator(
                 color: RealUnitColors.basic.white,
               )
-            : Column(
-                mainAxisAlignment: .center,
-                children: [
-                  icon,
-                  Text(
-                    label,
-                    textAlign: .center,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: RealUnitColors.basic.white,
-                      fontWeight: .w600,
-                    ),
+            : Center(
+                // Expanded call-sites (dashboard_actions) squeeze this
+                // SizedBox's width down to ~80-84px, and large text scales
+                // blow past the fixed 50px height — scaleDown + a
+                // single-line label keeps the button overflow-free and
+                // fully tappable instead of wrapping/clipping (responsive
+                // matrix gate, issue class from PR #885).
+                child: FittedBox(
+                  fit: .scaleDown,
+                  child: Column(
+                    mainAxisSize: .min,
+                    children: [
+                      icon,
+                      Text(
+                        label,
+                        maxLines: 1,
+                        softWrap: false,
+                        textAlign: .center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: RealUnitColors.basic.white,
+                          fontWeight: .w600,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
       ),
     ),

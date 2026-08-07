@@ -28,12 +28,17 @@ class CountryField extends StatefulWidget {
   final Country? initialValue;
   final void Function(Country?)? onChanged;
 
+  /// 2-letter country symbols to omit from the picker (e.g. already selected
+  /// tax-residence rows). Matching is case-sensitive on [Country.symbol].
+  final Set<String> excludeSymbols;
+
   const CountryField({
     super.key,
     required this.label,
     required this.purpose,
     this.initialValue,
     this.onChanged,
+    this.excludeSymbols = const {},
   });
 
   @override
@@ -87,7 +92,10 @@ class _CountryFieldState extends State<CountryField> {
           );
         }
 
-        final countries = snapshot.data!.where(widget.purpose.allows).toList();
+        final countries = snapshot.data!
+            .where(widget.purpose.allows)
+            .where((c) => !widget.excludeSymbols.contains(c.symbol))
+            .toList();
         final initial = widget.initialValue != null && countries.contains(widget.initialValue)
             ? widget.initialValue
             : null;
@@ -106,6 +114,7 @@ class _CountryFieldState extends State<CountryField> {
           initialValue: initial,
           onChanged: widget.onChanged,
           validator: (value) => value == null ? '' : null,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
         );
       },
     );

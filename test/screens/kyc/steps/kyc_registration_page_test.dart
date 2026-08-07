@@ -13,6 +13,8 @@ import 'package:realunit_wallet/packages/hardware_wallet/bitbox.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_country_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/registration_rejected_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/dto/real_unit_registration_request_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
@@ -412,10 +414,111 @@ void main() {
       await tester.pump();
 
       expect(find.byType(SnackBar), findsOne);
+      expect(find.textContaining('Registration failed'), findsOne);
       // A failed submit must not re-arm the wallet services — the re-arm is
       // gated behind KycRegistrationSubmitSuccess.
       verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
     });
+
+    testWidgets(
+      'surfaces the server reason and the nothing-was-saved hint when the '
+      'API rejects the submit',
+      (tester) async {
+        // A structured rejection (e.g. a 400 from register/complete) must not
+        // be shown as a raw exception toString: the user needs the server
+        // reason plus the context that nothing was persisted — otherwise a
+        // rejected submit is indistinguishable from a hang and the re-shown
+        // wizard looks like a routing bug.
+        whenListen(
+          registrationSubmitCubit,
+          Stream.fromIterable([
+            const KycRegistrationSubmitFailure(
+              'RegistrationRejectedException: Registration date must be today '
+              '(code: UNKNOWN, statusCode: 400)',
+              cause: RegistrationRejectedException(
+                statusCode: 400,
+                code: 'UNKNOWN',
+                message: 'Registration date must be today',
+              ),
+            ),
+          ]),
+          initialState: KycRegistrationSubmitInitial(),
+        );
+
+        await tester.pumpApp(buildSubject(const KycRegistrationView()));
+        await tester.pump();
+
+        expect(find.byType(SnackBar), findsOne);
+        expect(find.textContaining('Registration date must be today'), findsOne);
+        expect(find.textContaining('Your data has not been saved'), findsOne);
+        expect(find.textContaining('RegistrationRejectedException'), findsNothing);
+        verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
+      },
+    );
+
+    testWidgets(
+      'keeps the generic failure message for an auth error — a 401 is not a '
+      'rejection of the entries',
+      (tester) async {
+        // The service only types non-auth 4xx of register/complete as
+        // RegistrationRejectedException; a persistent 401 (e.g. after the
+        // one-shot token-refresh retry) stays a plain ApiException and must
+        // not tell the user to check their entries.
+        whenListen(
+          registrationSubmitCubit,
+          Stream.fromIterable([
+            const KycRegistrationSubmitFailure(
+              'RealUnitApiException: Unauthorized '
+              '(code: UNKNOWN, statusCode: 401)',
+              cause: ApiException(
+                statusCode: 401,
+                code: 'UNKNOWN',
+                message: 'Unauthorized',
+              ),
+            ),
+          ]),
+          initialState: KycRegistrationSubmitInitial(),
+        );
+
+        await tester.pumpApp(buildSubject(const KycRegistrationView()));
+        await tester.pump();
+
+        expect(find.byType(SnackBar), findsOne);
+        expect(find.textContaining('Registration failed'), findsOne);
+        expect(find.textContaining('Your data has not been saved'), findsNothing);
+        verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
+      },
+    );
+
+    testWidgets(
+      'keeps the generic failure message for a 5xx — no "check your entries" '
+      'instruction for a server-side fault',
+      (tester) async {
+        whenListen(
+          registrationSubmitCubit,
+          Stream.fromIterable([
+            const KycRegistrationSubmitFailure(
+              'RealUnitApiException: Internal server error '
+              '(code: UNKNOWN, statusCode: 500)',
+              cause: ApiException(
+                statusCode: 500,
+                code: 'UNKNOWN',
+                message: 'Internal server error',
+              ),
+            ),
+          ]),
+          initialState: KycRegistrationSubmitInitial(),
+        );
+
+        await tester.pumpApp(buildSubject(const KycRegistrationView()));
+        await tester.pump();
+
+        expect(find.byType(SnackBar), findsOne);
+        expect(find.textContaining('Registration failed'), findsOne);
+        expect(find.textContaining('Your data has not been saved'), findsNothing);
+        verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
+      },
+    );
   });
 
   group('$KycRegistrationPage prefill', () {
@@ -737,25 +840,6 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    Future<void> selectTaxCountry(WidgetTester tester, String name) async {
-      // The tax step hosts a single mandatory country dropdown. Selecting a
-      // value makes the form validatable and drives the derived
-      // `swissTaxResidence` on submit.
-      final taxDropdown = find.descendant(
-        of: find.byType(KycRegistrationTaxStep),
-        matching: find.byType(DropdownButtonFormField<Country>),
-      );
-      await tester.scrollUntilVisible(
-        taxDropdown,
-        100,
-        scrollable: taxScrollable(),
-      );
-      await tester.tap(taxDropdown);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(name).last);
-      await tester.pumpAndSettle();
-    }
-
     Future<void> tapComplete(WidgetTester tester) async {
       final completeButton = find.descendant(
         of: find.byType(KycRegistrationTaxStep),
@@ -782,90 +866,216 @@ void main() {
         addressStreetNumber: any(named: 'addressStreetNumber'),
         addressPostalCode: any(named: 'addressPostalCode'),
         addressCity: any(named: 'addressCity'),
-        addressCountry: any(named: 'addressCountry'),
+        addressCountry: captureAny(named: 'addressCountry'),
         swissTaxResidence: captureAny(named: 'swissTaxResidence'),
         countryAndTINs: captureAny(named: 'countryAndTINs'),
       ),
     ).captured;
 
+    Future<void> enterTinAt(WidgetTester tester, int index, String value) async {
+      final context = tester.element(find.byType(KycRegistrationTaxStep));
+      final tinFields = find.widgetWithText(TextFormField, S.of(context).tinHint);
+      final field = tinFields.at(index);
+      await tester.scrollUntilVisible(field, 100, scrollable: taxScrollable());
+      await tester.enterText(field, value);
+      await tester.pump();
+    }
+
+    Future<void> addTaxResidence(WidgetTester tester) async {
+      final context = tester.element(find.byType(KycRegistrationTaxStep));
+      final addButton = find.text(S.of(context).addTaxResidence);
+      await tester.scrollUntilVisible(addButton, 100, scrollable: taxScrollable());
+      await tester.tap(addButton);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> selectFreeCountry(WidgetTester tester, String name) async {
+      final taxDropdown = find
+          .descendant(
+            of: find.byType(KycRegistrationTaxStep),
+            matching: find.byType(DropdownButtonFormField<Country>),
+          )
+          .last;
+      await tester.scrollUntilVisible(taxDropdown, 100, scrollable: taxScrollable());
+      await tester.tap(taxDropdown);
+      await tester.pumpAndSettle();
+
+      final nameFinder = find.text(name);
+      if (nameFinder.evaluate().isEmpty || find.text(name).hitTestable().evaluate().isEmpty) {
+        await tester.dragUntilVisible(
+          nameFinder,
+          find.byType(Scrollable).last,
+          const Offset(0, -300),
+          maxIteration: 120,
+        );
+        await tester.pumpAndSettle();
+      }
+      await tester.tap(find.text(name).last);
+      await tester.pumpAndSettle();
+    }
+
+    // S1 — Address CH, tax: CH only → swiss=true, countryAndTINs=null
     testWidgets(
-      'Swiss tax residence forwards swissTaxResidence:true and null countryAndTINs',
+      'S1 CH only: locked Swiss address → swissTaxResidence true, null countryAndTINs',
       (tester) async {
         await showTaxStep(tester);
-        await selectTaxCountry(tester, 'Switzerland');
 
-        // A Swiss (CH) tax residence derives Swiss-only — no TIN is collected.
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isTrue);
-        expect(captured[1], isNull);
+        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
+        expect(captured[1], isTrue);
+        expect(captured[2], isNull);
       },
     );
 
+    // S2 — Address DE, tax: DE only → swiss=false, countryAndTINs=[{DE,tin}]
     testWidgets(
-      'non-Swiss tax residence forwards swissTaxResidence:false and a countryAndTINs entry',
+      'S2 DE only: locked German address requires TIN and forwards countryAndTINs:DE',
       (tester) async {
-        await showTaxStep(tester);
-        await selectTaxCountry(tester, 'Germany');
+        await showTaxStep(tester, dto: initialUserDataDe);
 
-        final context = tester.element(find.byType(KycRegistrationTaxStep));
-        final tinField = find.widgetWithText(TextFormField, S.of(context).tinHint);
-        await tester.scrollUntilVisible(tinField, 100, scrollable: taxScrollable());
-        // Enter with surrounding whitespace: _onSubmit must trim it before
+        // Enter with surrounding whitespace: the tax step trims before
         // forwarding, so the captured TIN is the trimmed value.
-        await tester.enterText(tinField, '  12 345 678 901  ');
-        await tester.pump();
-
+        await enterTinAt(tester, 0, '  12 345 678 901  ');
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isFalse);
-        final tins = captured[1] as List<CountryAndTin>;
+        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
+        expect(captured[1], isFalse);
+        final tins = captured[2] as List<CountryAndTin>;
         expect(tins, hasLength(1));
         expect(tins.single.country, 'DE');
         expect(tins.single.tin, '12 345 678 901');
       },
     );
 
+    // S3 — Address CH, tax: CH + FR → swiss=true, countryAndTINs=[{FR,tin}]
     testWidgets(
-      'defaults the tax residence to the address country, forwarding it without a manual pick',
+      'S3 CH + FR: locked Swiss + free France → swiss true, countryAndTINs FR only',
       (tester) async {
         await showTaxStep(tester);
 
-        // No selectTaxCountry: the Swiss address country pre-selected the tax
-        // residence, so the mandatory field is already valid and submit forwards
-        // the derived Swiss-only result.
+        await addTaxResidence(tester);
+        await selectFreeCountry(tester, 'France');
+        await enterTinAt(tester, 0, 'FR999');
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isTrue);
-        expect(captured[1], isNull);
+        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
+        expect(captured[1], isTrue);
+        final tins = captured[2] as List<CountryAndTin>;
+        expect(tins, hasLength(1));
+        expect(tins.single.country, 'FR');
+        expect(tins.single.tin, 'FR999');
       },
     );
 
+    // S4 — Address DE, tax: DE + CH → swiss=true, countryAndTINs=[{DE,tin}]
     testWidgets(
-      'sources the tax residence from a non-Swiss address country, revealing '
-      'the TIN and forwarding it without a manual pick',
+      'S4 DE + CH: locked DE + free CH → swiss true, countryAndTINs DE only',
       (tester) async {
         await showTaxStep(tester, dto: initialUserDataDe);
 
-        // The residence (DE) — not the nationality (CH) — pre-selected the tax
-        // residence, so the TIN is revealed with no manual pick and the derived
-        // non-Swiss result is forwarded.
+        await enterTinAt(tester, 0, 'DE111');
+        await addTaxResidence(tester);
+        await selectFreeCountry(tester, 'Switzerland');
+        await tapComplete(tester);
+
+        final captured = captureSubmit();
+        // DE (address, with TIN) + CH (additional) → swissTaxResidence true,
+        // countryAndTINs only carries the non-CH entry.
+        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
+        expect(captured[1], isTrue);
+        final tins = captured[2] as List<CountryAndTin>;
+        expect(tins, hasLength(1));
+        expect(tins.single.country, 'DE');
+        expect(tins.single.tin, 'DE111');
+      },
+    );
+
+    // S5 — Address DE, tax: DE + FR + US → swiss=false, three TINs
+    testWidgets(
+      'S5 DE + FR + US: multi non-CH residences forward all countryAndTINs',
+      (tester) async {
+        await showTaxStep(tester, dto: initialUserDataDe);
+
+        await enterTinAt(tester, 0, 'DE111');
+        await addTaxResidence(tester);
+        await selectFreeCountry(tester, 'France');
+        await enterTinAt(tester, 1, 'FR999');
+        await addTaxResidence(tester);
+        await selectFreeCountry(tester, 'United States');
+        await enterTinAt(tester, 2, 'US123');
+        await tapComplete(tester);
+
+        final captured = captureSubmit();
+        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
+        expect(captured[1], isFalse);
+        final tins = captured[2] as List<CountryAndTin>;
+        expect(tins, hasLength(3));
+        expect(tins[0].country, 'DE');
+        expect(tins[0].tin, 'DE111');
+        expect(tins[1].country, 'FR');
+        expect(tins[1].tin, 'FR999');
+        expect(tins[2].country, 'US');
+        expect(tins[2].tin, 'US123');
+      },
+    );
+
+    // Prefill wiring: swissTaxResidence + countryAndTINs from initialUserData
+    // must seed the tax step and round-trip on submit (no silent drop).
+    testWidgets(
+      'prefills CH + DE tax residences from initialUserData and submits both',
+      (tester) async {
+        const prefillWithForeignTin = RealUnitUserDataDto(
+          email: 'a@b.com',
+          name: 'Ada Lovelace',
+          type: 'HUMAN',
+          phoneNumber: '+41 79 000 00 00',
+          birthday: '1815-12-10',
+          nationality: 'CH',
+          addressStreet: 'Bahnhofstrasse 1',
+          addressPostalCode: '8000',
+          addressCity: 'Zurich',
+          addressCountry: 'CH',
+          swissTaxResidence: true,
+          countryAndTINs: [CountryAndTin(country: 'DE', tin: 'DE123')],
+          lang: 'de',
+          kycData: KycPersonalData(
+            accountType: KycAccountType.personal,
+            firstName: 'Ada',
+            lastName: 'Lovelace',
+            phone: '+41 79 000 00 00',
+            address: KycAddress(
+              street: 'Bahnhofstrasse',
+              houseNumber: '1',
+              zip: '8000',
+              city: 'Zurich',
+              country: 41,
+            ),
+          ),
+        );
+
+        await showTaxStep(tester, dto: prefillWithForeignTin);
+
+        // Seeds resolved: CH (from swissTaxResidence) + DE (from countryAndTINs).
+        expect(find.text('Switzerland'), findsWidgets);
+        expect(find.text('Germany'), findsWidgets);
         final context = tester.element(find.byType(KycRegistrationTaxStep));
         final tinField = find.widgetWithText(TextFormField, S.of(context).tinHint);
-        await tester.scrollUntilVisible(tinField, 100, scrollable: taxScrollable());
-        await tester.enterText(tinField, '12 345 678 901');
-        await tester.pump();
+        expect(tinField, findsOneWidget);
+        expect(tester.widget<TextFormField>(tinField).controller!.text, 'DE123');
 
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isFalse);
-        final tins = captured[1] as List<CountryAndTin>;
+        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
+        expect(captured[1], isTrue);
+        final tins = captured[2] as List<CountryAndTin>;
+        expect(tins, hasLength(1));
         expect(tins.single.country, 'DE');
-        expect(tins.single.tin, '12 345 678 901');
+        expect(tins.single.tin, 'DE123');
       },
     );
   });

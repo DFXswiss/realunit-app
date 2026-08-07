@@ -1,5 +1,3 @@
-import 'dart:developer' as developer;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,22 +9,26 @@ import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/di.dart';
-import 'package:realunit_wallet/setup/error_handling/realunit_error_view.dart';
+import 'package:realunit_wallet/setup/error_handling/crash_reporting.dart';
+import 'package:realunit_wallet/setup/error_handling/error_handlers.dart';
 import 'package:realunit_wallet/setup/lifecycle_initializer.dart';
+import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 import 'package:realunit_wallet/setup/routing/router_config.dart';
-import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
-import 'package:realunit_wallet/setup/routing/routes/onboarding_routes.dart';
-import 'package:realunit_wallet/setup/routing/routes/pin_routes.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
 
-  _installErrorHandlers();
+  installErrorHandlers();
+  // Preserve before the first await: an async gap ahead of preserve() would
+  // let the native splash auto-dismiss and flash to blank.
+  if (kReleaseMode) FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  // After installErrorHandlers on purpose: the reporter chains the handlers
+  // installed above, while installErrorHandlers overwrites the async hook.
+  await initCrashReporting();
 
   // only preserve splash screen for 3 seconds for release version
   if (kReleaseMode) {
-    FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
     await _initializeWithSplashDuration();
     FlutterNativeSplash.remove();
   } else {
@@ -41,25 +43,6 @@ Future<void> _initialize() async {
   runApp(
     const LifecycleInitializer(child: WalletApp()),
   );
-}
-
-/// Defense-in-depth against uncaught build/paint exceptions. Without this, a
-/// single throw inside a widget's `build` (e.g. the empty-BitBox-address
-/// `EthereumAddress.fromHex("")` crash) surfaces in release as a bare grey
-/// [ErrorWidget] with no branding and no signal to the user. We log every such
-/// error and replace the grey box with a minimal on-brand surface.
-void _installErrorHandlers() {
-  final defaultOnError = FlutterError.onError;
-  FlutterError.onError = (details) {
-    developer.log(
-      'uncaught Flutter error: ${details.exceptionAsString()}',
-      name: 'WalletApp',
-      error: details.exception,
-      stackTrace: details.stack,
-    );
-    defaultOnError?.call(details);
-  };
-  ErrorWidget.builder = (details) => RealUnitErrorView(details: details);
 }
 
 Future<void> _initializeWithSplashDuration() async {
@@ -136,34 +119,28 @@ class _WalletAppState extends State<WalletApp> {
 
   void _navigate() {
     final homeState = getIt<HomeBloc>().state;
-    final pinState = getIt<PinAuthCubit>().state;
+    final pin = getIt<PinAuthCubit>();
+    final pinState = pin.state;
+    final current = effectiveLocation(routerConfig.routerDelegate.currentConfiguration);
 
-    if (homeState.isLoadingWallet) return;
+    final action = resolveBootNavigation(
+      isLoadingWallet: homeState.isLoadingWallet,
+      softwareTermsAccepted: homeState.softwareTermsAccepted,
+      hasWallet: homeState.hasWallet,
+      onboardingCompleted: homeState.onboardingCompleted,
+      isPinSetup: pinState.isPinSetup,
+      isPinVerified: pinState.isPinVerified,
+      bitboxAddressRecoveryNeeded: homeState.bitboxAddressRecoveryNeeded,
+      walletLoaded: homeState.openWallet != null,
+      currentLocation: current,
+      resumeLocation: pin.peekResumeLocation(),
+    );
 
-    String targetRoute;
-    if (!homeState.softwareTermsAccepted) {
-      targetRoute = AppRoutes.home;
-    } else if (!homeState.hasWallet) {
-      targetRoute = OnboardingRoutes.welcome;
-    } else if (!homeState.onboardingCompleted) {
-      targetRoute = OnboardingRoutes.completed;
-    } else if (!pinState.isPinSetup) {
-      targetRoute = PinRoutes.setup;
-    } else if (!pinState.isPinVerified) {
-      targetRoute = PinRoutes.verify;
-    } else if (homeState.bitboxAddressRecoveryNeeded) {
-      // A BitBox wallet was persisted with an empty/invalid address — divert to
-      // the re-pairing recovery flow instead of loading it into the dashboard
-      // (which would crash the build via `EthereumAddress.fromHex("")`).
-      targetRoute = AppRoutes.bitboxAddressRecovery;
-    } else if (homeState.openWallet == null) {
-      // Wallet not loaded yet — trigger load and wait for HomeBloc update
-      _loadWalletIfNeeded();
-      return;
-    } else {
-      targetRoute = AppRoutes.dashboard;
-    }
-
-    routerConfig.goNamed(targetRoute);
+    applyBootNavAction(
+      action,
+      routerConfig,
+      onLoadWallet: _loadWalletIfNeeded,
+      onClearResume: pin.clearResumeLocation,
+    );
   }
 }

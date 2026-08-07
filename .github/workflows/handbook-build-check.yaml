@@ -1,8 +1,32 @@
 name: Handbook Build Check
 
-# PR-only build verification for Dockerfile.handbook + the Goldens-assembled
-# screenshots. Does NOT push to Docker Hub and does NOT deploy — that
-# remains the job of handbook-deploy.yaml (staging push → DEV, develop push → PRD).
+# PR-only build verification for the handbook CONTENT. Gates four things
+# before a staging merge, all pure content checks with no live deploy:
+#   - screenshot-assembly: scripts/assemble-handbook-screenshots.sh runs and
+#                           produces the expected PNG count
+#   - store-listing sync:  scripts/assemble-handbook-store-listing.py output
+#                           matches the committed handbook (+ its HTML
+#                           sanitizer strips injection payloads)
+#   - legal-sync:           scripts/assemble-handbook-legal.py output
+#                           matches the committed handbook
+#   - image build + container smoke:
+#                           `docker build` (no push) + a container smoke
+#                           test: /healthz answers and /de/ sits behind the
+#                           auth wall. The HTTP probes do not establish
+#                           per-file existence (the auth gate answers 401
+#                           before nginx ever looks a file up): screenshots
+#                           are proven by their explicit count guard above,
+#                           legal downloads by build-legal-downloads.sh's
+#                           fail-fast per-base existence check during the
+#                           image build
+#
+# Does NOT check out DFXswiss/api or RealUnitCH/web (those only happen in
+# the real build inside handbook.yaml) and does NOT push to Docker Hub or
+# deploy — that remains the job of handbook-deploy.yaml (staging push →
+# PRD). The paths filter below mirrors the CONTENT inputs of the handbook
+# image plus this workflow itself; the deploy WIRING (SSH, secrets,
+# server rollout) are exercised exclusively by the deploy run, not by this
+# check.
 #
 # Path filter covers everything that goes into the handbook image:
 #   - docs/handbook/**            handbook HTML, README, en/de subtrees
@@ -68,8 +92,8 @@ jobs:
           set -euo pipefail
           bash scripts/assemble-handbook-screenshots.sh /tmp/handbook-shots
           count=$(ls -1 /tmp/handbook-shots/*.png | wc -l | tr -d ' ')
-          if [ "$count" != "61" ]; then
-            echo "expected 61 screenshots, got $count" >&2
+          if [ "$count" != "279" ]; then
+            echo "expected 279 screenshots, got $count" >&2
             exit 1
           fi
 
@@ -149,11 +173,11 @@ jobs:
             exit 1
           fi
 
-          # Screenshots dir must contain all 61 PNGs assembled from Goldens.
+          # Screenshots dir must contain all 279 PNGs assembled from Goldens.
           # Hit one of them through the auth gate to verify wiring end-to-end.
-          # Mix of original 01-26 range + new 27-61 range so a regression
-          # in either half surfaces here.
-          for name in 01-welcome 11-dashboard 26-terms 35-dashboard-with-balance 46-buy-kyc-required 52-sell-unknown-error 53-buy-payment-details 61-kyc-registration-tax-tin-error; do
+          # Mix of the original 01-61 range and the 62-269 batch (every Golden
+          # baseline) so a regression in either half surfaces here.
+          for name in 01-welcome 11-dashboard 26-terms 35-dashboard-with-balance 46-buy-kyc-required 52-sell-unknown-error 53-buy-payment-details 61-kyc-registration-tax-tin-error 62-welcome-page-android 219-settings-security-page-default 268-phone-number-field-default 269-dashboard-insider-unlocked; do
             code=$(curl -s -o /dev/null -w '%{http_code}' -u "${HANDBOOK_USER:-x}:${HANDBOOK_PASS:-x}" "http://127.0.0.1:8080/screenshots/${name}.png")
             # 200 (auth happens to match) or 401 (auth fails but file exists)
             # both prove the file is on disk. 404 means it was not assembled.

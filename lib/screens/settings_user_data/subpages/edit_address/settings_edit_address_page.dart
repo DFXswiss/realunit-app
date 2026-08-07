@@ -18,6 +18,7 @@ import 'package:realunit_wallet/widgets/form/country_field.dart';
 import 'package:realunit_wallet/widgets/form/file_picker_field.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
 import 'package:realunit_wallet/widgets/image_picker_sheet.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class SettingsEditAddressPage extends StatelessWidget {
   const SettingsEditAddressPage({super.key});
@@ -79,137 +80,129 @@ class _SettingsEditAddressViewState extends State<SettingsEditAddressView> {
         ),
         SettingsEditAddressReady() || SettingsEditAddressSubmitting() => Scaffold(
           appBar: AppBar(title: Text(S.of(context).changeAddress)),
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isSubmitting = state is SettingsEditAddressSubmitting;
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: IntrinsicHeight(
-                    child: SafeArea(
-                      child: Padding(
-                        padding: const .symmetric(horizontal: 20),
-                        child: GestureDetector(
-                          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
-                          behavior: .opaque,
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              crossAxisAlignment: .stretch,
-                              spacing: 16,
-                              children: [
-                                Row(
-                                  crossAxisAlignment: .start,
-                                  spacing: 10,
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: LabeledTextField(
-                                        hintText: S.of(context).streetHint,
-                                        controller: _streetCtrl,
-                                        label: S.of(context).street,
-                                        keyboardType: .streetAddress,
-                                        textCapitalization: .words,
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) return '';
-                                          if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: LabeledTextField(
-                                        hintText: '13',
-                                        controller: _numberCtrl,
-                                        label: S.of(context).number,
-                                        keyboardType: .streetAddress,
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) return null;
-                                          if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Row(
-                                  crossAxisAlignment: .start,
-                                  spacing: 10,
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: LabeledTextField(
-                                        hintText: '8000',
-                                        controller: _postalCodeCtrl,
-                                        label: S.of(context).postcodeAbr,
-                                        // Postal codes are alphanumeric in many residence
-                                        // countries (e.g. NL "1011 AB", UK "EC1A 1BB", CA
-                                        // "K1A 0B1"). A number-only keyboard makes those
-                                        // impossible to type, while the validator + backend
-                                        // already accept letters and spaces.
-                                        keyboardType: .text,
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) return '';
-                                          if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: LabeledTextField(
-                                        hintText: S.of(context).cityHint,
-                                        controller: _cityCtrl,
-                                        label: S.of(context).city,
-                                        keyboardType: .text,
-                                        textCapitalization: .words,
-                                        validator: (value) {
-                                          if (value == null || value.isEmpty) return '';
-                                          if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
-                                          return null;
-                                        },
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                CountryField(
-                                  label: S.of(context).country,
-                                  purpose: CountryFieldPurpose.residence,
-                                  onChanged: (country) => _countryCtrl.value = country,
-                                ),
-                                FilePickerField(
-                                  label: S.of(context).proofDocument,
-                                  selectedFile: _selectedFile,
-                                  onTap: () async {
-                                    final file = await ImagePickerSheet.show(context);
-                                    if (file != null) setState(() => _selectedFile = file);
-                                  },
-                                  validator: () {
-                                    if (_fileValidationTriggered && _selectedFile == null) {
-                                      return '';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                const Spacer(),
-                                Padding(
-                                  padding: const .symmetric(vertical: 16.0),
-                                  child: AppFilledButton(
-                                    onPressed: _onSubmit,
-                                    state: isSubmitting ? .loading : .idle,
-                                    label: S.of(context).save,
-                                  ),
-                                ),
-                              ],
+          body: SafeArea(
+            child: Padding(
+              padding: const .symmetric(horizontal: 20),
+              child: GestureDetector(
+                onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                behavior: .opaque,
+                child: Form(
+                  key: _formKey,
+                  child: ScrollableActionsLayout(
+                    centerBody: false,
+                    body: Column(
+                      crossAxisAlignment: .stretch,
+                      spacing: 16,
+                      children: [
+                        Row(
+                          crossAxisAlignment: .start,
+                          spacing: 10,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: LabeledTextField(
+                                hintText: S.of(context).streetHint,
+                                controller: _streetCtrl,
+                                label: S.of(context).street,
+                                keyboardType: .streetAddress,
+                                textCapitalization: .words,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return '';
+                                  if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
+                                  return null;
+                                },
+                              ),
                             ),
-                          ),
+                            Expanded(
+                              child: LabeledTextField(
+                                hintText: '13',
+                                controller: _numberCtrl,
+                                label: S.of(context).number,
+                                keyboardType: .streetAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return null;
+                                  if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        Row(
+                          crossAxisAlignment: .start,
+                          spacing: 10,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: LabeledTextField(
+                                hintText: '8000',
+                                controller: _postalCodeCtrl,
+                                label: S.of(context).postcodeAbr,
+                                // Postal codes are alphanumeric in many residence
+                                // countries (e.g. NL "1011 AB", UK "EC1A 1BB", CA
+                                // "K1A 0B1"). A number-only keyboard makes those
+                                // impossible to type, while the validator + backend
+                                // already accept letters and spaces.
+                                keyboardType: .text,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return '';
+                                  if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
+                                  return null;
+                                },
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: LabeledTextField(
+                                hintText: S.of(context).cityHint,
+                                controller: _cityCtrl,
+                                label: S.of(context).city,
+                                keyboardType: .text,
+                                textCapitalization: .words,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return '';
+                                  if (!isSwissPaymentText(value)) return S.of(context).swissPaymentTextInvalid;
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        CountryField(
+                          label: S.of(context).country,
+                          purpose: CountryFieldPurpose.residence,
+                          onChanged: (country) => _countryCtrl.value = country,
+                        ),
+                        FilePickerField(
+                          label: S.of(context).proofDocument,
+                          selectedFile: _selectedFile,
+                          onTap: () async {
+                            final file = await ImagePickerSheet.show(context);
+                            if (file != null) setState(() => _selectedFile = file);
+                          },
+                          validator: () {
+                            if (_fileValidationTriggered && _selectedFile == null) {
+                              return '';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                    ),
+                    actions: [
+                      Padding(
+                        padding: const .symmetric(vertical: 16.0),
+                        child: AppFilledButton(
+                          onPressed: _onSubmit,
+                          state: state is SettingsEditAddressSubmitting ? .loading : .idle,
+                          label: S.of(context).save,
                         ),
                       ),
-                    ),
+                    ],
                   ),
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
         _ => const Scaffold(),

@@ -5,6 +5,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class OnboardingCompletedPage extends StatelessWidget {
   const OnboardingCompletedPage({super.key});
@@ -19,57 +20,49 @@ class OnboardingCompletedPage extends StatelessWidget {
       body: SafeArea(
         child: Padding(
           padding: const .symmetric(horizontal: 20.0),
-          child: LayoutBuilder(
-            builder: (context, constraint) {
-              return SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraint.maxHeight),
-                  child: IntrinsicHeight(
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const .all(32.0),
-                          child: SvgPicture.asset(
-                            'assets/images/illustrations/realu_token.svg',
-                            height: 216,
-                          ),
-                        ),
-                        const SizedBox(height: 40.0),
-                        Column(
-                          spacing: 8.0,
-                          children: [
-                            Text(
-                              s.onboardingCompletedTitle,
-                              textAlign: .center,
-                              style: Theme.of(context).textTheme.headlineMedium,
-                            ),
-                            Text(
-                              s.onboardingCompletedSubtitle,
-                              textAlign: .center,
-                              style:
-                                  Theme.of(
-                                    context,
-                                  ).textTheme.bodyMedium?.copyWith(
-                                    color: RealUnitColors.neutral500,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        Padding(
-                          padding: const .symmetric(vertical: 20),
-                          child: AppFilledButton(
-                            onPressed: () =>
-                                context.read<HomeBloc>().add(const CompleteOnboardingEvent()),
-                            label: s.next,
-                          ),
-                        ),
-                      ],
-                    ),
+          child: ScrollableActionsLayout(
+            body: Column(
+              mainAxisAlignment: .start,
+              children: [
+                Padding(
+                  padding: const .all(32.0),
+                  child: SvgPicture.asset(
+                    'assets/images/illustrations/realu_token.svg',
+                    height: 216,
                   ),
                 ),
-              );
-            },
+                const SizedBox(height: 40.0),
+                Column(
+                  spacing: 8.0,
+                  children: [
+                    Text(
+                      s.onboardingCompletedTitle,
+                      textAlign: .center,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    Text(
+                      s.onboardingCompletedSubtitle,
+                      textAlign: .center,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(
+                        color: RealUnitColors.neutral500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              Padding(
+                padding: const .symmetric(vertical: 20),
+                child: AppFilledButton(
+                  onPressed: () =>
+                      context.read<HomeBloc>().add(const CompleteOnboardingEvent()),
+                  label: s.next,
+                ),
+              ),
+            ],
           ),
         ),
       ),

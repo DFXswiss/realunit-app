@@ -8,8 +8,10 @@ part 'kyc_confirm_email_state.dart';
 /// wallet. The gate is API-driven: `KycCubit` routes here only when
 /// `getRegistrationInfo().emailConfirmed == false`, and this cubit re-fetches
 /// the same fact when the user reports they clicked the confirmation link. When
-/// the backend flips the flag (or no longer reports one — legacy/grandfathered,
-/// `null`), the flow proceeds. See CONTRIBUTING.md "API as Decision Authority".
+/// the backend reports the address is confirmed (an explicit `true`, including
+/// grandfathered accounts) or no longer reports the flag at all (a pre-rollout
+/// backend, `null`), the flow proceeds. See CONTRIBUTING.md "API as Decision
+/// Authority".
 class KycConfirmEmailCubit extends Cubit<KycConfirmEmailState> {
   // Mirrors `KycCubit._checkKycTimeout`: the same `getRegistrationInfo()`
   // call is watch-dogged so a stalled request (socket up, backend never

@@ -49,5 +49,18 @@ void main() {
         return wrapForGolden(buildSubject());
       },
     );
+
+    goldenTest(
+      'loading state before the wallet is generated shows a centered spinner',
+      fileName: 'create_wallet_page_loading',
+      // wallet == null renders a CupertinoActivityIndicator that never settles;
+      // pump once to capture the initial frame instead of hanging pumpAndSettle.
+      pumpBeforeTest: pumpOnce,
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => cubit.state).thenReturn(const CreateWalletState());
+        return wrapForGolden(buildSubject());
+      },
+    );
   });
 }

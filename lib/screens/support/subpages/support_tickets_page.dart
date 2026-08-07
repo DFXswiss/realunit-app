@@ -52,6 +52,10 @@ class SupportTicketsView extends StatelessWidget {
                       separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final ticket = tickets.elementAt(index);
+                        // `created` is parsed as UTC from the API; render it in
+                        // the device's local time so the date is correct across
+                        // the midnight boundary.
+                        final created = ticket.created.toLocal();
                         return OutlinedTile(
                           leading: Padding(
                             padding: const .symmetric(vertical: 6.0),
@@ -68,7 +72,7 @@ class SupportTicketsView extends StatelessWidget {
                           ),
                           title: ticket.name,
                           subtitle:
-                              '${ticket.created.day}.${ticket.created.month}.${ticket.created.year}',
+                              '${created.day}.${created.month}.${created.year}',
                           onTap: () => context.pushNamed(
                             SupportRoutes.chat,
                             pathParameters: {'uid': ticket.uid},

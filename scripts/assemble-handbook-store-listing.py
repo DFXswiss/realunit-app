@@ -161,6 +161,7 @@ def main() -> int:
     ctx = {
         "ios_name": html.escape(read(ios / "name.txt")),
         "ios_subtitle": html.escape(read(ios / "subtitle.txt")),
+        "ios_promotional_text": html.escape(read(ios / "promotional_text.txt")),
         "ios_description": html.escape(read(ios / "description.txt")),
         "ios_keywords": html.escape(read(ios / "keywords.txt")),
         "ios_marketing_url": html.escape(read(ios / "marketing_url.txt")),

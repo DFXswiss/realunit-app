@@ -160,6 +160,23 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirmFailedAmountTooLow), findsOneWidget);
     });
 
+    testWidgets(
+        'shows the aktionariat-specific error on a primary-email-required failure',
+        (tester) async {
+      whenListen(
+        cubit,
+        Stream.fromIterable([
+          const BuyConfirmFailure(BuyConfirmError.primaryEmailRequired),
+        ]),
+        initialState: const BuyConfirmInitial(),
+      );
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+
+      expect(find.text(S.current.buyPaymentConfirmFailedAktionariat), findsOneWidget);
+    });
+
     GoRouter detailsRouter({BuyPaymentInfo info = _info}) => GoRouter(
           initialLocation: '/buy',
           routes: [

@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/pin/constants/pin_constants.dart';
+import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 
 class _MockSecureStorage extends Mock implements SecureStorage {}
 
@@ -75,7 +76,7 @@ void main() {
     });
 
     test('onAppResumed when PIN not setup is a no-op (no emit)', () async {
-      final cubit = build()..onAppHidden();
+      final cubit = build()..onAppHidden(null);
       final before = cubit.state;
       cubit.onAppResumed();
       expect(cubit.state, before);
@@ -93,7 +94,7 @@ void main() {
         // lockoutDuration constant pin below — flipping that constant or the
         // comparator surfaces in the auth flow's own tests.
         cubit
-          ..onAppHidden()
+          ..onAppHidden(null)
           ..onAppResumed();
 
         expect(cubit.state.isPinVerified, isTrue);
@@ -110,7 +111,7 @@ void main() {
           final cubit = build()..onPinSetupComplete();
           expect(cubit.state.isPinVerified, isTrue);
 
-          cubit.onAppHidden();
+          cubit.onAppHidden(null);
           async.elapse(lockoutDuration + const Duration(seconds: 1));
           cubit.onAppResumed();
 
@@ -130,6 +131,118 @@ void main() {
       // surface in this file rather than only in the auth flow.
       expect(lockoutDuration, const Duration(minutes: 5));
     });
+  });
+
+  group('resume location capture', () {
+    test('a fresh non-gate capture replaces the previous one', () {
+      // Freshest non-null (non-gate) location wins: backgrounding again on a
+      // different in-flight route updates the restore target.
+      final cubit = build()
+        ..onAppHidden('/kyc')
+        ..onAppHidden('/settings');
+      expect(cubit.peekResumeLocation(), '/settings');
+    });
+
+    test('a null (gate) background keeps the earlier in-flight capture', () {
+      // The caller passes null for gate routes; a nested re-lock must not
+      // clobber the good `/kyc` capture with the gate.
+      final cubit = build()
+        ..onAppHidden('/kyc')
+        ..onAppHidden(null);
+      expect(cubit.peekResumeLocation(), '/kyc');
+    });
+
+    test('a null first capture does not lock out a later real location', () {
+      final cubit = build()
+        ..onAppHidden(null)
+        ..onAppHidden('/kyc');
+      expect(cubit.peekResumeLocation(), '/kyc');
+    });
+
+    test('clearResumeLocation drops the capture', () {
+      final cubit = build()..onAppHidden('/kyc');
+      expect(cubit.peekResumeLocation(), '/kyc');
+      cubit.clearResumeLocation();
+      expect(cubit.peekResumeLocation(), isNull);
+    });
+
+    test('a long hide keeps the resume location for the consumer', () {
+      // The re-lock (isPinVerified -> false) and the resume-location capture
+      // are independent: on relock we still hand the captured route to
+      // `_navigate`, which restores it after the PIN gate and clears it there.
+      fakeAsync((async) {
+        final cubit = build()
+          ..onPinSetupComplete()
+          ..onAppHidden('/kyc');
+        async.elapse(lockoutDuration + const Duration(seconds: 1));
+        cubit.onAppResumed();
+
+        expect(cubit.state.isPinVerified, isFalse);
+        expect(cubit.peekResumeLocation(), '/kyc');
+        cubit.close();
+      });
+    });
+
+    test('a short hide in the verified state clears the capture eagerly', () {
+      // The episode ended without a re-lock: nothing consumes the capture, so
+      // it is dropped here — a much later, unrelated re-lock must not restore
+      // a route from a long-finished episode.
+      final cubit = build()
+        ..onPinSetupComplete()
+        ..onAppHidden('/kyc')
+        ..onAppResumed();
+
+      expect(cubit.state.isPinVerified, isTrue);
+      expect(cubit.peekResumeLocation(), isNull);
+    });
+
+    test('a short hide while the PIN gate is showing keeps the capture', () {
+      // Nested re-lock: a short away-switch on /verifyPin (isPinVerified is
+      // still false) must not lose the in-flight capture the pending unlock is
+      // about to restore.
+      fakeAsync((async) {
+        final cubit = build()
+          ..onPinSetupComplete()
+          ..onAppHidden('/kyc');
+        async.elapse(lockoutDuration + const Duration(seconds: 1));
+        cubit.onAppResumed(); // re-lock: isPinVerified -> false
+
+        cubit
+          ..onAppHidden(null) // backgrounded again on the gate route
+          ..onAppResumed(); // short: no lockout elapsed
+
+        expect(cubit.state.isPinVerified, isFalse);
+        expect(cubit.peekResumeLocation(), '/kyc');
+        cubit.close();
+      });
+    });
+
+    test('reset clears the captured resume location', () async {
+      when(() => storage.deletePinHash()).thenAnswer((_) async {});
+      when(() => storage.deleteBiometricEnabled()).thenAnswer((_) async {});
+      when(() => storage.resetPinLockout()).thenAnswer((_) async {});
+
+      final cubit = build()..onAppHidden('/kyc');
+      expect(cubit.peekResumeLocation(), '/kyc');
+      await cubit.reset();
+      expect(cubit.peekResumeLocation(), isNull);
+    });
+
+    test(
+      'reset clears a pending payment deeplink stash (no replay into a reset/re-onboarded wallet)',
+      () async {
+        when(() => storage.deletePinHash()).thenAnswer((_) async {});
+        when(() => storage.deleteBiometricEnabled()).thenAnswer((_) async {});
+        when(() => storage.resetPinLockout()).thenAnswer((_) async {});
+        addTearDown(clearPendingPaymentDeeplink);
+
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+        final cubit = build();
+        await cubit.reset();
+
+        expect(peekPendingPaymentDeeplink(), isNull);
+      },
+    );
   });
 
   group('reset', () {

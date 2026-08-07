@@ -58,11 +58,15 @@ class DashboardPriceWidgetView extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(
-                      S.of(context).realunitStockprice,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: .w600,
-                        color: RealUnitColors.basic.black,
+                    Expanded(
+                      child: Text(
+                        S.of(context).realunitStockprice,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: .w600,
+                          color: RealUnitColors.basic.black,
+                        ),
+                        maxLines: 1,
+                        overflow: .ellipsis,
                       ),
                     ),
                   ],
@@ -78,9 +82,13 @@ class DashboardPriceWidgetView extends StatelessWidget {
                         );
                       },
                     ),
-                    Text(
-                      price == BigInt.zero ? '--.--' : formatFixed(price, 2, trimZeros: false),
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: .w600),
+                    Flexible(
+                      child: Text(
+                        price == BigInt.zero ? '--.--' : formatFixed(price, 2, trimZeros: false),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: .w600),
+                        maxLines: 1,
+                        overflow: .ellipsis,
+                      ),
                     ),
                   ],
                 ),

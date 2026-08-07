@@ -12,6 +12,7 @@ import 'package:realunit_wallet/screens/pin/widgets/verifying_indicator.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/number_pad.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class SetupPinPage extends StatelessWidget {
   /// Invoked once the PIN is stored instead of the default onboarding
@@ -84,92 +85,75 @@ class SetupPinView extends StatelessWidget {
           ),
           backgroundColor: RealUnitColors.brand700,
           body: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Column(
-                        spacing: 4.0,
-                        children: [
-                          const Spacer(),
-                          Padding(
-                            padding: const .symmetric(horizontal: 20.0),
-                            child: Column(
-                              mainAxisSize: .min,
-                              children: [
-                                Column(
-                                  spacing: 8.0,
-                                  children: [
-                                    Text(
-                                      switch (state.mode) {
-                                        .create => S.of(context).pinCreate,
-                                        .confirm => S.of(context).pinConfirm,
-                                      },
-                                      textAlign: .center,
-                                      style: Theme.of(context).textTheme.headlineMedium,
-                                    ),
-                                    Text(
-                                      switch (state.mode) {
-                                        .create => S.of(context).pinCreateDescription('$pinLength'),
-                                        .confirm => S.of(context).pinConfirmDescription,
-                                      },
-                                      textAlign: .center,
-                                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                        color: RealUnitColors.neutral500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 32),
-                                Column(
-                                  spacing: 16.0,
-                                  children: [
-                                    PinIndicator(
-                                      pinLength: state.currentPin.length,
-                                      expectedPinLength: pinLength,
-                                      wrongPin: state.mismatch,
-                                    ),
-                                    Visibility(
-                                      visible: state.mismatch || state.storeFailed,
-                                      maintainSize: true,
-                                      maintainAnimation: true,
-                                      maintainState: true,
-                                      child: Text(
-                                        state.storeFailed
-                                            ? S.of(context).pinSaveFailed
-                                            : S.of(context).pinConfirmFailed,
-                                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                          color: RealUnitColors.status.red600,
-                                        ),
-                                        textAlign: .center,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+            child: ScrollableActionsLayout(
+              centerBody: true,
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Column(
+                      spacing: 8.0,
+                      children: [
+                        Text(
+                          switch (state.mode) {
+                            .create => S.of(context).pinCreate,
+                            .confirm => S.of(context).pinConfirm,
+                          },
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.headlineMedium,
+                        ),
+                        Text(
+                          switch (state.mode) {
+                            .create => S.of(context).pinCreateDescription('$pinLength'),
+                            .confirm => S.of(context).pinConfirmDescription,
+                          },
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: RealUnitColors.neutral500,
                           ),
-                          const Spacer(),
-                          if (state.isSubmitting)
-                            VerifyingIndicator(label: S.of(context).pinSaving)
-                          else
-                            NumberPad(
-                              onNumberPressed: (digit) =>
-                                  context.read<SetupPinCubit>().addDigit(digit),
-                              onDeletePressed: context.read<SetupPinCubit>().deleteDigit,
-                            ),
-                          const SizedBox(height: 60.0),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 32),
+                    Column(
+                      spacing: 16.0,
+                      children: [
+                        PinIndicator(
+                          pinLength: state.currentPin.length,
+                          expectedPinLength: pinLength,
+                          wrongPin: state.mismatch,
+                        ),
+                        Visibility(
+                          visible: state.mismatch || state.storeFailed,
+                          maintainSize: true,
+                          maintainAnimation: true,
+                          maintainState: true,
+                          child: Text(
+                            state.storeFailed
+                                ? S.of(context).pinSaveFailed
+                                : S.of(context).pinConfirmFailed,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: RealUnitColors.status.red600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                if (state.isSubmitting)
+                  VerifyingIndicator(label: S.of(context).pinSaving)
+                else
+                  NumberPad(
+                    onNumberPressed: (digit) => context.read<SetupPinCubit>().addDigit(digit),
+                    onDeletePressed: context.read<SetupPinCubit>().deleteDigit,
                   ),
-                );
-              },
+                const SizedBox(height: 60.0),
+              ],
             ),
           ),
         );

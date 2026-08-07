@@ -16,32 +16,25 @@ name: RealUnit Build
 #    below (saves macOS-runner minutes while work is still in progress).
 #  - `labeled` / `unlabeled` are intentionally omitted: realunit-app has
 #    no label-gated heavy job here (Tier 3 has its own workflow).
-#  - `push: develop` and `push: staging` keep post-merge verification
-#    as an authoritative source of truth, independent of any PR state.
-#    `staging` participates because feature → staging merges land an
-#    integration commit whose verification cannot be deferred to the
-#    auto-opened staging → develop PR (the gate must be authoritative
-#    at the moment the commit lands on staging). Other branches do not
-#    need a post-push check — the PR-event already covers them.
+#  - `push: develop` keeps post-merge verification as an authoritative
+#    source of truth. Staging fallback routing lives in the separate
+#    `staging-ci-fallback.yaml` workflow: it dispatches this workflow
+#    only when no ready staging → develop PR owns CI for the pushed SHA.
 #  - `workflow_dispatch` is kept as a manual override and is NOT
 #    draft-gated (see the job `if:` guard below).
 on:
   workflow_dispatch:
   push:
-    branches: [develop, staging]
+    branches: [develop]
   pull_request:
     branches-ignore: [main]
     types: [opened, synchronize, reopened, ready_for_review]
 
-# Group by PR number so a new push to the same PR cancels the
-# in-flight run for the outdated commit. macOS runners are scarce —
-# letting an obsolete run finish wastes ~10 minutes per push. Grouping
-# by SHA (the previous approach) put every commit in its own group,
-# which meant no cancellation ever happened and back-to-back pushes
-# queued sequentially.
-# Falls back to `github.ref` for `push` and `workflow_dispatch` events
-# (where there is no `pull_request.number`): `refs/heads/develop` for
-# post-merge runs, the dispatched ref for manual triggers.
+# Group PR runs by PR number, and push/dispatch runs by ref. A new SHA
+# cancels work for the outdated SHA in the same lane. Staging push
+# routing is isolated in `staging-ci-fallback.yaml`; it either relies on
+# this PR workflow or dispatches this workflow as a fallback, but never
+# shares a concurrency group with the PR run.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -60,7 +53,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.41.6"
@@ -151,7 +144,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-lcov
           path: coverage/lcov.info
@@ -168,7 +161,7 @@ jobs:
       # fail-open (silent `exit 0`).
       - name: Upload coverage summary
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-summary
           path: coverage/lcov.summary
@@ -228,12 +221,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download coverage summary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: coverage-summary
+          path: coverage
+
+      - name: Download scoped coverage tracefile
+        uses: actions/download-artifact@v7
+        with:
+          name: coverage-lcov
           path: coverage
 
       - name: Enforce coverage floor
@@ -275,6 +274,18 @@ jobs:
             fi
           fi
 
+      # Closes the coverage blind spot the floor % alone cannot see: an in-scope
+      # file that no test ever loads is absent from lcov.info entirely, so it
+      # sits in neither the numerator nor the denominator and the scoped %
+      # stays 100 % while the file is wholly untested. This step enumerates the
+      # on-disk activated surface (same globs as the filter step above) and
+      # fails when a file carries no coverage and is not in the committed
+      # lineless allowlist. See scripts/check-coverage-visibility.sh.
+      - name: Enforce in-scope file visibility
+        run: |
+          set -euo pipefail
+          bash scripts/check-coverage-visibility.sh coverage/lcov.info .coverage-visibility-allowlist
+
   # Visual regression tests on the self-hosted runner. Goldens live
   # under `test/goldens/` and are validated pixel-for-pixel against committed
   # baselines under `test/goldens/screens/**/goldens/macos/`. The Mac Studio
@@ -295,14 +306,29 @@ jobs:
     name: Visual Regression
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: [self-hosted, macOS, ARM64, m3-ultra, realunit-app]
-    timeout-minutes: 30
+    # 30 was sized for the era when `subosito/flutter-action@v2` still pulled
+    # the SDK through the Actions cache and burned ~18 minutes on a stalled
+    # restore plus the trailing cache-save. Without that overhead the job
+    # finishes in ~1 minute, so 15 is generous headroom — it still covers the
+    # worst normal case, where the SDK is absent from the runner's persistent
+    # tool cache and has to be downloaded from scratch. The lower ceiling is
+    # what matters here: the self-hosted runner has exactly ONE slot for this
+    # repo, so a wedged job blocks every other PR until it is killed. 15 hands
+    # the slot back twice as fast as 30.
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.41.6"
           channel: "stable"
-          cache: true
+          # Self-hosted runner already keeps the Flutter SDK persistently
+          # under `_work/_tool` across runs. The Actions cache restore on
+          # this runner stalls at 0.5-0.8 MB/s, times out after the 10
+          # minute segment timeout, falls back to a cache miss anyway,
+          # then burns ~8 minutes on a cache-save — ~18 minutes of pure
+          # overhead that returns nothing useful here.
+          cache: false
       - run: flutter pub get
       - run: dart run tool/generate_localization.dart
       - run: dart run tool/generate_release_info.dart
@@ -311,7 +337,7 @@ jobs:
         run: flutter test test/goldens
       - name: Upload golden diff on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: golden-diffs
           path: test/goldens/**/failures/**
@@ -328,10 +354,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.25.5"
+          # This repository has no Go module; caching would only emit a
+          # misleading "go.sum not found" warning for this audit-only job.
+          cache: false
 
       - name: Install bitbox-audit
         continue-on-error: true
@@ -359,7 +388,7 @@ jobs:
 
       - name: Upload audit report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bitbox-audit-report
           path: bitbox-audit-report.md

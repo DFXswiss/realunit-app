@@ -113,6 +113,25 @@ void main() {
       expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.primaryEmailRequired);
     });
 
+    test('API isValid=false with error=PrimaryEmailNotConfirmed → '
+        'Failure(primaryEmailNotConfirmed)', () async {
+      // A registered-but-unconfirmed email routes to the confirmation flow
+      // (via KYC) instead of a post-submit failure or the email-capture path.
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(isValid: false, error: 'PrimaryEmailNotConfirmed'),
+          );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect(
+        (cubit.state as BuyPaymentInfoFailure).error,
+        PaymentInfoError.primaryEmailNotConfirmed,
+      );
+    });
+
     test('API isValid=false with unknown error → generic Failure', () async {
       when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
           .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooHigh', minVolume: 100));

@@ -98,6 +98,39 @@ void main() {
       expect(find.byType(OutlinedTile), findsNWidgets(tickets.length));
     });
 
+    testWidgets('renders the ticket date in local time, not UTC', (tester) async {
+      // 23:30 UTC crosses midnight only in a positive-offset zone, where the
+      // local calendar date differs from the UTC one — the case that tells the
+      // fix apart from the old raw-UTC rendering. On a zero/negative-offset
+      // runner (e.g. the GitHub-hosted UTC CI job) the two coincide, so skip
+      // rather than pass vacuously and masquerade as a real regression guard.
+      final createdUtc = DateTime.utc(2024, 1, 15, 23, 30);
+      final local = createdUtc.toLocal();
+      if (local.day == createdUtc.day) {
+        markTestSkipped(
+          'runner timezone does not push 23:30 UTC across midnight; '
+          'the local-vs-UTC date regression is not exercised here',
+        );
+        return;
+      }
+      final tickets = [
+        SupportIssue(
+          uid: '123',
+          created: createdUtc,
+          messages: [],
+          name: 'name',
+          reason: SupportIssueReason.other,
+          state: SupportIssueState.created,
+          type: SupportIssueType.genericIssue,
+        ),
+      ];
+      when(() => supportTicketsCubit.state).thenReturn(SupportTicketsLoaded(tickets));
+
+      await tester.pumpApp(buildSubject(const SupportTicketsView()));
+
+      expect(find.text('${local.day}.${local.month}.${local.year}'), findsOne);
+    });
+
     testWidgets('renders correctly when successfully loaded but no tickets', (tester) async {
       final tickets = <SupportIssue>[];
       when(() => supportTicketsCubit.state).thenReturn(SupportTicketsLoaded(tickets));

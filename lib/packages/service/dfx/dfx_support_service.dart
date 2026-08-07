@@ -54,6 +54,8 @@ class DfxSupportService extends DFXAuthService {
     required SupportIssueReason reason,
     required String name,
     String? message,
+    String? file,
+    String? fileName,
   }) async {
     final uri = buildUri(host, _supportPath);
 
@@ -62,6 +64,8 @@ class DfxSupportService extends DFXAuthService {
       'reason': reason.toJson(),
       'name': name,
       if (message != null) 'message': message,
+      if (file != null) 'file': file,
+      if (fileName != null) 'fileName': fileName,
     });
 
     final response = await authenticatedPost(
@@ -82,10 +86,19 @@ class DfxSupportService extends DFXAuthService {
     );
   }
 
-  Future<void> sendMessage(String ticketUid, String message) async {
+  Future<void> sendMessage(
+    String ticketUid, {
+    String? message,
+    String? file,
+    String? fileName,
+  }) async {
     final uri = buildUri(host, '$_supportPath/$ticketUid/message');
 
-    final body = jsonEncode({'message': message});
+    final body = jsonEncode({
+      if (message != null) 'message': message,
+      if (file != null) 'file': file,
+      if (fileName != null) 'fileName': fileName,
+    });
 
     final response = await authenticatedPost(
       uri,

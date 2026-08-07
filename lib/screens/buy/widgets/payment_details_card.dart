@@ -6,6 +6,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/buy_payment_info.dart';
 import 'package:realunit_wallet/packages/utils/svg_parser.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/iban_text_formatter.dart';
 import 'package:realunit_wallet/widgets/tab_selector.dart';
 
 enum PaymentInfoOptions {
@@ -86,7 +87,8 @@ class PaymentDetailsCard extends StatelessWidget {
                         ),
                       _PaymentDetailsRow(
                         description: S.of(context).iban,
-                        value: buyPaymentInfo.iban,
+                        value: IbanTextFormatter.formatIban(buyPaymentInfo.iban),
+                        copyValue: buyPaymentInfo.iban,
                       ),
                       _PaymentDetailsRow(
                         description: S.of(context).bic,
@@ -163,11 +165,13 @@ class _PaymentDetailsRow extends StatelessWidget {
     this.title,
     required this.description,
     required this.value,
+    this.copyValue,
   });
 
   final String? title;
   final String description;
   final String value;
+  final String? copyValue;
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +227,7 @@ class _PaymentDetailsRow extends StatelessWidget {
                 ),
                 onTap: () => Clipboard.setData(
                   ClipboardData(
-                    text: value,
+                    text: copyValue ?? value,
                   ),
                 ),
               ),

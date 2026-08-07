@@ -9,6 +9,7 @@ import 'package:realunit_wallet/packages/service/transaction_history_service.dar
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
+import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 
 class _MockWalletService extends Mock implements WalletService {}
 
@@ -400,6 +401,21 @@ void main() {
         // disclaimer, deleting the wallet must not force them to accept it
         // again.
         expect(bloc.state.softwareTermsAccepted, isTrue);
+      });
+
+      test('clears a stashed payment deeplink so it cannot replay into a re-onboarded wallet', () async {
+        addTearDown(clearPendingPaymentDeeplink);
+        stashPendingPaymentDeeplink('lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD');
+
+        final bloc = build();
+        await bloc.stream.firstWhere((s) => true);
+
+        bloc.add(const DeleteCurrentWalletEvent());
+        await bloc.stream.firstWhere(
+          (s) => s.isLoadingWallet == false && s.hasWallet == false,
+        );
+
+        expect(peekPendingPaymentDeeplink(), isNull);
       });
     });
 

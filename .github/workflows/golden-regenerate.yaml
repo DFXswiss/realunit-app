@@ -37,7 +37,13 @@ jobs:
   regenerate:
     name: Regenerate golden baselines
     runs-on: [self-hosted, macOS, ARM64, m3-ultra, realunit-app]
-    timeout-minutes: 30
+    # Same reasoning as `golden-tests` in `pull-request.yaml`: the old 30 was
+    # sized for the cache era (~18 minutes of stalled Actions-cache overhead).
+    # Regeneration is that same workload plus a commit+push, so 15 minutes
+    # still leaves room for a cold Flutter SDK download, and it frees this
+    # repo's single self-hosted slot far sooner when a run wedges. Keep the
+    # two jobs' timeouts in sync, like the rest of their setup.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,11 +51,24 @@ jobs:
           # this, checkout still works but the remote is configured with no
           # credential helper and the push fails with HTTP 403.
           token: ${{ secrets.GITHUB_TOKEN }}
+          # Single-slot runner can start minutes after dispatch. Default
+          # checkout pins github.sha (stale by then); render against that
+          # tree and the later push is rejected because the branch tip has
+          # moved. Checkout the live head instead (github.ref_name — the
+          # dispatched branch; workflow_dispatch always runs with --ref
+          # <branch>) so baselines match the tree they get committed to.
+          ref: ${{ github.ref_name }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.41.6"
           channel: "stable"
-          cache: true
+          # Self-hosted runner already keeps the Flutter SDK persistently
+          # under `_work/_tool` across runs. The Actions cache restore on
+          # this runner stalls at 0.5-0.8 MB/s, times out after the 10
+          # minute segment timeout, falls back to a cache miss anyway,
+          # then burns ~8 minutes on a cache-save — ~18 minutes of pure
+          # overhead that returns nothing useful here.
+          cache: false
       - run: flutter pub get
       - run: dart run tool/generate_localization.dart
       - run: dart run tool/generate_release_info.dart
@@ -75,9 +94,13 @@ jobs:
             exit 0
           fi
           git commit -m "test(goldens): regenerate baselines on the self-hosted runner"
-          # On protected branches (develop/main) this fails by design.
-          # The next step uploads the PNGs as an artifact so the user can
-          # still recover the regen output.
+          # Protected branches (develop/main): fails by design — no force-push,
+          # no bypass. Feature branches: after the ref: fix above this should
+          # normally succeed. If the branch still moves between checkout and
+          # push (now a seconds-wide window), fail loud; the fallback artifact
+          # step below still uploads the PNGs. Recovery: re-dispatch (cheap).
+          # Do NOT rebase or force-push — that would publish baselines that no
+          # longer match the tree head they were rendered against.
           git push
 
       # Runs only if the push step failed. Uploads the regenerated PNGs so

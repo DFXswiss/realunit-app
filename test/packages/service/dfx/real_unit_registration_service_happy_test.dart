@@ -135,6 +135,9 @@ void main() {
         Map<String, dynamic>? body;
         Map<String, String>? headers;
         final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           sentUri = request.url;
           body = jsonDecode(request.body) as Map<String, dynamic>;
           headers = request.headers;
@@ -146,6 +149,10 @@ void main() {
         expect(status, RegistrationStatus.completed);
         expect(sentUri!.path, '/v1/realunit/register/complete');
         expect(headers!['authorization'], 'Bearer jwt-1');
+
+        // The signed registrationDate must be the server-provided date, not a
+        // locally-derived one — the whole point of the /register/date fetch.
+        expect(body!['registrationDate'], '2026-07-13');
 
         // Signed envelope copy — must be ASCII-transliterated to match what
         // BitBox firmware would have signed.
@@ -183,6 +190,9 @@ void main() {
         Uri? sentUri;
         Map<String, dynamic>? body;
         final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           sentUri = request.url;
           body = jsonDecode(request.body) as Map<String, dynamic>;
           return http.Response(jsonEncode({'status': 'completed'}), 201);
@@ -224,7 +234,10 @@ void main() {
         // sibling file short-circuits before the HTTP call, so the wire
         // error path stays uncovered without this.
         var calls = 0;
-        final client = MockClient((_) async {
+        final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           calls++;
           return http.Response(
             jsonEncode({
@@ -256,7 +269,10 @@ void main() {
       () async {
         // Coverage pin for the matching branch in `_registerWallet`.
         var calls = 0;
-        final client = MockClient((_) async {
+        final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           calls++;
           return http.Response(
             jsonEncode({
@@ -286,6 +302,9 @@ void main() {
         Uri? sentUri;
         Map<String, dynamic>? body;
         final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
           sentUri = request.url;
           body = jsonDecode(request.body) as Map<String, dynamic>;
           return http.Response(jsonEncode({'status': 'completed'}), 201);
@@ -297,9 +316,52 @@ void main() {
         expect(sentUri!.path, '/v1/realunit/register/wallet');
         expect(body!['walletAddress'], _privKey.address.hexEip55);
         expect((body!['signature'] as String).length, 132);
-        // YYYY-MM-DD shape, length 10.
-        expect((body!['registrationDate'] as String).length, 10);
+        // The signed registrationDate must be the server-provided date.
+        expect(body!['registrationDate'], '2026-07-13');
       },
     );
+  });
+
+  group('getRegistrationDate', () {
+    test('GETs /v1/realunit/register/date and returns the server date', () async {
+      Uri? sentUri;
+      String? method;
+      final client = MockClient((request) async {
+        sentUri = request.url;
+        method = request.method;
+        return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+      });
+
+      final date = await build(client).getRegistrationDate();
+
+      expect(date, '2026-07-13');
+      expect(method, 'GET');
+      expect(sentUri!.path, '/v1/realunit/register/date');
+    });
+
+    test('rewraps a non-200 response as ApiException carrying the backend status', () async {
+      final client = MockClient((_) async {
+        return http.Response(
+          jsonEncode({'statusCode': 503, 'code': 'UNAVAILABLE', 'message': 'down'}),
+          503,
+        );
+      });
+
+      await expectLater(
+        () => build(client).getRegistrationDate(),
+        throwsA(isA<ApiException>()),
+      );
+    });
+
+    test('throws when the response omits the date field (no silent fallback)', () async {
+      final client = MockClient((_) async {
+        return http.Response(jsonEncode({'notDate': true}), 200);
+      });
+
+      await expectLater(
+        () => build(client).getRegistrationDate(),
+        throwsA(isA<ApiException>()),
+      );
+    });
   });
 }

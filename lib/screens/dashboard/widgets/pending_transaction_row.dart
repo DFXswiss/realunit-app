@@ -56,24 +56,31 @@ class PendingTransactionRow extends StatelessWidget {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: .end,
-            children: [
-              if (transaction.inputAmount != null && transaction.inputAsset != null)
-                Text(
-                  '${_formatAmount(transaction.inputAmount!)} ${transaction.inputAsset}',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: .w600,
+          Flexible(
+            child: Column(
+              crossAxisAlignment: .end,
+              children: [
+                if (transaction.inputAmount != null && transaction.inputAsset != null)
+                  Text(
+                    '${_formatAmount(transaction.inputAmount!)} ${transaction.inputAsset}',
+                    textAlign: .end,
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: .w600,
+                    ),
                   ),
-                ),
-              if (transaction.date != null)
-                Text(
-                  DateFormat('MMM dd, yyyy').format(transaction.date!),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: RealUnitColors.neutral500,
+                if (transaction.date != null)
+                  Text(
+                    DateFormat('MMM dd, yyyy').format(transaction.date!.toLocal()),
+                    textAlign: .end,
+                    maxLines: 1,
+                    overflow: .ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: RealUnitColors.neutral500,
+                    ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ],
       ),

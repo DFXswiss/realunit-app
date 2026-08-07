@@ -254,4 +254,91 @@ void main() {
       expect(find.byType(DropdownButtonFormField<Country>), findsOneWidget);
     });
   });
+
+  group('$CountryField stale-error clearing', () {
+    testWidgets('an empty field reports an error once the Form is validated', (tester) async {
+      registerCountryService(fixtureCountryService());
+      final formKey = GlobalKey<FormState>();
+
+      await tester.pumpApp(
+        host(
+          const CountryField(label: 'Citizenship', purpose: CountryFieldPurpose.nationality),
+          formKey: formKey,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(formKey.currentState!.validate(), isFalse);
+      await tester.pump();
+
+      final state = tester.state<FormFieldState<Country>>(
+        find.byType(DropdownButtonFormField<Country>),
+      );
+      expect(state.hasError, isTrue);
+    });
+
+    testWidgets('selecting a country clears the stale error without re-validating the Form', (
+      tester,
+    ) async {
+      registerCountryService(fixtureCountryService());
+      final formKey = GlobalKey<FormState>();
+
+      await tester.pumpApp(
+        host(
+          CountryField(
+            label: 'Citizenship',
+            purpose: CountryFieldPurpose.nationality,
+            // A non-null onChanged is what enables the dropdown so it can open.
+            onChanged: (_) {},
+          ),
+          formKey: formKey,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The user hits "Next" on an empty field: the Form validates and the
+      // country field turns red.
+      expect(formKey.currentState!.validate(), isFalse);
+      await tester.pump();
+
+      final state = tester.state<FormFieldState<Country>>(
+        find.byType(DropdownButtonFormField<Country>),
+      );
+      expect(state.hasError, isTrue);
+
+      // Open the dropdown and pick Switzerland. More than one 'Switzerland'
+      // Text can be laid out while the menu is open, so target the last.
+      await tester.tap(find.byType(DropdownButton<Country>));
+      await tester.pumpAndSettle();
+      expect(find.byType(DropdownMenuItem<Country>), findsWidgets);
+      await tester.tap(find.text('Switzerland').last);
+      await tester.pumpAndSettle();
+
+      // autovalidateMode.onUserInteraction re-validates on didChange, so the
+      // red border clears immediately without a second Form.validate() — the
+      // regression was that the stale error persisted until the next validate().
+      expect(state.value?.symbol, 'CH');
+      expect(state.hasError, isFalse);
+    });
+  });
+
+  group('$CountryField hint', () {
+    testWidgets('shows the neutral placeholder hint, not a country name, when empty', (
+      tester,
+    ) async {
+      registerCountryService(fixtureCountryService());
+
+      await tester.pumpApp(
+        host(
+          const CountryField(label: 'Citizenship', purpose: CountryFieldPurpose.nationality),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // pumpApp resolves to the en locale in tests, so the hint is the English
+      // ARB value. This asserts the hint by text, guarding against a silent ARB
+      // regression that the pixel-only goldens cannot catch by value.
+      expect(find.text('Select country'), findsOneWidget);
+    });
+  });
 }

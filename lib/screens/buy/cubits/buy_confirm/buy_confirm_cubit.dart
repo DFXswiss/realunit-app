@@ -12,6 +12,11 @@ part 'buy_confirm_state.dart';
 // message text — the message is Aktionariat's and may change.
 const String _errorCodeAmountTooLow = 'AmountTooLow';
 
+// Backend error code for a confirm rejected upstream because the buyer's
+// primary email is missing or not yet confirmed at the share register
+// (HTTP 400). Dispatch on the code, not the message text.
+const String _errorCodePrimaryEmailRequired = 'PrimaryEmailRequired';
+
 class BuyConfirmCubit extends Cubit<BuyConfirmState> {
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
 
@@ -36,6 +41,8 @@ class BuyConfirmCubit extends Cubit<BuyConfirmState> {
           ? BuyConfirmError.aktionariat
           : e.code == _errorCodeAmountTooLow
           ? BuyConfirmError.amountTooLow
+          : e.code == _errorCodePrimaryEmailRequired
+          ? BuyConfirmError.primaryEmailRequired
           : BuyConfirmError.unknown;
       emit(BuyConfirmFailure(error));
     } catch (e) {

@@ -24,6 +24,7 @@ import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/styles/icons.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -146,31 +147,35 @@ class DashboardView extends StatelessWidget {
                         ),
                       )
                     else
-                      Padding(
+                      ScrollableActionsLayout(
                         padding: const .symmetric(
                           horizontal: 20.0,
                           vertical: 24.0,
                         ),
-                        child: Column(
+                        centerBody: true,
+                        body: Column(
                           crossAxisAlignment: .stretch,
+                          spacing: context.watch<PendingTransactionsCubit>().state.isEmpty
+                              ? 0.0
+                              : 24.0,
                           children: [
                             const DashboardPendingTransactionsView(),
-                            const Spacer(),
                             SvgPicture.asset(
                               'assets/images/illustrations/realu_token.svg',
                               width: 165,
                               height: 165,
                             ),
-                            const Spacer(),
-                            Padding(
-                              padding: const .symmetric(vertical: 20),
-                              child: AppFilledButton(
-                                onPressed: () => context.pushNamed(AppRoutes.buy),
-                                label: S.of(context).buyRealUnit,
-                              ),
-                            ),
                           ],
                         ),
+                        actions: [
+                          Padding(
+                            padding: const .symmetric(vertical: 20),
+                            child: AppFilledButton(
+                              onPressed: () => context.pushNamed(AppRoutes.buy),
+                              label: S.of(context).buyRealUnit,
+                            ),
+                          ),
+                        ],
                       ),
                   ],
                 ),

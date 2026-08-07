@@ -8,6 +8,7 @@ import 'package:realunit_wallet/screens/support/cubits/support_chat/support_chat
 import 'package:realunit_wallet/screens/support/widgets/support_chat_message_bubble.dart';
 import 'package:realunit_wallet/screens/support/widgets/support_chat_message_input_field.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/widgets/image_picker_sheet.dart';
 
 class SupportChatPage extends StatelessWidget {
   final String ticketUid;
@@ -57,7 +58,7 @@ class _SupportChatViewState extends State<SupportChatView> {
             SupportChatError(:final message) => Center(
               child: Text(message),
             ),
-            SupportChatLoaded(:final ticket, :final isSending) => SafeArea(
+            SupportChatLoaded(:final ticket, :final isSending, :final attachment) => SafeArea(
               child: Column(
                 children: [
                   Expanded(
@@ -74,10 +75,22 @@ class _SupportChatViewState extends State<SupportChatView> {
                     controller: _messageController,
                     isSending: isSending,
                     isTicketOpen: ticket.isOpen,
-                    onSend: () {
+                    attachment: attachment,
+                    onAttach: () async {
+                      final file = await ImagePickerSheet.show(context);
+                      if (file != null && context.mounted) {
+                        context.read<SupportChatCubit>().selectAttachment(file);
+                      }
+                    },
+                    onRemoveAttachment: () {
+                      context.read<SupportChatCubit>().clearAttachment();
+                    },
+                    onSend: () async {
                       final message = _messageController.text;
-                      if (message.trim().isNotEmpty) {
-                        context.read<SupportChatCubit>().sendMessage(message);
+                      final hasAttachment = attachment != null;
+                      if (message.trim().isEmpty && !hasAttachment) return;
+                      final cubit = context.read<SupportChatCubit>();
+                      if (await cubit.sendMessage(message) && context.mounted) {
                         _messageController.clear();
                       }
                     },

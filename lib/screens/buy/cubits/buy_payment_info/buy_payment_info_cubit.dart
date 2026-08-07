@@ -27,6 +27,12 @@ const String _quoteErrorAmountTooLow = 'AmountTooLow';
 // instead of reacting to a post-submit 400 and losing the flow.
 const String _quoteErrorPrimaryEmailRequired = 'PrimaryEmailRequired';
 
+// Backend QuoteError code for the "buyer has a primary email on record but
+// has not yet confirmed it" case. This is distinct from having no email at
+// all, so it routes to the existing email-confirmation flow (via the KYC
+// page), not to the email-capture flow.
+const String _quoteErrorPrimaryEmailNotConfirmed = 'PrimaryEmailNotConfirmed';
+
 class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
   CancelableOperation<BuyPaymentInfoState>? _completer;
@@ -71,6 +77,9 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
         }
         if (paymentInfo.error == _quoteErrorPrimaryEmailRequired) {
           return const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailRequired);
+        }
+        if (paymentInfo.error == _quoteErrorPrimaryEmailNotConfirmed) {
+          return const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailNotConfirmed);
         }
         return const BuyPaymentInfoFailure(PaymentInfoError.unknown);
       }
