@@ -26,6 +26,10 @@ class _MockSupportCreateTicketCubit extends MockCubit<SupportCreateTicketState>
 /// Stable name shown in the filled-attachment golden (no random/timestamp).
 const _attachedFileName = 'beleg.png';
 
+/// Message for the filled golden — state and enterText must share one value so
+/// the snapshot does not show different text than the state this golden claims.
+const _filledMessage = 'Ich habe eine Frage zu meinem Konto.';
+
 void main() {
   late _MockSupportCreateTicketCubit cubit;
   late Directory tempDir;
@@ -109,19 +113,44 @@ void main() {
 
     // `selectType` sets `selectedReason` to `other` alongside `selectedType`,
     // and a non-empty `message` flips `canSubmit` to true, so the Send button
-    // renders enabled. The message TextField renders empty because the field is
-    // not bound to state (it drives the cubit via `onChanged` only); the
-    // enabled button is what proves the filled state.
+    // renders enabled. The message TextField is uncontrolled (onChanged only),
+    // so it does not render `state.message` — pumpBeforeTest types the same
+    // text into the field. State still drives canSubmit / the enabled button.
     goldenTest(
       'filled form — type tag selected, send button enabled',
       fileName: 'support_create_ticket_page_filled',
       constraints: phoneConstraints,
+      pumpBeforeTest: (tester) async {
+        await tester.enterText(find.byType(TextField), _filledMessage);
+        FocusManager.instance.primaryFocus?.unfocus();
+        // InputDecorator animates focusedBorder → enabledBorder
+        // (_kTransitionDuration = 167 ms). A single pump() advances one frame
+        // with no elapsed time, so the border freezes blue. unfocus keeps
+        // cursor and focus ring out of the capture; pumpAndSettle drains the
+        // border animation before snapshot.
+        await tester.pumpAndSettle();
+        expect(
+          find.text(_filledMessage),
+          findsOneWidget,
+          reason: 'Message TextField should show the typed filled-message text',
+        );
+        // Field focus only — not the border animation. primaryFocus stays non-null
+        // (FocusScope), so check the EditableText node.
+        expect(
+          tester
+              .widget<EditableText>(find.byType(EditableText))
+              .focusNode
+              .hasFocus,
+          isFalse,
+          reason: 'Message field must not hold focus (cursor / focusedBorder)',
+        );
+      },
       builder: () {
         when(() => cubit.state).thenReturn(
           const SupportCreateTicketState(
             selectedType: SupportIssueType.genericIssue,
             selectedReason: SupportIssueReason.other,
-            message: 'Ich habe eine Frage zu meinem Konto.',
+            message: _filledMessage,
           ),
         );
         return wrapForGolden(buildSubject());
