@@ -41,6 +41,24 @@ void main() {
       expect(await db.getWalletById(9999), isNull);
     });
 
+    test(
+      'getWalletByTypeAndAddress returns the matching row and null when type or address differs',
+      () async {
+        final bitboxId = await db.insertWallet('Hardware', '', '0xBitBox', 1);
+        await db.insertWallet('Software', 'seed', '0xBitBox', 0);
+        await db.insertWallet('OtherHw', '', '0xOther', 1);
+
+        final hit = await db.getWalletByTypeAndAddress(1, '0xBitBox');
+        expect(hit, isNotNull);
+        expect(hit!.id, bitboxId);
+        expect(hit.type, 1);
+        expect(hit.address, '0xBitBox');
+
+        expect(await db.getWalletByTypeAndAddress(0, '0xBitBox'), isNotNull);
+        expect(await db.getWalletByTypeAndAddress(1, '0xMissing'), isNull);
+      },
+    );
+
     test('updateWalletAddress mutates only the address column', () async {
       final id = await db.insertWallet('Main', 'enc-seed', '0xOld', 0);
 

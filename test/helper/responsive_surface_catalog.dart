@@ -273,9 +273,70 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     matrixTestPath: 'test/screens/pin/pin_sheets_responsive_matrix_test.dart',
     productionPath: 'lib/screens/pin/widgets/enable_biometric_bottom_sheet.dart',
   ),
-  // Migration covers 36 surfaces total (bitbox_connect_sheet + 35 above). No
-  // further known candidates remain from the prior sweep. welcome_page was
-  // reviewed and found safe (scrolls end-to-end, no separate sticky CTA) — not
-  // a migration candidate. Not exhaustive — review responsibility for every
-  // new sticky-CTA surface.
+  ResponsiveSurface(
+    id: 'migrate_bitbox_intro_view',
+    description: 'BitBox migration intro (start CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_intro_view.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_register_view',
+    description: 'BitBox migration registration confirmation (register CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_register_view.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_register_failure_view',
+    description: 'BitBox migration registration failure (retry/close CTAs)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_register_view.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_transfer_ready_view',
+    description: 'BitBox migration transfer confirmation (transfer CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_transfer_view.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_registration_pending_page',
+    description: 'BitBox migration registration-pending result (close CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_result_views.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_settling_timeout_page',
+    description: 'BitBox migration transfer-settling timeout (close CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_result_views.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_success_page',
+    description: 'BitBox migration success result (done CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_result_views.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_failure_page',
+    description: 'BitBox migration failure result (retry/close CTA states)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_result_views.dart',
+  ),
+  ResponsiveSurface(
+    id: 'migrate_bitbox_transfer_failure_view',
+    description: 'BitBox migration embedded transfer failure (retry CTA)',
+    matrixTestPath:
+        'test/screens/migrate_bitbox/migrate_bitbox_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/migrate_bitbox/widgets/migrate_transfer_view.dart',
+  ),
+  // welcome_page remains intentionally excluded because it scrolls end-to-end
+  // and has no separate sticky CTA. Not exhaustive — review responsibility
+  // remains for every new sticky-CTA surface.
 ];

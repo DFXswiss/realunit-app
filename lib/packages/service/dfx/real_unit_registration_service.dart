@@ -17,6 +17,8 @@ import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_u
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_info_dto.dart';
 import 'package:realunit_wallet/packages/utils/ascii_transliterate.dart';
 import 'package:realunit_wallet/packages/wallet/eip712_signer.dart';
+import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
+import 'package:web3dart/web3dart.dart';
 
 class RealUnitRegistrationService extends DFXAuthService {
   RealUnitRegistrationService(super.appStore, super.walletService);
@@ -34,11 +36,24 @@ class RealUnitRegistrationService extends DFXAuthService {
   /// registration form, a one-tap "add wallet" confirmation, is already
   /// registered, or is blocked on KYC — see `RealUnitRegistrationState`.
   /// Renamed from the deprecated `/v1/realunit/wallet/status` mirror.
-  Future<RealUnitRegistrationInfoDto> getRegistrationInfo() async {
+  Future<RealUnitRegistrationInfoDto> getRegistrationInfo() =>
+      _getRegistrationInfo();
+
+  /// [getRegistrationInfo] evaluated in an EXPLICIT auth context: [bearerToken]
+  /// is used verbatim instead of the session token. Lets the migration wizard
+  /// query the registration state OF THE NEW LINKED ADDRESS while the software
+  /// wallet stays the app-wide current wallet.
+  Future<RealUnitRegistrationInfoDto> getRegistrationInfoWith(String bearerToken) =>
+      _getRegistrationInfo(bearerTokenOverride: bearerToken);
+
+  Future<RealUnitRegistrationInfoDto> _getRegistrationInfo({
+    String? bearerTokenOverride,
+  }) async {
     final uri = buildUri(host, _registrationInfoPath);
     final response = await authenticatedGet(
       uri,
       headers: {'Content-Type': 'application/json'},
+      bearerTokenOverride: bearerTokenOverride,
     );
 
     if (response.statusCode != 200) {
@@ -55,11 +70,14 @@ class RealUnitRegistrationService extends DFXAuthService {
   /// the device's local date. A device in a timezone ahead of UTC would
   /// otherwise sign tomorrow's date and be rejected by the backend. Fetched
   /// immediately before signing so it is always fresh.
-  Future<String> getRegistrationDate() async {
+  Future<String> getRegistrationDate() => _getRegistrationDate();
+
+  Future<String> _getRegistrationDate({String? bearerTokenOverride}) async {
     final uri = buildUri(host, _registerDatePath);
     final response = await authenticatedGet(
       uri,
       headers: {'Content-Type': 'application/json'},
+      bearerTokenOverride: bearerTokenOverride,
     );
 
     if (response.statusCode != 200) {
@@ -238,8 +256,41 @@ class RealUnitRegistrationService extends DFXAuthService {
     }
   }
 
-  Future<RegistrationStatus> _registerWallet(RealUnitUserDataDto userData, String registrationDate) async {
-    final credentials = appStore.wallet.primaryAccount.primaryAddress;
+  /// [registerWallet] in an EXPLICIT context: signs the EIP-712 registration
+  /// envelope with [account] (the new wallet — a BitBox confirms on the device)
+  /// and submits with [bearerToken] (the new address's JWT from
+  /// authenticateLinkedAccount). Does NOT touch appStore.wallet and does NOT
+  /// unlock/lock the software wallet — the signer is [account], nothing else.
+  Future<RegistrationStatus> registerWalletFor(
+    AWalletAccount account,
+    RealUnitUserDataDto userData,
+    String bearerToken,
+  ) async {
+    final registrationDate = await _getRegistrationDate(bearerTokenOverride: bearerToken);
+    return _submitRegisterWallet(
+      credentials: account.primaryAddress,
+      userData: userData,
+      registrationDate: registrationDate,
+      bearerTokenOverride: bearerToken,
+    );
+  }
+
+  Future<RegistrationStatus> _registerWallet(
+    RealUnitUserDataDto userData,
+    String registrationDate,
+  ) =>
+      _submitRegisterWallet(
+        credentials: appStore.wallet.primaryAccount.primaryAddress,
+        userData: userData,
+        registrationDate: registrationDate,
+      );
+
+  Future<RegistrationStatus> _submitRegisterWallet({
+    required CredentialsWithKnownAddress credentials,
+    required RealUnitUserDataDto userData,
+    required String registrationDate,
+    String? bearerTokenOverride,
+  }) async {
     // Same ASCII guard as completeRegistration — see comment there.
     final signature = await Eip712Signer.signRegistration(
       credentials: credentials,
@@ -271,6 +322,7 @@ class RealUnitRegistrationService extends DFXAuthService {
         'Content-Type': 'application/json',
       },
       body: jsonEncode(requestDto),
+      bearerTokenOverride: bearerTokenOverride,
     );
 
     if (response.statusCode != 201 && response.statusCode != 202) {

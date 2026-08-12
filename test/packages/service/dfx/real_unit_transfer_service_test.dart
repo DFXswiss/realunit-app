@@ -120,7 +120,7 @@ void main() {
     account = _MockAccount();
     walletService = _MockWalletService();
     session = SessionCache(_MockCacheRepository());
-    session.setAuthToken('jwt-1');
+    session.setAuthToken('jwt-1', _privKey.address.hexEip55);
 
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
     when(() => appStore.sessionCache).thenReturn(session);

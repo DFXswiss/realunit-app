@@ -13,6 +13,7 @@ import 'package:realunit_wallet/screens/settings/widgets/settings_confirm_logout
 import 'package:realunit_wallet/screens/settings/widgets/settings_section.dart';
 import 'package:realunit_wallet/screens/settings/widgets/settings_version_unlock.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/setup/routing/routes/migration_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/pin_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
 import 'package:realunit_wallet/styles/colors.dart';
@@ -110,6 +111,17 @@ class SettingsPage extends StatelessWidget {
                   trailing: _forwardIcon,
                   onTap: () => context.pushNamed(SettingsRoutes.walletAddress),
                 ),
+                if (context.read<HomeBloc>().state.openWallet?.walletType == WalletType.software)
+                  SettingOption(
+                    title: S.of(context).migrateBitbox,
+                    leading: const Icon(
+                      Icons.usb_rounded,
+                      size: 24,
+                      color: RealUnitColors.realUnitBlue,
+                    ),
+                    trailing: _forwardIcon,
+                    onTap: () => context.pushNamed(MigrationRoutes.migrateBitbox),
+                  ),
                 if (context.read<HomeBloc>().state.openWallet?.walletType == WalletType.software)
                   SettingOption(
                     title: S.of(context).settingsWalletBackup,

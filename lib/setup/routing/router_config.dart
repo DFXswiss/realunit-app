@@ -13,6 +13,7 @@ import 'package:realunit_wallet/screens/home/home_page.dart';
 import 'package:realunit_wallet/screens/kyc/kyc_page_manager.dart';
 import 'package:realunit_wallet/screens/legal/legal_disclaimer_page.dart';
 import 'package:realunit_wallet/screens/legal/subpages/legal_document_page.dart';
+import 'package:realunit_wallet/screens/migrate_bitbox/migrate_bitbox_page.dart';
 import 'package:realunit_wallet/screens/onboarding/onboarding_completed_page.dart';
 import 'package:realunit_wallet/screens/pay/pay_scan_page.dart';
 import 'package:realunit_wallet/screens/pin/setup_pin_page.dart';
@@ -51,6 +52,7 @@ import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_link_entry.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/legal_routes.dart';
+import 'package:realunit_wallet/setup/routing/routes/migration_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/onboarding_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/pin_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
@@ -235,6 +237,12 @@ final GoRouter routerConfig = GoRouter(
       name: AppRoutes.bitboxAddressRecovery,
       path: '/bitboxAddressRecovery',
       builder: (_, _) => const BitboxAddressRecoveryPage(),
+    ),
+
+    GoRoute(
+      name: MigrationRoutes.migrateBitbox,
+      path: '/migrateBitbox',
+      builder: (_, _) => const MigrateBitboxPage(),
     ),
 
     GoRoute(

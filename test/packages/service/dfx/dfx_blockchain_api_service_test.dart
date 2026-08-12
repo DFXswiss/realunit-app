@@ -12,6 +12,7 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_blockchain_api_service.
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 
 class _MockAppStore extends Mock implements AppStore {}
 
@@ -20,19 +21,23 @@ class _MockCacheRepository extends Mock implements CacheRepository {}
 class _MockWalletService extends Mock implements WalletService {}
 
 const _testAddress = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd';
+const _authMnemonic = 'test test test test test test test test test test test junk';
 
 void main() {
   late _MockAppStore appStore;
   late _MockWalletService walletService;
   late SessionCache sessionCache;
+  late SoftwareWallet authWallet;
 
   setUp(() {
     appStore = _MockAppStore();
     walletService = _MockWalletService();
     sessionCache = SessionCache(_MockCacheRepository());
+    authWallet = SoftwareWallet(1, 'Auth', _authMnemonic);
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig)
         .thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+    when(() => appStore.wallet).thenReturn(authWallet);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });
@@ -44,7 +49,7 @@ void main() {
 
   group('$DfxBlockchainApiService', () {
     test('getEthBalance posts the address + chain + asset id with the JWT', () async {
-      sessionCache.setAuthToken('jwt-abc');
+      sessionCache.setAuthToken('jwt-abc', authWallet.currentAccount.primaryAddress.address.hexEip55);
       Map<String, dynamic>? capturedBody;
       Map<String, String>? capturedHeaders;
       final client = MockClient((request) async {
@@ -74,7 +79,7 @@ void main() {
     test('uses "Sepolia" as the blockchain name on the testnet chain', () async {
       when(() => appStore.apiConfig)
           .thenReturn(const ApiConfig(networkMode: NetworkMode.testnet));
-      sessionCache.setAuthToken('jwt-abc');
+      sessionCache.setAuthToken('jwt-abc', authWallet.currentAccount.primaryAddress.address.hexEip55);
       Map<String, dynamic>? capturedBody;
       final client = MockClient((request) async {
         capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
@@ -87,7 +92,7 @@ void main() {
     });
 
     test('returns 0.0 when the balances list is empty', () async {
-      sessionCache.setAuthToken('jwt-abc');
+      sessionCache.setAuthToken('jwt-abc', authWallet.currentAccount.primaryAddress.address.hexEip55);
       final client = MockClient((_) async => http.Response(
             jsonEncode({'balances': []}),
             200,
@@ -97,7 +102,7 @@ void main() {
     });
 
     test('accepts a 201 response in addition to 200', () async {
-      sessionCache.setAuthToken('jwt-abc');
+      sessionCache.setAuthToken('jwt-abc', authWallet.currentAccount.primaryAddress.address.hexEip55);
       final client = MockClient((_) async => http.Response(
             jsonEncode({
               'balances': [
@@ -111,7 +116,7 @@ void main() {
     });
 
     test('throws ApiException on a non-2xx response', () async {
-      sessionCache.setAuthToken('jwt-abc');
+      sessionCache.setAuthToken('jwt-abc', authWallet.currentAccount.primaryAddress.address.hexEip55);
       // 4xx other than 401 — bypasses the refresh-on-401 retry path and is
       // surfaced to the caller directly. The dedicated 401-retry behaviour is
       // covered in dfx_auth_service_test.dart.

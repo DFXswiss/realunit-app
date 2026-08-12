@@ -12,12 +12,15 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_bank_account_service.da
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 
 class _MockAppStore extends Mock implements AppStore {}
 
 class _MockCacheRepository extends Mock implements CacheRepository {}
 
 class _MockWalletService extends Mock implements WalletService {}
+
+const _authMnemonic = 'test test test test test test test test test test test junk';
 
 Map<String, dynamic> _bankAccount({
   int id = 1,
@@ -37,17 +40,23 @@ void main() {
   late _MockAppStore appStore;
   late _MockWalletService walletService;
   late SessionCache sessionCache;
+  late SoftwareWallet authWallet;
 
   setUp(() {
     appStore = _MockAppStore();
     walletService = _MockWalletService();
     sessionCache = SessionCache(_MockCacheRepository());
+    authWallet = SoftwareWallet(1, 'Auth', _authMnemonic);
     // Pre-seed the JWT so `authenticatedGet/Put/Post` short-circuits the
     // `getAuthToken` refresh path (which would otherwise need a fully
     // stubbed wallet + signMessage endpoint).
-    sessionCache.setAuthToken('test-jwt');
+    sessionCache.setAuthToken(
+      'test-jwt',
+      authWallet.currentAccount.primaryAddress.address.hexEip55,
+    );
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+    when(() => appStore.wallet).thenReturn(authWallet);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });
@@ -59,7 +68,10 @@ void main() {
 
   group('$DfxBankAccountService', () {
     test('getBankAccounts GETs /v1/bankAccount with the JWT and maps the list', () async {
-      sessionCache.setAuthToken('jwt-1');
+      sessionCache.setAuthToken(
+        'jwt-1',
+        authWallet.currentAccount.primaryAddress.address.hexEip55,
+      );
       String? capturedAuth;
       String? capturedPath;
       String? capturedMethod;

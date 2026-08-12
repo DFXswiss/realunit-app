@@ -8,6 +8,7 @@ import 'package:realunit_wallet/packages/storage/database.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/packages/storage/wallet_storage.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:web3dart/web3dart.dart';
 
 class _MockSecureStorage extends Mock implements SecureStorage {}
 
@@ -71,6 +72,41 @@ void main() {
       // is no seed material to wrap.
       verifyNever(() => secureStorage.getOrCreateMnemonicKey());
     });
+
+    test(
+      'getBitboxWalletIdByAddress normalizes legacy rows and ignores malformed candidates',
+      () async {
+        await repo.createViewWallet('MalformedHardware', WalletType.bitbox, '');
+        // The file-wide fixture is deliberately case-mangled (not EIP-55
+        // conformant), which fromHex rejects for mixed case — lowercase it
+        // first; uniform-case input skips the checksum validation.
+        final normalizedAddress = EthereumAddress.fromHex(address.toLowerCase()).hexEip55;
+        final bitboxId = await repo.createViewWallet(
+          'Hardware',
+          WalletType.bitbox,
+          normalizedAddress.toLowerCase(),
+        );
+        // Same address, different type — must NOT match the BitBox lookup.
+        await repo.createViewWallet(
+          'SoftwareView',
+          WalletType.software,
+          normalizedAddress,
+        );
+
+        expect(
+          await repo.getBitboxWalletIdByAddress(normalizedAddress),
+          bitboxId,
+        );
+        expect(
+          await repo.getBitboxWalletIdByAddress(
+            '0x3333333333333333333333333333333333333333',
+          ),
+          isNull,
+        );
+        expect(await repo.getBitboxWalletIdByAddress(''), isNull);
+        expect(await repo.getBitboxWalletIdByAddress('0xNoSuchAddress000000000000000000000001'), isNull);
+      },
+    );
 
     test('getWalletInfo returns the row with the seed still encrypted', () async {
       final id = await repo.createWallet(walletName, WalletType.software, seed, address);

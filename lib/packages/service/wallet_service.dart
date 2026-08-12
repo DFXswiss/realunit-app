@@ -86,6 +86,9 @@ class WalletService {
     return commitGeneratedWallet(draft);
   }
 
+  // @no-integration-test: no BitBox firmware/transport harness is wired into
+  //   the repo yet; the BitboxService.getEthAddress boundary is covered by unit
+  //   tests with mocked transport (see wallet_service_test.dart).
   Future<BitboxWallet> createBitboxWallet(String name) async {
     // [BitboxService.getEthAddress] already retries the transient empty read
     // the SDK produces when it coerces a native `null` into `""` (its
@@ -94,12 +97,64 @@ class WalletService {
     // rarer non-empty-but-malformed read before `EthereumAddress.fromHex`
     // would crash the dashboard build on the next launch.
     final address = await _bitboxService.getEthAddress();
-    if (!_isValidEthAddress(address)) {
+    if (!_isValidEthAddress(address.toLowerCase())) {
       throw const BitboxAddressUnavailableException();
     }
-    final walletId = await _repository.createViewWallet(name, WalletType.bitbox, address);
+    final normalizedAddress =
+        EthereumAddress.fromHex(address.toLowerCase()).hexEip55;
+    final walletId = await _repository.createViewWallet(
+      name,
+      WalletType.bitbox,
+      normalizedAddress,
+    );
     await setCurrentWallet(walletId);
-    return BitboxWallet(walletId, name, address, _bitboxService);
+    return BitboxWallet(walletId, name, normalizedAddress, _bitboxService);
+  }
+
+  /// Reads the ETH address from the connected BitBox and returns an
+  /// UNCOMMITTED [BitboxWallet] draft — `id` is the `0` sentinel, no row is
+  /// written to `walletInfos` and the current wallet is NOT switched. Pair with
+  /// [persistBitboxWallet] once the new address is registered server-side,
+  /// mirroring [generateUncommittedSeedWallet]/[commitGeneratedWallet] so an
+  /// aborted wizard leaves no orphan wallet row behind.
+  /// Throws [BitboxAddressUnavailableException] on an unusable address (same
+  /// guard as [createBitboxWallet]).
+  // @no-integration-test: no BitBox firmware/transport harness is wired into
+  //   the repo yet; the BitboxService.getEthAddress boundary is covered by unit
+  //   tests with mocked transport (see wallet_service_test.dart).
+  Future<BitboxWallet> acquireUncommittedBitboxWallet(String name) async {
+    final address = await _bitboxService.getEthAddress();
+    if (!_isValidEthAddress(address.toLowerCase())) {
+      throw const BitboxAddressUnavailableException();
+    }
+    final normalizedAddress =
+        EthereumAddress.fromHex(address.toLowerCase()).hexEip55;
+    return BitboxWallet(0, name, normalizedAddress, _bitboxService);
+  }
+
+  /// Persists a [draft] from [acquireUncommittedBitboxWallet] WITHOUT switching
+  /// the current wallet. Deduplicates by address: an existing BitBox row with
+  /// the same address is reused instead of inserting a second row (covers a
+  /// device that was already paired once outside the wizard, and makes the call
+  /// idempotent across wizard re-entries). Asserts on a non-draft id in dev
+  /// (mirror of [commitGeneratedWallet]).
+  ///
+  /// The migration wizard calls this BEFORE any funds move (right after the new
+  /// address is registered server-side), so an app death between the balance
+  /// transfer and the final wallet switch still leaves a local wallet row
+  /// pointing at the funded address. The final switch is a plain
+  /// [setCurrentWallet] — deliberately not part of this method.
+  Future<BitboxWallet> persistBitboxWallet(BitboxWallet draft) async {
+    assert(
+      draft.id == 0,
+      'persistBitboxWallet expects an uncommitted draft (id == 0); '
+      'got id=${draft.id} — likely double-commit or wrong caller.',
+    );
+    final address = draft.primaryAccount.primaryAddress.address.hexEip55;
+    final existingId = await _repository.getBitboxWalletIdByAddress(address);
+    final id = existingId ??
+        await _repository.createViewWallet(draft.name, WalletType.bitbox, address);
+    return BitboxWallet(id, draft.name, address, _bitboxService);
   }
 
   /// True when [address] parses as a canonical 20-byte Ethereum address.
@@ -108,6 +163,8 @@ class WalletService {
   /// so the validity boundary here matches exactly the one that would otherwise
   /// throw deep in the dashboard build. An empty string fails fast through the
   /// [FormatException]/[ArgumentError] catch — no need to special-case it.
+  /// Callers lowercase SDK addresses before validation and normalization so
+  /// mixed-case values without a valid EIP-55 checksum are not rejected early.
   static bool _isValidEthAddress(String address) {
     try {
       EthereumAddress.fromHex(address);
@@ -146,10 +203,13 @@ class WalletService {
     final info = (await _repository.getWalletInfo(id))!;
     // Shares the retry + empty-guard boundary with createBitboxWallet; the
     // format check stays as defence-in-depth (see that method).
-    final address = await _bitboxService.getEthAddress();
-    if (!_isValidEthAddress(address)) {
+    final rawAddress = await _bitboxService.getEthAddress();
+    if (!_isValidEthAddress(rawAddress.toLowerCase())) {
       throw const BitboxAddressUnavailableException();
     }
+    // Same EIP-55 normalization as the create/acquire paths — the SDK's
+    // address casing is not guaranteed consistent across reads.
+    final address = EthereumAddress.fromHex(rawAddress.toLowerCase()).hexEip55;
     await _repository.updateAddress(id, address);
     return BitboxWallet(id, info.name, address, _bitboxService);
   }

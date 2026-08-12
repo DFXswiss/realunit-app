@@ -128,7 +128,10 @@ void main() {
     appStore = _MockAppStore();
     walletService = _MockWalletService();
     sessionCache = SessionCache(_MockCacheRepository());
-    sessionCache.setAuthToken('jwt-1');
+    sessionCache.setAuthToken(
+      'jwt-1',
+      EthereumAddress.fromHex('0x0000000000000000000000000000000000000001').hexEip55,
+    );
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
     when(() => appStore.wallet).thenReturn(_StubWallet());

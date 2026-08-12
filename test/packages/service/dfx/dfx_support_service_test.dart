@@ -14,12 +14,15 @@ import 'package:realunit_wallet/packages/service/dfx/models/support/support_issu
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue_type.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 
 class _MockAppStore extends Mock implements AppStore {}
 
 class _MockCacheRepository extends Mock implements CacheRepository {}
 
 class _MockWalletService extends Mock implements WalletService {}
+
+const _authMnemonic = 'test test test test test test test test test test test junk';
 
 Map<String, dynamic> _ticketJson({String uid = 'uid-1'}) => {
       'uid': uid,
@@ -35,17 +38,23 @@ void main() {
   late _MockAppStore appStore;
   late _MockWalletService walletService;
   late SessionCache sessionCache;
+  late SoftwareWallet authWallet;
 
   setUp(() {
     appStore = _MockAppStore();
     walletService = _MockWalletService();
     sessionCache = SessionCache(_MockCacheRepository());
+    authWallet = SoftwareWallet(1, 'Auth', _authMnemonic);
     // Pre-populate the auth token so the base-class getAuthToken short-
     // circuits without exercising the signing flow.
-    sessionCache.setAuthToken('jwt-xyz');
+    sessionCache.setAuthToken(
+      'jwt-xyz',
+      authWallet.currentAccount.primaryAddress.address.hexEip55,
+    );
     when(() => appStore.sessionCache).thenReturn(sessionCache);
     when(() => appStore.apiConfig)
         .thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
+    when(() => appStore.wallet).thenReturn(authWallet);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });

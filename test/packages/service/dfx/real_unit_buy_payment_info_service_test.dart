@@ -13,7 +13,9 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/buy_exce
 import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:web3dart/web3dart.dart';
 
 class MockApiConfig extends Mock implements ApiConfig {}
 
@@ -89,7 +91,13 @@ void main() {
 
   AppStore buildAppStore(Future<http.Response> Function(http.Request) handler) {
     final client = MockClient(handler);
-    return TestAppStore(client, () => apiConfig)..sessionCache.setAuthToken('test-auth-token');
+    // The cached token is address-bound: give the store a wallet with the same
+    // address so getAuthToken's identity check accepts the cache hit.
+    final stubAddress =
+        EthereumAddress.fromHex('0x0000000000000000000000000000000000000001').hexEip55;
+    return TestAppStore(client, () => apiConfig)
+      ..wallet = DebugWallet(1, 'Debug', stubAddress)
+      ..sessionCache.setAuthToken('test-auth-token', stubAddress);
   }
 
   group('$RealUnitBuyPaymentInfoService', () {

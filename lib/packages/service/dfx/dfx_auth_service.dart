@@ -5,6 +5,7 @@ import 'dart:developer' as developer;
 import 'package:http/http.dart' as http;
 import 'package:realunit_wallet/packages/config/api_config.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/address_already_linked_exception.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/wallet/exceptions/signing_cancelled_exception.dart';
 import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
@@ -36,14 +37,21 @@ Future<void> warmAuthSignature(
 abstract class DFXAuthService {
   static const walletName = 'RealUnit';
   static const _signMessageTimeout = Duration(minutes: 3);
+  static const _maxIdentityAttempts = 3;
   static const _httpTimeout = Duration(seconds: 20);
 
-  /// Auth sign-in message, derived locally from the address. Mirrors the
-  /// server's `Config.auth.signMessageGeneral` template (DFXswiss/api): the
-  /// backend re-derives this exact string from the address on every verify
-  /// (stateless, no nonce) and accepts it, so there is no need to first
-  /// round-trip through `GET /v1/auth/signMessage`. Dropping that call also
-  /// removes a network-timeout failure mode from the onboarding/pairing flow.
+  /// Auth sign-in message body (without environment scoping), derived
+  /// locally from the address. Mirrors the server's
+  /// `Config.auth.signMessageGeneral` template (DFXswiss/api): the backend
+  /// re-derives this string from the address on every verify (stateless, no
+  /// nonce) and accepts it, so there is no need to first round-trip through
+  /// `GET /v1/auth/signMessage`. Dropping that call also removes a
+  /// network-timeout failure mode from the onboarding/pairing flow.
+  ///
+  /// Non-PRD environments prefix the full message with `[<env>]_` via
+  /// [buildSignMessage] so a signature from one environment cannot
+  /// authenticate on another (api `signMessagePrefix`); PRD keeps this
+  /// historical body byte-for-byte.
   static const _signMessagePrefix =
       'By_signing_this_message,_you_confirm_that_you_are_the_sole_owner_'
       'of_the_provided_Blockchain_address._Your_ID:_';
@@ -62,8 +70,81 @@ abstract class DFXAuthService {
 
   String getSignMessage() => buildSignMessage(walletAddress);
 
-  /// Builds the deterministic auth sign-in message for [address] (EIP-55).
-  String buildSignMessage(String address) => '$_signMessagePrefix$address';
+  /// Mirrors the server template INCLUDING its environment scoping (DFXswiss/api
+  /// config.ts `signMessagePrefix`): non-PRD environments prefix the message
+  /// with `[<env>]_` so a signature from one environment cannot authenticate on
+  /// another; PRD keeps the historical text byte-for-byte. The app only ever
+  /// talks to dev (testnet) or prd (mainnet), so the dev prefix is the single
+  /// non-PRD case here.
+  String buildSignMessage(String address) =>
+      '${appStore.apiConfig.networkMode.isTestnet ? '[dev]_' : ''}$_signMessagePrefix$address';
+
+  /// Authenticates [account]'s address against `POST /v1/auth` while sending
+  /// [linkBearerToken] (the JWT of the CURRENTLY signed-in wallet) as
+  /// Authorization header. The API's OptionalJwtAuthGuard then creates the new
+  /// address under the SAME UserData as the token owner (DFXswiss/api
+  /// auth.controller → authenticate(dto, ip, jwt?.account, jwt?.user)), which is
+  /// what makes the one-tap ADD_WALLET registration state reachable for the new
+  /// address. Returns the access token issued FOR THE NEW ADDRESS. The returned
+  /// token is intentionally NOT written to the session cache — the caller owns
+  /// the decision when the app switches identity.
+  /// Throws [AddressAlreadyLinkedException] on 409 (address belongs to another
+  /// account), [SigningCancelledException] on empty/cancelled signature.
+  Future<String> authenticateLinkedAccount(
+    AWalletAccount account,
+    String linkBearerToken,
+  ) async {
+    final address = account.primaryAddress.address.hexEip55;
+
+    await appStore.sessionCache.loadSignature();
+    final cachedSignature = appStore.sessionCache.signature;
+    final signatureAddress = appStore.sessionCache.signatureAddress;
+    final message = buildSignMessage(address);
+    late final String signature;
+    // Legacy entries without a message scope intentionally miss here: the
+    // environment-prefixed sign-message change made those signatures unsafe
+    // to reuse across dev and production.
+    if (cachedSignature != null &&
+        signatureAddress == address &&
+        appStore.sessionCache.signedMessage == message) {
+      signature = cachedSignature;
+    } else {
+      signature = await account.signMessage(message).timeout(_signMessageTimeout);
+      if (signature.isEmpty || signature == '0x') {
+        throw const SigningCancelledException();
+      }
+      await appStore.sessionCache.saveSignature(address, signature, message);
+    }
+
+    final requestBody = jsonEncode({
+      'wallet': walletName,
+      'address': address,
+      'signature': signature,
+    });
+
+    final uri = buildUri(host, authPath);
+    final response = await appStore.httpClient
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $linkBearerToken',
+          },
+          body: requestBody,
+        )
+        .timeout(_httpTimeout);
+
+    if (response.statusCode == 201) {
+      final responseBody = jsonDecode(response.body) as Map<String, dynamic>;
+      return responseBody['accessToken'] as String;
+    } else if (response.statusCode == 409) {
+      throw const AddressAlreadyLinkedException();
+    } else {
+      throw Exception(
+        'Failed to link address. Status: ${response.statusCode} ${response.body}',
+      );
+    }
+  }
 
   /// Create-and-persist the auth signature for [account] without going through
   /// `appStore.wallet`. Used during the BitBox pairing flow so the signature is
@@ -74,18 +155,19 @@ abstract class DFXAuthService {
   /// No-op if a signature for this address is already in the cache.
   Future<void> ensureSignatureFor(AWalletAccount account) async {
     final address = account.primaryAddress.address.hexEip55;
+    final message = buildSignMessage(address);
     await appStore.sessionCache.loadSignature();
     if (appStore.sessionCache.signature != null &&
-        appStore.sessionCache.signatureAddress == address) {
+        appStore.sessionCache.signatureAddress == address &&
+        appStore.sessionCache.signedMessage == message) {
       return;
     }
 
-    final message = buildSignMessage(address);
     final signature = await account.signMessage(message).timeout(_signMessageTimeout);
     if (signature.isEmpty || signature == '0x') {
       throw const SigningCancelledException();
     }
-    await appStore.sessionCache.saveSignature(address, signature);
+    await appStore.sessionCache.saveSignature(address, signature, message);
   }
 
   // Exceptions this method can throw on the BitBox path:
@@ -94,10 +176,39 @@ abstract class DFXAuthService {
   //   * `SigningCancelledException` — the user cancels on the device, so the
   //     BitBox swift wrapper returns empty bytes / `'0x'`, normalised here.
   //   * `TimeoutException` — the user never confirms within `_signMessageTimeout`.
-  Future<String> getSignature(String message) async {
+  Future<String> getSignature(String message) => _withIdentityRetry(
+    (account, address) => _getSignatureFor(account, address, message),
+  );
+
+  /// Runs [attempt] with a fresh wallet snapshot per try. Retries when the
+  /// active wallet identity changed mid-flight (the file-private marker), and
+  /// fails loud with a readable exception after [_maxIdentityAttempts] — the
+  /// marker therefore never leaves this file.
+  Future<T> _withIdentityRetry<T>(
+    Future<T> Function(AWalletAccount account, String address) attempt,
+  ) async {
+    for (var i = 0; i < _maxIdentityAttempts; i++) {
+      final account = wallet;
+      final address = walletAddress;
+      try {
+        return await attempt(account, address);
+      } on _WalletIdentityChangedException {
+        continue;
+      }
+    }
+    throw Exception('wallet identity changed during authentication');
+  }
+
+  Future<String> _getSignatureFor(
+    AWalletAccount account,
+    String address,
+    String message,
+  ) async {
     final cached = appStore.sessionCache.signature;
     final cachedAddress = appStore.sessionCache.signatureAddress;
-    if (cached != null && cachedAddress == walletAddress) {
+    if (cached != null &&
+        cachedAddress == address &&
+        appStore.sessionCache.signedMessage == message) {
       return cached;
     }
 
@@ -109,29 +220,47 @@ abstract class DFXAuthService {
     // RealUnitRegistrationService.completeRegistration / registerWallet.
     await walletService.ensureCurrentWalletUnlocked();
     try {
-      final signature = await wallet.signMessage(message).timeout(_signMessageTimeout);
+      final currentAccount = wallet;
+      if (currentAccount.primaryAddress.address.hexEip55 != address) {
+        throw _WalletIdentityChangedException();
+      }
+      final signature = await currentAccount
+          .signMessage(message)
+          .timeout(_signMessageTimeout);
       if (signature.isEmpty || signature == '0x') {
         throw const SigningCancelledException();
       }
-      await appStore.sessionCache.saveSignature(walletAddress, signature);
+      await appStore.sessionCache.saveSignature(address, signature, message);
       return signature;
     } finally {
       await walletService.lockCurrentWallet();
     }
   }
 
-  Future<Map<String, dynamic>> getAuthResponse([bool sendWalletName = true]) async {
-    final signature = await getSignature(getSignMessage());
+  Future<Map<String, dynamic>> getAuthResponse([bool sendWalletName = true]) => _withIdentityRetry(
+    (account, address) => _getAuthResponseFor(account, address, sendWalletName),
+  );
+
+  Future<Map<String, dynamic>> _getAuthResponseFor(
+    AWalletAccount account,
+    String address,
+    bool sendWalletName,
+  ) async {
+    final signature = await _getSignatureFor(
+      account,
+      address,
+      buildSignMessage(address),
+    );
 
     final requestBody = jsonEncode(
       sendWalletName
           ? {
               'wallet': walletName,
-              'address': walletAddress,
+              'address': address,
               'signature': signature,
             }
           : {
-              'address': walletAddress,
+              'address': address,
               'signature': signature,
             },
     );
@@ -157,14 +286,33 @@ abstract class DFXAuthService {
   // bitbox_flutter v0.0.2 fixed the BLE force-unwrap and dedup hang, the
   // empty-signature guard in `getSignature` covers the cancel/disconnect
   // case gracefully, and the SDK no longer panics on NACK.
-  Future<String?> getAuthToken() async {
-    if (appStore.sessionCache.authToken == null) {
+  Future<String?> getAuthToken() => _withIdentityRetry<String?>(
+    (accountSnapshot, addressSnapshot) async {
+      final cachedToken = appStore.sessionCache.authToken;
+      if (cachedToken != null &&
+          appStore.sessionCache.authTokenAddress == addressSnapshot) {
+        return cachedToken;
+      }
+
       await appStore.sessionCache.loadSignature();
-      final response = await getAuthResponse();
-      appStore.sessionCache.setAuthToken(response['accessToken'] as String);
-    }
-    return appStore.sessionCache.authToken;
-  }
+      final response = await _getAuthResponseFor(
+        accountSnapshot,
+        addressSnapshot,
+        true,
+      );
+
+      // Close the late-commit race when the active wallet identity changes
+      // while /v1/auth is in flight. Discard the old identity's response and
+      // retry against the now-current wallet context.
+      if (walletAddress != addressSnapshot) {
+        throw _WalletIdentityChangedException();
+      }
+
+      final token = response['accessToken'] as String;
+      appStore.sessionCache.setAuthToken(token, addressSnapshot);
+      return token;
+    },
+  );
 
   void invalidateAuthToken() => appStore.sessionCache.clearAuthToken();
 
@@ -173,9 +321,14 @@ abstract class DFXAuthService {
     return getAuthToken();
   }
 
+  /// When [bearerTokenOverride] is non-null it is used verbatim and the
+  /// 401-refresh path is skipped (a refresh would mint a token for the
+  /// CURRENT wallet — wrong context for an override call). `null` keeps
+  /// today's session-token + one-shot 401-refresh behaviour.
   Future<http.Response> authenticatedGet(
     Uri uri, {
     Map<String, String> headers = const {},
+    String? bearerTokenOverride,
   }) {
     return _authenticated(
       (token) => appStore.httpClient.get(
@@ -185,14 +338,20 @@ abstract class DFXAuthService {
           'Authorization': 'Bearer $token',
         },
       ),
+      bearerTokenOverride: bearerTokenOverride,
     );
   }
 
+  /// When [bearerTokenOverride] is non-null it is used verbatim and the
+  /// 401-refresh path is skipped (a refresh would mint a token for the
+  /// CURRENT wallet — wrong context for an override call). `null` keeps
+  /// today's session-token + one-shot 401-refresh behaviour.
   Future<http.Response> authenticatedPut(
     Uri uri, {
     Map<String, String> headers = const {},
     Object? body,
     Encoding? encoding,
+    String? bearerTokenOverride,
   }) {
     return _authenticated(
       (token) => appStore.httpClient.put(
@@ -204,14 +363,20 @@ abstract class DFXAuthService {
         body: body,
         encoding: encoding,
       ),
+      bearerTokenOverride: bearerTokenOverride,
     );
   }
 
+  /// When [bearerTokenOverride] is non-null it is used verbatim and the
+  /// 401-refresh path is skipped (a refresh would mint a token for the
+  /// CURRENT wallet — wrong context for an override call). `null` keeps
+  /// today's session-token + one-shot 401-refresh behaviour.
   Future<http.Response> authenticatedPost(
     Uri uri, {
     Map<String, String> headers = const {},
     Object? body,
     Encoding? encoding,
+    String? bearerTokenOverride,
   }) {
     return _authenticated(
       (token) => appStore.httpClient.post(
@@ -223,6 +388,7 @@ abstract class DFXAuthService {
         body: body,
         encoding: encoding,
       ),
+      bearerTokenOverride: bearerTokenOverride,
     );
   }
 
@@ -230,9 +396,19 @@ abstract class DFXAuthService {
   /// refreshed token. The caller is responsible for passing the token into
   /// the request headers (so each verb can keep its own `body`/`encoding`
   /// arguments without us re-serialising them here).
+  ///
+  /// When [bearerTokenOverride] is non-null that exact token is used and the
+  /// 401-refresh is skipped — a refresh would mint a token for the CURRENT
+  /// wallet, which is the wrong identity for an override-scoped call. The
+  /// 401 response is returned to the caller unchanged.
   Future<http.Response> _authenticated(
-    Future<http.Response> Function(String? token) request,
-  ) async {
+    Future<http.Response> Function(String? token) request, {
+    String? bearerTokenOverride,
+  }) async {
+    if (bearerTokenOverride != null) {
+      return request(bearerTokenOverride);
+    }
+
     var authToken = await getAuthToken();
     var response = await request(authToken);
 
@@ -244,3 +420,13 @@ abstract class DFXAuthService {
     return response;
   }
 }
+
+/// Internal marker: the active wallet identity changed during an
+/// authentication attempt — either between taking the snapshot in
+/// [DFXAuthService._withIdentityRetry] and finishing the unlock in
+/// [DFXAuthService._getSignatureFor], or after the auth response arrived but
+/// before its late commit gate in [DFXAuthService.getAuthToken]. Never signs
+/// with (or commits for) a stale snapshot — the caller must retry with a
+/// fresh snapshot. Caught exclusively by [DFXAuthService._withIdentityRetry]
+/// — never escapes this file.
+class _WalletIdentityChangedException implements Exception {}

@@ -2,6 +2,7 @@ import 'package:realunit_wallet/packages/storage/database.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/packages/storage/wallet_storage.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:web3dart/web3dart.dart';
 
 class WalletRepository {
   final AppDatabase _appDatabase;
@@ -21,6 +22,32 @@ class WalletRepository {
 
   Future<int> createViewWallet(String name, WalletType type, String address) =>
       _appDatabase.insertWallet(name, '', address, type.index);
+
+  /// Returns the row id of an existing BitBox wallet with [address], or null.
+  /// Used by the migration wizard to make committing a paired device idempotent.
+  Future<int?> getBitboxWalletIdByAddress(String address) async {
+    final normalizedAddress = _normalizedAddress(address);
+    if (normalizedAddress == null) return null;
+    final candidates = await _appDatabase.getWalletsByType(
+      WalletType.bitbox.index,
+    );
+    for (final candidate in candidates) {
+      if (_normalizedAddress(candidate.address) == normalizedAddress) {
+        return candidate.id;
+      }
+    }
+    return null;
+  }
+
+  String? _normalizedAddress(String address) {
+    try {
+      return EthereumAddress.fromHex(address).hexEip55;
+    } on FormatException {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
+  }
 
   /// Returns the wallet row with the encrypted seed *still encrypted*. Use this
   /// at app startup so we don't pay the mnemonic-decrypt / BIP32-derivation

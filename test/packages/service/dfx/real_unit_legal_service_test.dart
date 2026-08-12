@@ -15,6 +15,7 @@ import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/packages/wallet/wallet_account.dart';
+import 'package:web3dart/web3dart.dart';
 
 class _MockAppStore extends Mock implements AppStore {}
 
@@ -39,12 +40,17 @@ void main() {
     account = _MockAccount();
     walletService = _MockWalletService();
     session = SessionCache(_MockCacheRepository());
-    session.setAuthToken('jwt-1');
+    final credentials = EthPrivateKey.fromHex(
+      'fb1ace12f9801e85f3db1b3935dd47d9f064f98152466f47c701b5e12680e612',
+    );
+    session.setAuthToken('jwt-1', credentials.address.hexEip55);
 
     when(() => appStore.apiConfig).thenReturn(const ApiConfig(networkMode: NetworkMode.mainnet));
     when(() => appStore.sessionCache).thenReturn(session);
     when(() => appStore.wallet).thenReturn(wallet);
     when(() => wallet.primaryAccount).thenReturn(account);
+    when(() => wallet.currentAccount).thenReturn(account);
+    when(() => account.primaryAddress).thenReturn(credentials);
     when(() => walletService.ensureCurrentWalletUnlocked()).thenAnswer((_) async {});
     when(() => walletService.lockCurrentWallet()).thenAnswer((_) async {});
   });

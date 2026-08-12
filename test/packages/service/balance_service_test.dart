@@ -64,7 +64,7 @@ void main() {
   AppStore buildAppStore(Future<http.Response> Function(http.Request) handler) {
     final client = MockClient(handler);
     return TestAppStore(client, () => apiConfig, MockCacheRepository())
-      ..sessionCache.setAuthToken('test-auth-token');
+      ..sessionCache.setAuthToken('test-auth-token', '0xTestAddress');
   }
 
   group('$BalanceService', () {
@@ -154,6 +154,73 @@ void main() {
         await service.updateBalance('0xTestAddress');
 
         verifyNever(() => balanceRepository.saveBalance(any()));
+      });
+
+      group('fetchBalance', () {
+        test('returns and persists a fresh balance on 200', () async {
+          Balance? savedBalance;
+          when(() => balanceRepository.saveBalance(any())).thenAnswer((invocation) async {
+            savedBalance = invocation.positionalArguments.single as Balance;
+          });
+          final appStore = buildAppStore(
+            (_) async => http.Response(jsonEncode({'balance': '98765'}), 200),
+          );
+          final service = BalanceService(balanceRepository, appStore);
+
+          final balance = await service.fetchBalance('0xFresh');
+
+          expect(balance.balance, BigInt.from(98765));
+          expect(balance.walletAddress, '0xFresh');
+          expect(balance.asset, realUnitAsset);
+          expect(savedBalance, same(balance));
+        });
+
+        for (final statusCode in const [404, 500]) {
+          test('throws on HTTP $statusCode without persisting', () async {
+            final appStore = buildAppStore(
+              (_) async => http.Response('error', statusCode),
+            );
+            final service = BalanceService(balanceRepository, appStore);
+
+            await expectLater(
+              service.fetchBalance('0xFresh'),
+              throwsA(
+                isA<Exception>().having(
+                  (error) => error.toString(),
+                  'message',
+                  contains('$statusCode'),
+                ),
+              ),
+            );
+            verifyNever(() => balanceRepository.saveBalance(any()));
+          });
+        }
+
+        test('rethrows a transport failure without persisting', () async {
+          final appStore = buildAppStore(
+            (_) async => throw http.ClientException('offline'),
+          );
+          final service = BalanceService(balanceRepository, appStore);
+
+          await expectLater(
+            service.fetchBalance('0xFresh'),
+            throwsA(isA<http.ClientException>()),
+          );
+          verifyNever(() => balanceRepository.saveBalance(any()));
+        });
+
+        test('throws on an unparseable balance body without persisting', () async {
+          final appStore = buildAppStore(
+            (_) async => http.Response(jsonEncode({'balance': 'NaN'}), 200),
+          );
+          final service = BalanceService(balanceRepository, appStore);
+
+          await expectLater(
+            service.fetchBalance('0xFresh'),
+            throwsA(isA<FormatException>()),
+          );
+          verifyNever(() => balanceRepository.saveBalance(any()));
+        });
       });
     });
 
