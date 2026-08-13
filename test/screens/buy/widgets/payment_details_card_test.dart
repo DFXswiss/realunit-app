@@ -9,6 +9,7 @@ import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/tab_selector.dart';
 
 import '../../../helper/helper.dart';
+import '../../../helper/layout_assertions.dart';
 
 const _info = BuyPaymentInfo(
   amount: 300,
@@ -38,7 +39,7 @@ const _rawIbanInfo = BuyPaymentInfo(
   currency: Currency.chf,
 );
 
-// The card uses InkWell (needs a Material ancestor) and renders a tall list of
+// The card uses IconButton (needs a Material ancestor) and renders a tall list of
 // rows — host it in a scrollable Scaffold so it lays out without overflow.
 Widget _host({
   String purposeOfPayment = '',
@@ -141,13 +142,41 @@ void main() {
 
         expect(
           copied,
-          _rawIbanInfo.iban,
+          _rawIbanInfo.iban.replaceAll(' ', ''),
           reason:
               'The clipboard must receive the raw, ungrouped IBAN — a grouped IBAN with '
               'spaces can fail validation in some banking transfer forms.',
         );
       },
     );
+
+    testWidgets('strips spaces when the IBAN arrives already grouped', (tester) async {
+      String? copied;
+      final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied = (call.arguments as Map)['text'] as String?;
+        }
+        return null;
+      });
+      addTearDown(() {
+        messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+      });
+
+      await tester.pumpApp(_host());
+
+      final ibanRow = find.ancestor(
+        of: find.text(S.current.iban),
+        matching: find.byType(Row),
+      );
+      await tester.tap(
+        find.descendant(of: ibanRow, matching: find.byIcon(Icons.copy_outlined)),
+      );
+      await tester.pump();
+
+      expect(copied, _info.iban.replaceAll(' ', ''));
+      expect(copied!.contains(' '), isFalse);
+    });
 
     testWidgets('shows no tab selector when there is no payment request', (tester) async {
       await tester.pumpApp(_host());
@@ -176,14 +205,10 @@ void main() {
       (tester) async {
         await tester.pumpApp(_host(purposeOfPayment: 'DA6E-2904-5F41'));
 
-        // Measure the tappable InkWell that owns the first copy icon, not the 16px icon itself.
-        final inkWell = find.ancestor(
-          of: find.byIcon(Icons.copy_outlined).first,
-          matching: find.byType(InkWell),
-        );
-        expect(inkWell, findsOneWidget);
+        final copyButton = find.widgetWithIcon(IconButton, Icons.copy_outlined).first;
+        expect(copyButton, findsOneWidget);
 
-        final size = tester.getSize(inkWell);
+        final size = tester.getSize(copyButton);
         expect(
           size.width,
           greaterThanOrEqualTo(44),
@@ -197,6 +222,12 @@ void main() {
           reason:
               'Copy tap target height ${size.height} < 44 — too small for an iPhone finger '
               '(incident 2026-08-13: payment details could not be copied into the bank app).',
+        );
+
+        await expectFullyTappable(
+          tester,
+          copyButton,
+          within: find.byType(PaymentDetailsCard),
         );
       },
     );

@@ -86,7 +86,7 @@ class PaymentDetailsCard extends StatelessWidget {
                       _PaymentDetailsRow(
                         description: S.of(context).iban,
                         value: IbanTextFormatter.formatIban(buyPaymentInfo.iban),
-                        copyValue: buyPaymentInfo.iban,
+                        copyValue: buyPaymentInfo.iban.replaceAll(' ', ''),
                       ),
                       _PaymentDetailsRow(
                         description: S.of(context).bic,
