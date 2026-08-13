@@ -9,7 +9,6 @@ import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/tab_selector.dart';
 
 import '../../../helper/helper.dart';
-import '../../../helper/layout_assertions.dart';
 
 const _info = BuyPaymentInfo(
   amount: 300,
