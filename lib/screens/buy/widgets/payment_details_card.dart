@@ -56,9 +56,7 @@ class PaymentDetailsCard extends StatelessWidget {
                     },
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: isSelected ? .w600 : .normal,
-                      color: isSelected
-                          ? RealUnitColors.realUnitBlue
-                          : RealUnitColors.neutral500,
+                      color: isSelected ? RealUnitColors.realUnitBlue : RealUnitColors.neutral500,
                     ),
                   );
                 },
@@ -218,14 +216,22 @@ class _PaymentDetailsRow extends StatelessWidget {
                   ),
                 ),
               ),
-              InkWell(
-                child: const Icon(
+              IconButton(
+                tooltip: MaterialLocalizations.of(context).copyButtonLabel,
+                iconSize: 16,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+                visualDensity: VisualDensity.standard,
+                style: IconButton.styleFrom(
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  minimumSize: const Size(44, 44),
+                ),
+                icon: const Icon(
                   Icons.copy_outlined,
                   color: RealUnitColors.realUnitBlue,
-                  fontWeight: FontWeight.bold,
                   size: 16,
                 ),
-                onTap: () => Clipboard.setData(
+                onPressed: () => Clipboard.setData(
                   ClipboardData(
                     text: copyValue ?? value,
                   ),

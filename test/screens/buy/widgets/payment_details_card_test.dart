@@ -44,17 +44,16 @@ Widget _host({
   String purposeOfPayment = '',
   String? paymentRequest,
   BuyPaymentInfo buyPaymentInfo = _info,
-}) =>
-    Scaffold(
-      body: SingleChildScrollView(
-        child: PaymentDetailsCard(
-          buyPaymentInfo: buyPaymentInfo,
-          amount: '100',
-          purposeOfPayment: purposeOfPayment,
-          paymentRequest: paymentRequest,
-        ),
-      ),
-    );
+}) => Scaffold(
+  body: SingleChildScrollView(
+    child: PaymentDetailsCard(
+      buyPaymentInfo: buyPaymentInfo,
+      amount: '100',
+      purposeOfPayment: purposeOfPayment,
+      paymentRequest: paymentRequest,
+    ),
+  ),
+);
 
 void main() {
   group('$PaymentDetailsCard', () {
@@ -68,16 +67,14 @@ void main() {
       expect(find.text('${S.current.amountIn} ${Currency.chf.code}'), findsOneWidget);
     });
 
-    testWidgets('renders the purpose of payment when purposeOfPayment is set',
-        (tester) async {
+    testWidgets('renders the purpose of payment when purposeOfPayment is set', (tester) async {
       await tester.pumpApp(_host(purposeOfPayment: 'REF-XYZ'));
 
       expect(find.text(S.current.purposeOfPayment), findsOneWidget);
       expect(find.text('REF-XYZ'), findsOneWidget);
     });
 
-    testWidgets('omits the purpose row when purposeOfPayment is empty',
-        (tester) async {
+    testWidgets('omits the purpose row when purposeOfPayment is empty', (tester) async {
       await tester.pumpApp(_host());
 
       expect(find.text(S.current.purposeOfPayment), findsNothing);
@@ -89,8 +86,7 @@ void main() {
       expect(find.byIcon(Icons.copy_outlined), findsWidgets);
     });
 
-    testWidgets('tapping a copy icon writes the value to the clipboard',
-        (tester) async {
+    testWidgets('tapping a copy icon writes the value to the clipboard', (tester) async {
       String? copied;
       final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
       messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -146,21 +142,22 @@ void main() {
         expect(
           copied,
           _rawIbanInfo.iban,
-          reason: 'The clipboard must receive the raw, ungrouped IBAN — a grouped IBAN with '
+          reason:
+              'The clipboard must receive the raw, ungrouped IBAN — a grouped IBAN with '
               'spaces can fail validation in some banking transfer forms.',
         );
       },
     );
 
-    testWidgets('shows no tab selector when there is no payment request',
-        (tester) async {
+    testWidgets('shows no tab selector when there is no payment request', (tester) async {
       await tester.pumpApp(_host());
 
       expect(find.byType(TabSelector<PaymentInfoOptions>), findsNothing);
     });
 
-    testWidgets('shows the tab selector and a QR code when a payment request exists',
-        (tester) async {
+    testWidgets('shows the tab selector and a QR code when a payment request exists', (
+      tester,
+    ) async {
       await tester.pumpApp(
         _host(paymentRequest: 'SPC\n0200\nsome-payload'),
       );
@@ -173,5 +170,65 @@ void main() {
 
       expect(find.byType(QrImageView), findsOneWidget);
     });
+
+    testWidgets(
+      'copy control meets the 44×44 minimum tap target so it is hittable on an iPhone (2026-08-13)',
+      (tester) async {
+        await tester.pumpApp(_host(purposeOfPayment: 'DA6E-2904-5F41'));
+
+        // Measure the tappable InkWell that owns the first copy icon, not the 16px icon itself.
+        final inkWell = find.ancestor(
+          of: find.byIcon(Icons.copy_outlined).first,
+          matching: find.byType(InkWell),
+        );
+        expect(inkWell, findsOneWidget);
+
+        final size = tester.getSize(inkWell);
+        expect(
+          size.width,
+          greaterThanOrEqualTo(44),
+          reason:
+              'Copy tap target width ${size.width} < 44 — too small for an iPhone finger '
+              '(incident 2026-08-13: payment details could not be copied into the bank app).',
+        );
+        expect(
+          size.height,
+          greaterThanOrEqualTo(44),
+          reason:
+              'Copy tap target height ${size.height} < 44 — too small for an iPhone finger '
+              '(incident 2026-08-13: payment details could not be copied into the bank app).',
+        );
+      },
+    );
+
+    testWidgets(
+      'tapping copy on the purpose-of-payment row writes the remittance reference',
+      (tester) async {
+        String? copied;
+        final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+        messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        });
+        addTearDown(() {
+          messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+        });
+
+        await tester.pumpApp(_host(purposeOfPayment: 'DA6E-2904-5F41'));
+
+        final purposeRow = find.ancestor(
+          of: find.text(S.current.purposeOfPayment),
+          matching: find.byType(Row),
+        );
+        await tester.tap(
+          find.descendant(of: purposeRow, matching: find.byIcon(Icons.copy_outlined)),
+        );
+        await tester.pump();
+
+        expect(copied, 'DA6E-2904-5F41');
+      },
+    );
   });
 }
