@@ -11,7 +11,8 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_
 import 'package:realunit_wallet/screens/buy/cubits/buy_payment_info/buy_payment_info_cubit.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 
-class _MockBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
+class _MockBuyPaymentInfoService extends Mock
+    implements RealUnitBuyPaymentInfoService {}
 
 BuyPaymentInfo _info({
   bool isValid = true,
@@ -54,9 +55,8 @@ void main() {
     });
 
     test('happy path emits Success with the payment info from the API', () async {
-      when(
-        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-      ).thenAnswer((_) async => _info());
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info());
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300');
@@ -65,36 +65,31 @@ void main() {
       verify(() => service.getPaymentInfo(300, currency: Currency.chf)).called(1);
     });
 
-    test(
-      'API isValid=false with error=AmountTooLow → MinAmountNotMetFailure with API limit',
-      () async {
-        when(
-          () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-        ).thenAnswer((_) async => _info(isValid: false, error: 'AmountTooLow', minVolume: 100));
+    test('API isValid=false with error=AmountTooLow → MinAmountNotMetFailure with API limit', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooLow', minVolume: 100));
 
-        final cubit = build();
-        await cubit.getPaymentInfo(amount: '50');
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '50');
 
-        expect(cubit.state, isA<BuyPaymentInfoMinAmountNotMetFailure>());
-        final f = cubit.state as BuyPaymentInfoMinAmountNotMetFailure;
-        expect(f.error, PaymentInfoError.minAmountNotMet);
-        expect(f.minAmount, 100);
-        verify(() => service.getPaymentInfo(50, currency: Currency.chf)).called(1);
-      },
-    );
+      expect(cubit.state, isA<BuyPaymentInfoMinAmountNotMetFailure>());
+      final f = cubit.state as BuyPaymentInfoMinAmountNotMetFailure;
+      expect(f.error, PaymentInfoError.minAmountNotMet);
+      expect(f.minAmount, 100);
+      verify(() => service.getPaymentInfo(50, currency: Currency.chf)).called(1);
+    });
 
     test('EUR min is reported by the API as-is, not scaled in the app', () async {
       // For EUR the API returns its own currency-specific minVolume; the
       // app no longer multiplies a hardcoded CHF baseline by an exchange
       // rate locally — the rate lives server-side.
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
-        (_) async => _info(
-          isValid: false,
-          error: 'AmountTooLow',
-          minVolume: 92,
-          currency: Currency.eur,
-        ),
-      );
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info(
+            isValid: false,
+            error: 'AmountTooLow',
+            minVolume: 92,
+            currency: Currency.eur,
+          ));
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '50', currency: Currency.eur);
@@ -104,31 +99,28 @@ void main() {
       verify(() => service.getPaymentInfo(50, currency: Currency.eur)).called(1);
     });
 
-    test(
-      'API isValid=false with error=PrimaryEmailRequired → Failure(primaryEmailRequired)',
-      () async {
-        // The API pre-tells on the quote that the account has no primary
-        // email; the app gates the confirm before the tap instead of
-        // reacting to a post-submit 400.
-        when(
-          () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-        ).thenAnswer((_) async => _info(isValid: false, error: 'PrimaryEmailRequired'));
+    test('API isValid=false with error=PrimaryEmailRequired → Failure(primaryEmailRequired)', () async {
+      // The API pre-tells on the quote that the account has no primary
+      // email; the app gates the confirm before the tap instead of
+      // reacting to a post-submit 400.
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info(isValid: false, error: 'PrimaryEmailRequired'));
 
-        final cubit = build();
-        await cubit.getPaymentInfo(amount: '300');
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
 
-        expect(cubit.state, isA<BuyPaymentInfoFailure>());
-        expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.primaryEmailRequired);
-      },
-    );
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.primaryEmailRequired);
+    });
 
     test('API isValid=false with error=PrimaryEmailNotConfirmed → '
         'Failure(primaryEmailNotConfirmed)', () async {
       // A registered-but-unconfirmed email routes to the confirmation flow
       // (via KYC) instead of a post-submit failure or the email-capture path.
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
-        (_) async => _info(isValid: false, error: 'PrimaryEmailNotConfirmed'),
-      );
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(isValid: false, error: 'PrimaryEmailNotConfirmed'),
+          );
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300');
@@ -142,9 +134,10 @@ void main() {
 
     test('API isValid=false with error=PrimaryEmailNotConfirmed → '
         'Failure carries context', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
-        (_) async => _info(isValid: false, error: 'PrimaryEmailNotConfirmed'),
-      );
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(isValid: false, error: 'PrimaryEmailNotConfirmed'),
+          );
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300');
@@ -154,9 +147,8 @@ void main() {
     });
 
     test('API isValid=false with unknown error → generic Failure', () async {
-      when(
-        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-      ).thenAnswer((_) async => _info(isValid: false, error: 'AmountTooHigh', minVolume: 100));
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooHigh', minVolume: 100));
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '999999999');
@@ -166,9 +158,8 @@ void main() {
     });
 
     test('empty amount string is treated as 0 → still calls the API', () async {
-      when(
-        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-      ).thenAnswer((_) async => _info(isValid: false, error: 'AmountTooLow', minVolume: 100));
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooLow', minVolume: 100));
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '');
@@ -178,9 +169,8 @@ void main() {
     });
 
     test('comma decimal separator is normalised to dot', () async {
-      when(
-        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-      ).thenAnswer((_) async => _info());
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info());
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300,75');
@@ -190,7 +180,8 @@ void main() {
     });
 
     test('KycLevelRequiredException → Failure(kycRequired, requiredLevel)', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
         (_) async => throw const KycLevelRequiredException(
           statusCode: 403,
           code: 'KYC_REQUIRED',
@@ -209,7 +200,8 @@ void main() {
     });
 
     test('KycLevelRequiredException with context → Failure carries context', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
         (_) async => throw const KycLevelRequiredException(
           statusCode: 403,
           code: 'KYC_REQUIRED',
@@ -230,7 +222,8 @@ void main() {
     });
 
     test('RegistrationRequiredException → Failure(registrationRequired)', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
         (_) async => throw const RegistrationRequiredException(
           statusCode: 403,
           code: 'REGISTRATION_REQUIRED',
@@ -246,7 +239,8 @@ void main() {
     });
 
     test('RegistrationRequiredException with context → Failure carries context', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
         (_) async => throw const RegistrationRequiredException(
           statusCode: 403,
           code: 'REGISTRATION_REQUIRED',
@@ -264,9 +258,8 @@ void main() {
     });
 
     test('generic exception → Failure(unknown)', () async {
-      when(
-        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-      ).thenAnswer((_) async => throw Exception('network'));
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => throw Exception('network'));
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300');
@@ -276,9 +269,8 @@ void main() {
     });
 
     test('BitboxNotConnectedException → Failure(bitboxDisconnected)', () async {
-      when(
-        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-      ).thenAnswer((_) async => throw const BitboxNotConnectedException());
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => throw const BitboxNotConnectedException());
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300');
@@ -288,7 +280,8 @@ void main() {
     });
 
     test('ApiException 503 → Failure(priceSourceUnavailable)', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
         (_) async => throw const ApiException(
           statusCode: 503,
           code: 'PRICE_SOURCE_UNAVAILABLE',
@@ -302,29 +295,25 @@ void main() {
       expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.priceSourceUnavailable);
     });
 
-    test(
-      'ApiException with code PRICE_SOURCE_UNAVAILABLE (non-503) → priceSourceUnavailable',
-      () async {
-        when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
-          (_) async => throw const ApiException(
-            statusCode: 500,
-            code: 'PRICE_SOURCE_UNAVAILABLE',
-            message: 'unavailable',
-          ),
-        );
+    test('ApiException with code PRICE_SOURCE_UNAVAILABLE (non-503) → priceSourceUnavailable', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 500,
+          code: 'PRICE_SOURCE_UNAVAILABLE',
+          message: 'unavailable',
+        ),
+      );
 
-        final cubit = build();
-        await cubit.getPaymentInfo(amount: '300');
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
 
-        expect(
-          (cubit.state as BuyPaymentInfoFailure).error,
-          PaymentInfoError.priceSourceUnavailable,
-        );
-      },
-    );
+      expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.priceSourceUnavailable);
+    });
 
     test('other ApiException (e.g. 400) → Failure(unknown)', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
         (_) async => throw const ApiException(statusCode: 400, code: 'BAD_REQUEST', message: 'bad'),
       );
 
@@ -336,9 +325,8 @@ void main() {
 
     test('does not emit after close', () async {
       final completer = Completer<BuyPaymentInfo>();
-      when(
-        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
-      ).thenAnswer((_) => completer.future);
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) => completer.future);
 
       final cubit = build();
       unawaited(cubit.getPaymentInfo(amount: '300'));
