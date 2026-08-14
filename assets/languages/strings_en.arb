@@ -286,7 +286,7 @@
   "registerEmailVerificationTitle": "Welcome back!",
   "registerPhoneNumberInvalid": "Phone number is required",
   "registerPhoneNumberOnlyDigits": "Only numbers are allowed",
-  "registerPhoneNumberPrefixFormat": "Country code must be exactly 2 digits",
+  "registerPhoneNumberPrefixFormat": "Country code must be 1 to 3 digits",
   "registerPhoneNumberPrefixInvalid": "Country code is required",
   "registrationFailed": "Registration failed:\n${message}",
   "registrationForwardingFailed": "Registration accepted, but forwarding to the company is delayed. We will retry automatically.",

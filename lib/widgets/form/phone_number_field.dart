@@ -15,8 +15,7 @@ class PhoneNumberField extends StatefulWidget {
 class _PhoneNumberFieldState extends State<PhoneNumberField> {
   // Used only to decompose a seeded value. Input is free-form and not limited to this list.
   // `+41` stays first: it is the fallback default (`prefix ??= prefixes.first`).
-  // `+423` is omitted: the field allows only 2 digits, so Liechtenstein cannot be entered or shown.
-  final prefixes = ['+41', '+49', '+43'];
+  final prefixes = ['+41', '+49', '+43', '+423'];
   String? prefix;
   String? number;
 
@@ -24,7 +23,10 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
   void initState() {
     super.initState();
     final value = widget.controller.value;
-    for (final p in prefixes) {
+    // Longest first. Keep this whenever the list mixes lengths: a shorter listed
+    // code that is a true prefix of a longer one would steal the match.
+    final knownPrefixes = List<String>.of(prefixes)..sort((a, b) => b.length.compareTo(a.length));
+    for (final p in knownPrefixes) {
       if (value != null && value.startsWith(p)) {
         prefix = p;
         number = value.substring(p.length);
@@ -75,7 +77,7 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
                 keyboardType: .phone,
                 inputFormatters: [
                   FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(2),
+                  LengthLimitingTextInputFormatter(3),
                 ],
                 onChanged: (v) {
                   prefix = '+$v';
@@ -86,7 +88,7 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
                   if (value == null || value.isEmpty) {
                     return S.of(context).registerPhoneNumberPrefixInvalid;
                   }
-                  if (!RegExp(r'^[0-9]{2}$').hasMatch(value)) {
+                  if (!RegExp(r'^[0-9]{1,3}$').hasMatch(value)) {
                     return S.of(context).registerPhoneNumberPrefixFormat;
                   }
                   // Existence of the dial code is validated by the API (libphonenumber); the

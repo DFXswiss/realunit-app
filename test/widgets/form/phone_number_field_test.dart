@@ -140,37 +140,46 @@ void main() {
       expect(harness.controller.value, '+49791234567');
     });
 
-    testWidgets('does not accept more than 2 prefix digits', (tester) async {
+    testWidgets('does not accept more than 3 prefix digits', (tester) async {
       final harness = await _pumpPhoneField(tester);
 
       // LengthLimitingTextInputFormatter keeps the old value when the field is
       // already at maxLength and the incoming edit is longer (collapsed
-      // selection). Clear first so '123' is truncated to '12' rather than
-      // rejected against the seeded '41'.
+      // selection). Clear first so '1234' is truncated to '123' rather than
+      // rejected against a 3-digit seed.
       await tester.enterText(_prefixField(), '');
-      await tester.enterText(_prefixField(), '123');
+      await tester.enterText(_prefixField(), '1234');
       await tester.enterText(_numberField(), '791234567');
       await tester.pump();
 
       final prefixEditable = tester.widget<EditableText>(
         find.descendant(of: _prefixField(), matching: find.byType(EditableText)),
       );
-      expect(prefixEditable.controller.text, '12');
-      expect(harness.controller.value, '+12791234567');
+      expect(prefixEditable.controller.text, '123');
+      expect(harness.controller.value, '+123791234567');
     });
 
-    testWidgets('shows the format error for a 1-digit prefix', (tester) async {
+    testWidgets('accepts a 3-digit prefix and composes the stored number', (tester) async {
       final harness = await _pumpPhoneField(tester);
 
-      await tester.enterText(_prefixField(), '4');
-      final isValid = harness.formKey.currentState!.validate();
-      await tester.pump();
+      await tester.enterText(_prefixField(), '423');
+      final isValid = await _enterAndValidate(tester, harness, '6641234567');
 
-      expect(isValid, isFalse);
-      expect(
-        find.text(_phoneError(tester, (s) => s.registerPhoneNumberPrefixFormat)),
-        findsOneWidget,
+      expect(harness.controller.value, '+4236641234567');
+      expect(isValid, isTrue);
+    });
+
+    testWidgets('decomposes a seeded +423 number without letting +43 eat it', (tester) async {
+      await _pumpPhoneField(tester, initialPhoneNumber: '+4236641234567');
+
+      final prefixEditable = tester.widget<EditableText>(
+        find.descendant(of: _prefixField(), matching: find.byType(EditableText)),
       );
+      final numberEditable = tester.widget<EditableText>(
+        find.descendant(of: _numberField(), matching: find.byType(EditableText)),
+      );
+      expect(prefixEditable.controller.text, '423');
+      expect(numberEditable.controller.text, '6641234567');
     });
 
     testWidgets('keeps + out of the prefix field text and on prefixText', (tester) async {

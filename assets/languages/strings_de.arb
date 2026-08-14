@@ -286,7 +286,7 @@
   "registerEmailVerificationTitle": "Willkommen zurück!",
   "registerPhoneNumberInvalid": "Telefonnummer ist erforderlich",
   "registerPhoneNumberOnlyDigits": "Nur Zahlen sind erlaubt",
-  "registerPhoneNumberPrefixFormat": "Vorwahl muss aus genau 2 Ziffern bestehen",
+  "registerPhoneNumberPrefixFormat": "Vorwahl muss aus 1 bis 3 Ziffern bestehen",
   "registerPhoneNumberPrefixInvalid": "Vorwahl ist erforderlich",
   "registrationFailed": "Registrierung fehlgeschlagen:\n${message}",
   "registrationForwardingFailed": "Registrierung angenommen, aber die Weiterleitung an die Gesellschaft ist verzögert. Wir versuchen es automatisch erneut.",
