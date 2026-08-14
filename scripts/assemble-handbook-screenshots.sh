@@ -211,7 +211,6 @@ MAPPING=(
   "161-kyc-registration-page-default=screens/kyc/goldens/macos/kyc_registration_page_default.png"
   "162-kyc-registration-page-prefilled=screens/kyc/goldens/macos/kyc_registration_page_prefilled.png"
   "163-kyc-registration-personal-step-account-type-open=screens/kyc/goldens/macos/kyc_registration_personal_step_account_type_open.png"
-  "164-kyc-registration-personal-step-phone-prefix-open=screens/kyc/goldens/macos/kyc_registration_personal_step_phone_prefix_open.png"
   "165-kyc-registration-personal-step-validation-error=screens/kyc/goldens/macos/kyc_registration_personal_step_validation_error.png"
   "166-kyc-registration-page-address-step=screens/kyc/goldens/macos/kyc_registration_page_address_step.png"
   "167-kyc-registration-address-step-validation-error=screens/kyc/goldens/macos/kyc_registration_address_step_validation_error.png"
