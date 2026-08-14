@@ -75,6 +75,23 @@ void main() {
       expect(cubit.state, second);
     });
 
+    test('reload that throws keeps a previously loaded non-empty list', () async {
+      final buy = const TransactionDto(id: 1, type: TransactionType.buy);
+      var call = 0;
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async {
+        call++;
+        if (call == 1) return [buy];
+        throw Exception('network');
+      });
+
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+      expect(cubit.state, [buy]);
+
+      await cubit.reload();
+      expect(cubit.state, [buy]);
+    });
+
     test('deactivate on a buy with id calls deactivateQuote then reloads', () async {
       final buyTx = const TransactionDto(id: 7, type: TransactionType.buy);
       when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);

@@ -86,6 +86,7 @@ class BuyConfirmButtonView extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
+            spacing: 8.0,
             children: [
               AppFilledButton(
                 onPressed: () => context.read<BuyConfirmCubit>().confirmPayment(

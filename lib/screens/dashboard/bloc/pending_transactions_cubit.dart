@@ -32,7 +32,7 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
       emit(transactions);
     } catch (e) {
       developer.log('Failed to load pending transactions: $e', name: '$PendingTransactionsCubit');
-      emit([]);
+      if (state.isEmpty) emit([]);
     }
   }
 }

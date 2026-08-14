@@ -56,7 +56,8 @@ class DashboardPendingTransactionsView extends StatelessWidget {
                     .map(
                       (t) => PendingTransactionRow(
                         transaction: t,
-                        onDeactivate: t.type == TransactionType.buy
+                        onDeactivate: t.type == TransactionType.buy &&
+                                (t.id != null || (t.uid != null && t.uid!.isNotEmpty))
                             ? () => context.read<PendingTransactionsCubit>().deactivate(t)
                             : null,
                       ),
