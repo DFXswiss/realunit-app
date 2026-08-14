@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -155,12 +157,72 @@ void main() {
       verify(() => cubit.deactivateQuote(42)).called(1);
     });
 
+    testWidgets('BuyDeactivateSuccess pops the pushed confirm route', (tester) async {
+      // Production uses GoRouter context.pop(). Start on /parent, then push
+      // /parent/child so there is a stack entry. Emit success only after
+      // the confirm view is mounted.
+      final states = StreamController<BuyConfirmState>();
+      addTearDown(states.close);
+      whenListen(
+        cubit,
+        states.stream,
+        initialState: const BuyConfirmInitial(),
+      );
+
+      final router = GoRouter(
+        initialLocation: '/parent',
+        routes: [
+          GoRoute(
+            path: '/parent',
+            builder: (_, _) => const Scaffold(body: Text('parent-marker')),
+            routes: [
+              GoRoute(
+                path: 'child',
+                builder: (_, _) => Scaffold(
+                  body: BlocProvider<BuyConfirmCubit>.value(
+                    value: cubit,
+                    child: const BuyConfirmButtonView(buyPaymentInfo: _info),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(host(router: router));
+      await tester.pump();
+      expect(find.text('parent-marker'), findsOneWidget);
+
+      router.push('/parent/child');
+      await tester.pump();
+      await tester.pump();
+      expect(find.byType(BuyConfirmButtonView), findsOneWidget);
+
+      states.add(const BuyDeactivateSuccess());
+      await tester.pump();
+
+      expect(find.text('parent-marker'), findsOneWidget);
+      expect(find.byType(BuyConfirmButtonView), findsNothing);
+    });
+
     testWidgets('shows a loading indicator while confirming', (tester) async {
       when(() => cubit.state).thenReturn(const BuyConfirmLoading());
 
       await tester.pumpWidget(host());
 
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    });
+
+    testWidgets('deactivate label is inert while loading', (tester) async {
+      when(() => cubit.state).thenReturn(const BuyConfirmLoading());
+
+      await tester.pumpWidget(host());
+      await tester.tap(find.text(S.current.pendingTransactionDeactivate));
+      await tester.pump();
+
+      expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsNothing);
+      verifyNever(() => cubit.deactivateQuote(any()));
     });
 
     testWidgets('shows a snackbar with the generic error on failure', (tester) async {

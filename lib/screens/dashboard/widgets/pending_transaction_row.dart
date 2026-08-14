@@ -5,7 +5,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 
-class PendingTransactionRow extends StatelessWidget {
+class PendingTransactionRow extends StatefulWidget {
   final TransactionDto transaction;
   final Future<void> Function()? onDeactivate;
 
@@ -15,7 +15,14 @@ class PendingTransactionRow extends StatelessWidget {
     this.onDeactivate,
   });
 
-  bool get _isBuy => transaction.type == TransactionType.buy;
+  @override
+  State<PendingTransactionRow> createState() => _PendingTransactionRowState();
+}
+
+class _PendingTransactionRowState extends State<PendingTransactionRow> {
+  bool _busy = false;
+
+  bool get _isBuy => widget.transaction.type == TransactionType.buy;
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +55,7 @@ class PendingTransactionRow extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  transaction.state == .waitingForPayment
+                  widget.transaction.state == .waitingForPayment
                       ? S.of(context).transactionWaitingForPayment
                       : S.of(context).transactionPending,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -62,18 +69,18 @@ class PendingTransactionRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: .end,
               children: [
-                if (transaction.inputAmount != null && transaction.inputAsset != null)
+                if (widget.transaction.inputAmount != null && widget.transaction.inputAsset != null)
                   Text(
-                    '${_formatAmount(transaction.inputAmount!)} ${transaction.inputAsset}',
+                    '${_formatAmount(widget.transaction.inputAmount!)} ${widget.transaction.inputAsset}',
                     textAlign: .end,
                     maxLines: 2,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: .w600,
                     ),
                   ),
-                if (transaction.date != null)
+                if (widget.transaction.date != null)
                   Text(
-                    DateFormat('MMM dd, yyyy').format(transaction.date!.toLocal()),
+                    DateFormat('MMM dd, yyyy').format(widget.transaction.date!.toLocal()),
                     textAlign: .end,
                     maxLines: 1,
                     overflow: .ellipsis,
@@ -84,11 +91,11 @@ class PendingTransactionRow extends StatelessWidget {
               ],
             ),
           ),
-          if (_isBuy && onDeactivate != null)
+          if (_isBuy && widget.onDeactivate != null)
             IconButton(
               tooltip: S.of(context).pendingTransactionDeactivate,
               icon: const Icon(Icons.close),
-              onPressed: () => _confirmAndDeactivate(context),
+              onPressed: _busy ? null : () => _confirmAndDeactivate(context),
             ),
         ],
       ),
@@ -112,14 +119,18 @@ class PendingTransactionRow extends StatelessWidget {
         ],
       ),
     );
-    if (confirmed != true || onDeactivate == null) return;
+    if (confirmed != true || widget.onDeactivate == null) return;
+    setState(() => _busy = true);
     try {
-      await onDeactivate!();
+      await widget.onDeactivate!();
     } catch (_) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(S.of(context).pendingTransactionDeactivateFailed)),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(S.of(context).pendingTransactionDeactivateFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 

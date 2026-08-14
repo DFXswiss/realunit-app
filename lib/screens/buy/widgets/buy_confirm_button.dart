@@ -97,7 +97,7 @@ class BuyConfirmButtonView extends StatelessWidget {
               AppFilledButton(
                 variant: FilledButtonVariant.secondary,
                 label: S.of(context).pendingTransactionDeactivate,
-                onPressed: () => _confirmAndDeactivate(context),
+                onPressed: state is BuyConfirmLoading ? null : () => _confirmAndDeactivate(context),
               ),
             ],
           ),

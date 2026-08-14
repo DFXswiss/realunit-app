@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
@@ -224,6 +226,34 @@ void main() {
       await done;
 
       expect(cubit.state, isA<BuyDeactivateFailure>());
+    });
+
+    test('confirmPayment while loading does not call the service again', () async {
+      final gate = Completer<RealUnitBuyConfirmDto>();
+      when(() => service.confirmPayment(any())).thenAnswer((_) => gate.future);
+
+      final cubit = BuyConfirmCubit(service);
+      final first = cubit.confirmPayment(42);
+      expect(cubit.state, isA<BuyConfirmLoading>());
+      await cubit.confirmPayment(42);
+      verify(() => service.confirmPayment(42)).called(1);
+
+      gate.complete(const RealUnitBuyConfirmDto(reference: 'RU'));
+      await first;
+    });
+
+    test('deactivateQuote while loading does not call the service again', () async {
+      final gate = Completer<void>();
+      when(() => service.deactivateQuote(any())).thenAnswer((_) => gate.future);
+
+      final cubit = BuyConfirmCubit(service);
+      final first = cubit.deactivateQuote(42);
+      expect(cubit.state, isA<BuyConfirmLoading>());
+      await cubit.deactivateQuote(42);
+      verify(() => service.deactivateQuote('42')).called(1);
+
+      gate.complete();
+      await first;
     });
   });
 }

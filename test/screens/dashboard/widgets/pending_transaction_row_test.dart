@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -167,6 +169,35 @@ void main() {
       await tester.pump();
 
       expect(calls, 1);
+    });
+
+    testWidgets('BUY row does not invoke onDeactivate twice while busy', (tester) async {
+      var calls = 0;
+      final gate = Completer<void>();
+      await tester.pumpApp(
+        Scaffold(
+          body: PendingTransactionRow(
+            transaction: _tx(type: TransactionType.buy, state: TransactionState.processing),
+            onDeactivate: () async {
+              calls++;
+              await gate.future;
+            },
+          ),
+        ),
+      );
+
+      await tester.tap(find.byType(IconButton));
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, S.current.pendingTransactionDeactivate));
+      await tester.pump();
+
+      expect(calls, 1);
+      await tester.tap(find.byType(IconButton));
+      await tester.pump();
+      expect(calls, 1);
+
+      gate.complete();
+      await tester.pump();
     });
 
     testWidgets('BUY row confirm in dialog shows snackbar when onDeactivate throws', (
