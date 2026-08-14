@@ -94,6 +94,23 @@ void main() {
       expect(find.byType(IconButton), findsOneWidget);
     });
 
+    testWidgets('buy with uid only shows deactivate IconButton', (tester) async {
+      when(() => cubit.state).thenReturn([
+        TransactionDto(
+          id: null,
+          uid: 'waiting-uid',
+          type: TransactionType.buy,
+          state: TransactionState.processing,
+          date: DateTime.utc(2026, 5, 15),
+        ),
+        _tx(id: 2, type: TransactionType.sell),
+      ]);
+
+      await tester.pumpApp(host());
+
+      expect(find.byType(IconButton), findsOneWidget);
+    });
+
     testWidgets('buy IconButton confirm wires to cubit.deactivate once',
         (tester) async {
       when(() => cubit.state).thenReturn([

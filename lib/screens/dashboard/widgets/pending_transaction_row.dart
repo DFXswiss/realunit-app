@@ -119,7 +119,7 @@ class _PendingTransactionRowState extends State<PendingTransactionRow> {
         ],
       ),
     );
-    if (confirmed != true || widget.onDeactivate == null) return;
+    if (confirmed != true || widget.onDeactivate == null || !mounted) return;
     setState(() => _busy = true);
     try {
       await widget.onDeactivate!();

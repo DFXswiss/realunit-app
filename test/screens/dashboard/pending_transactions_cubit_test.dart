@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
@@ -189,6 +191,52 @@ void main() {
 
       // only the constructor load — no reload after failed deactivate
       verify(() => service.fetchPendingTransactions()).called(1);
+      expect(cubit.state, [buyTx]);
+    });
+
+    test(
+      'after successful deactivateQuote, optimistic remove stays if reload fetch fails',
+      () async {
+        final buyTx = const TransactionDto(id: 7, type: TransactionType.buy);
+        var call = 0;
+        when(() => service.fetchPendingTransactions()).thenAnswer((_) async {
+          call++;
+          if (call == 1) return [buyTx];
+          throw Exception('network');
+        });
+
+        final cubit = PendingTransactionsCubit(service, buyService);
+        await cubit.stream.firstWhere((s) => s.isNotEmpty);
+        expect(cubit.state, [buyTx]);
+
+        await cubit.deactivate(buyTx);
+
+        verify(() => buyService.deactivateQuote('7')).called(1);
+        // constructor load + reload after deactivate
+        verify(() => service.fetchPendingTransactions()).called(2);
+        expect(cubit.state, isEmpty);
+      },
+    );
+
+    test('overlapping deactivate does not call deactivateQuote a second time', () async {
+      final buyTx = const TransactionDto(id: 7, type: TransactionType.buy);
+      final otherBuy = const TransactionDto(id: 8, type: TransactionType.buy);
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx, otherBuy]);
+
+      final completer = Completer<void>();
+      when(() => buyService.deactivateQuote(any())).thenAnswer((_) => completer.future);
+
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+
+      final first = cubit.deactivate(buyTx);
+      // Second call while first is still in-flight — must be ignored.
+      await cubit.deactivate(otherBuy);
+
+      completer.complete();
+      await first;
+
+      verify(() => buyService.deactivateQuote(any())).called(1);
     });
   });
 }

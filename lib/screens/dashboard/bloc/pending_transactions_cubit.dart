@@ -15,6 +15,7 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
 
   final TransactionHistoryService _transactionHistoryService;
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
+  bool _deactivating = false;
 
   Future<void> reload() => _loadPendingTransactions();
 
@@ -22,8 +23,15 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
     if (transaction.type != TransactionType.buy) return;
     final idOrUid = transaction.id?.toString() ?? transaction.uid;
     if (idOrUid == null || idOrUid.isEmpty) return;
-    await _buyPaymentInfoService.deactivateQuote(idOrUid);
-    await reload();
+    if (_deactivating) return;
+    _deactivating = true;
+    try {
+      await _buyPaymentInfoService.deactivateQuote(idOrUid);
+      emit(state.where((t) => t != transaction).toList());
+      await reload();
+    } finally {
+      _deactivating = false;
+    }
   }
 
   Future<void> _loadPendingTransactions() async {
