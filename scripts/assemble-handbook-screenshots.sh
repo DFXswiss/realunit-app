@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Assemble the 279 handbook screenshots from the visual-regression Golden
+# Assemble the 278 handbook screenshots from the visual-regression Golden
 # baselines. The flat `NN-name.png` output layout matches what
 # docs/handbook/de/index.html links to (`<img src="../screenshots/NN-name.png">`
 # — the relative path resolves to `docs/handbook/screenshots/NN-name.png`).
