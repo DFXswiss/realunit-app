@@ -94,6 +94,35 @@ void main() {
       expect(cubit.state, [buy]);
     });
 
+    test('overlapping reloads: newer fetch wins over stale completion', () async {
+      final initial = const TransactionDto(id: 1, type: TransactionType.buy);
+      final stale = const TransactionDto(id: 2, type: TransactionType.buy);
+      final newer = const TransactionDto(id: 3, type: TransactionType.buy);
+      final load2 = Completer<List<TransactionDto>>();
+      var call = 0;
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async {
+        call++;
+        if (call == 1) return [initial];
+        if (call == 2) return load2.future;
+        return [newer];
+      });
+
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+      expect(cubit.state, [initial]);
+
+      // load 2 (stale) starts first and hangs; load 3 returns immediately.
+      final reload2 = cubit.reload();
+      final reload3 = cubit.reload();
+      await reload3;
+      expect(cubit.state, [newer]);
+
+      load2.complete([stale]);
+      await reload2;
+      // Stale load 2 must not overwrite the newer list.
+      expect(cubit.state, [newer]);
+    });
+
     test('deactivate on a buy with id calls deactivateQuote then reloads', () async {
       final buyTx = const TransactionDto(
         id: 7,
@@ -244,6 +273,40 @@ void main() {
         // constructor load + reload after deactivate
         verify(() => service.fetchPendingTransactions()).called(2);
         expect(cubit.state, isEmpty);
+      },
+    );
+
+    test(
+      'after successful deactivate of one of two quotes, remaining stays if reload throws',
+      () async {
+        final buy7 = const TransactionDto(
+          id: 7,
+          type: TransactionType.buy,
+          state: TransactionState.waitingForPayment,
+        );
+        final buy8 = const TransactionDto(
+          id: 8,
+          type: TransactionType.buy,
+          state: TransactionState.waitingForPayment,
+        );
+        var call = 0;
+        when(() => service.fetchPendingTransactions()).thenAnswer((_) async {
+          call++;
+          if (call == 1) return [buy7, buy8];
+          throw Exception('network');
+        });
+
+        final cubit = PendingTransactionsCubit(service, buyService);
+        await cubit.stream.firstWhere((s) => s.isNotEmpty);
+        expect(cubit.state, [buy7, buy8]);
+
+        await cubit.deactivate(buy7);
+
+        verify(() => buyService.deactivateQuote('7')).called(1);
+        // constructor load + reload after deactivate
+        verify(() => service.fetchPendingTransactions()).called(2);
+        // optimistic remove of 7; reload throw must keep remaining quote 8
+        expect(cubit.state, [buy8]);
       },
     );
 

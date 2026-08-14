@@ -6,6 +6,7 @@ import 'package:realunit_wallet/models/transaction.dart';
 import 'package:realunit_wallet/packages/config/api_config.dart';
 import 'package:realunit_wallet/packages/repository/transaction_repository.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_auth_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/history/dto/account_history_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
 import 'package:web3dart/credentials.dart';
@@ -113,7 +114,13 @@ class TransactionHistoryService extends DFXAuthService {
     final uri = buildUri(host, '$_transactionsPath/detail');
     final response = await authenticatedGet(uri);
 
-    if (response.statusCode != 200) return [];
+    if (response.statusCode != 200) {
+      throw ApiException(
+        statusCode: response.statusCode,
+        code: 'UNKNOWN',
+        message: 'Failed to load pending transactions',
+      );
+    }
 
     final List<dynamic> json = jsonDecode(response.body);
     final transactions = json

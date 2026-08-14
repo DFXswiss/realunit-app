@@ -16,6 +16,7 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
   final TransactionHistoryService _transactionHistoryService;
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
   final _inFlight = <String>{};
+  int _loadGeneration = 0;
 
   Future<void> reload() => _loadPendingTransactions();
 
@@ -39,13 +40,14 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
   }
 
   Future<void> _loadPendingTransactions() async {
+    final generation = ++_loadGeneration;
     try {
       final transactions = await _transactionHistoryService.fetchPendingTransactions();
-      if (isClosed) return;
+      if (isClosed || generation != _loadGeneration) return;
       emit(transactions);
     } catch (e) {
       developer.log('Failed to load pending transactions: $e', name: '$PendingTransactionsCubit');
-      if (isClosed) return;
+      if (isClosed || generation != _loadGeneration) return;
       if (state.isEmpty) emit([]);
     }
   }
