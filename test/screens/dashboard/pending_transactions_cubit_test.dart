@@ -288,5 +288,84 @@ void main() {
       verify(() => buyService.deactivateQuote('7')).called(1);
       verify(() => buyService.deactivateQuote('8')).called(1);
     });
+
+    test('optimistic remove filters by idOrUid, not object identity', () async {
+      final listed = const TransactionDto(
+        id: 7,
+        uid: 'listed',
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      final other = const TransactionDto(
+        id: 8,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      // Different instance than `listed` — object-identity filter would miss it.
+      final otherInstance = const TransactionDto(
+        id: 7,
+        uid: 'other-instance',
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      var call = 0;
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async {
+        call++;
+        if (call == 1) return [listed, other];
+        // Keep the optimistic remove visible (reload must not repaint the list).
+        throw Exception('network');
+      });
+
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+      expect(cubit.state, [listed, other]);
+
+      await cubit.deactivate(otherInstance);
+
+      verify(() => buyService.deactivateQuote('7')).called(1);
+      // constructor load + reload after deactivate
+      verify(() => service.fetchPendingTransactions()).called(2);
+      expect(cubit.state, [other]);
+    });
+
+    test('deactivate completes without throwing when cubit is closed mid-flight', () async {
+      final buyTx = const TransactionDto(
+        id: 7,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
+      final completer = Completer<void>();
+      when(() => buyService.deactivateQuote(any())).thenAnswer((_) => completer.future);
+
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+      final future = cubit.deactivate(buyTx);
+      await cubit.close();
+      completer.complete();
+      await expectLater(future, completes);
+    });
+
+    test('reload completes without throwing when cubit is closed during fetch', () async {
+      final buyTx = const TransactionDto(
+        id: 7,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      final fetchGate = Completer<List<TransactionDto>>();
+      var call = 0;
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async {
+        call++;
+        if (call == 1) return [buyTx];
+        return fetchGate.future;
+      });
+
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+      final reloadFuture = cubit.reload();
+      await cubit.close();
+      fetchGate.complete([buyTx]);
+      await expectLater(reloadFuture, completes);
+    });
   });
 }

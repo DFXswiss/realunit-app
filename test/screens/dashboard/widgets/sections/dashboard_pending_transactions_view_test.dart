@@ -65,6 +65,7 @@ void main() {
       await tester.pumpApp(host());
 
       expect(find.byType(PendingTransactionRow), findsNWidgets(3));
+      expect(find.byKey(const ValueKey('pendingTx-1')), findsOneWidget);
     });
 
     testWidgets('buy rows only show deactivate IconButton (sell has none)',
@@ -115,6 +116,7 @@ void main() {
       await tester.pumpApp(host());
 
       expect(find.byType(IconButton), findsOneWidget);
+      expect(find.byKey(const ValueKey('pendingTx-waiting-uid')), findsOneWidget);
     });
 
     testWidgets('processing buy with numeric id does not show deactivate IconButton',

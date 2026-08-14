@@ -30,7 +30,8 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
     _inFlight.add(idOrUid);
     try {
       await _buyPaymentInfoService.deactivateQuote(idOrUid);
-      emit(state.where((t) => t != transaction).toList());
+      if (isClosed) return;
+      emit(state.where((t) => (t.id?.toString() ?? t.uid) != idOrUid).toList());
       await reload();
     } finally {
       _inFlight.remove(idOrUid);
@@ -40,9 +41,11 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
   Future<void> _loadPendingTransactions() async {
     try {
       final transactions = await _transactionHistoryService.fetchPendingTransactions();
+      if (isClosed) return;
       emit(transactions);
     } catch (e) {
       developer.log('Failed to load pending transactions: $e', name: '$PendingTransactionsCubit');
+      if (isClosed) return;
       if (state.isEmpty) emit([]);
     }
   }

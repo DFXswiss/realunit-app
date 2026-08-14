@@ -55,7 +55,7 @@ class DashboardPendingTransactionsView extends StatelessWidget {
                 children: transactions
                     .map(
                       (t) => PendingTransactionRow(
-                        key: ValueKey(t.id?.toString() ?? t.uid),
+                        key: ValueKey('pendingTx-${t.id?.toString() ?? t.uid}'),
                         transaction: t,
                         onDeactivate: t.type == TransactionType.buy &&
                                 t.state == TransactionState.waitingForPayment &&

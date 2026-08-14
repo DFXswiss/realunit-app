@@ -248,11 +248,41 @@ void main() {
 
       final cubit = BuyConfirmCubit(service);
       final first = cubit.deactivateQuote(42);
-      expect(cubit.state, isA<BuyConfirmLoading>());
+      expect(cubit.state, isA<BuyDeactivateLoading>());
       await cubit.deactivateQuote(42);
       verify(() => service.deactivateQuote('42')).called(1);
 
       gate.complete();
+      await first;
+    });
+
+    test('confirmPayment while BuyDeactivateLoading does not call confirmPayment service',
+        () async {
+      final gate = Completer<void>();
+      when(() => service.deactivateQuote(any())).thenAnswer((_) => gate.future);
+
+      final cubit = BuyConfirmCubit(service);
+      final first = cubit.deactivateQuote(42);
+      expect(cubit.state, isA<BuyDeactivateLoading>());
+      await cubit.confirmPayment(42);
+      verifyNever(() => service.confirmPayment(any()));
+
+      gate.complete();
+      await first;
+    });
+
+    test('deactivateQuote while BuyConfirmLoading does not call deactivateQuote service',
+        () async {
+      final gate = Completer<RealUnitBuyConfirmDto>();
+      when(() => service.confirmPayment(any())).thenAnswer((_) => gate.future);
+
+      final cubit = BuyConfirmCubit(service);
+      final first = cubit.confirmPayment(42);
+      expect(cubit.state, isA<BuyConfirmLoading>());
+      await cubit.deactivateQuote(42);
+      verifyNever(() => service.deactivateQuote(any()));
+
+      gate.complete(const RealUnitBuyConfirmDto(reference: 'RU'));
       await first;
     });
   });

@@ -27,6 +27,15 @@ void main() {
     });
   });
 
+  group('BuyDeactivateLoading', () {
+    test('two instances are equal and props are empty', () {
+      final a = BuyDeactivateLoading();
+      final b = BuyDeactivateLoading();
+      expect(a, equals(b));
+      expect(a.props, isEmpty);
+    });
+  });
+
   group('BuyConfirmSuccess', () {
     test('same fields are equal and props match', () {
       final a = BuyConfirmSuccess(
@@ -99,6 +108,14 @@ void main() {
   group('BuyConfirmState (cross-subclass identity)', () {
     test('Initial vs Loading are unequal', () {
       expect(BuyConfirmInitial(), isNot(equals(BuyConfirmLoading())));
+    });
+
+    test('Initial vs DeactivateLoading are unequal', () {
+      expect(BuyConfirmInitial(), isNot(equals(BuyDeactivateLoading())));
+    });
+
+    test('ConfirmLoading vs DeactivateLoading are unequal', () {
+      expect(BuyConfirmLoading(), isNot(equals(BuyDeactivateLoading())));
     });
 
     test('Success vs Failure are unequal', () {

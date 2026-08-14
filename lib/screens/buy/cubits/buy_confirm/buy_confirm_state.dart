@@ -17,6 +17,10 @@ class BuyConfirmLoading extends BuyConfirmState {
   const BuyConfirmLoading();
 }
 
+class BuyDeactivateLoading extends BuyConfirmState {
+  const BuyDeactivateLoading();
+}
+
 class BuyConfirmSuccess extends BuyConfirmState {
   // `reference` is always returned by the confirm endpoint and is the
   // purpose-of-payment fallback. `remittanceInfo` is the API-designated purpose

@@ -214,7 +214,7 @@ void main() {
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
     });
 
-    testWidgets('deactivate label is inert while loading', (tester) async {
+    testWidgets('deactivate label is inert while BuyConfirmLoading', (tester) async {
       when(() => cubit.state).thenReturn(const BuyConfirmLoading());
 
       await tester.pumpWidget(host());
@@ -223,6 +223,24 @@ void main() {
 
       expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsNothing);
       verifyNever(() => cubit.deactivateQuote(any()));
+    });
+
+    testWidgets('shows a loading indicator while deactivating', (tester) async {
+      when(() => cubit.state).thenReturn(const BuyDeactivateLoading());
+
+      await tester.pumpWidget(host());
+
+      expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    });
+
+    testWidgets('confirm tap is inert during BuyDeactivateLoading', (tester) async {
+      when(() => cubit.state).thenReturn(const BuyDeactivateLoading());
+
+      await tester.pumpWidget(host());
+      await tester.tap(find.text(S.current.buyPaymentConfirm));
+      await tester.pump();
+
+      verifyNever(() => cubit.confirmPayment(any()));
     });
 
     testWidgets('shows a snackbar with the generic error on failure', (tester) async {

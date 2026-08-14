@@ -89,16 +89,21 @@ class BuyConfirmButtonView extends StatelessWidget {
             spacing: 8.0,
             children: [
               AppFilledButton(
-                onPressed: () => context.read<BuyConfirmCubit>().confirmPayment(
-                  buyPaymentInfo.id,
-                ),
+                onPressed: state is BuyConfirmLoading || state is BuyDeactivateLoading
+                    ? null
+                    : () => context.read<BuyConfirmCubit>().confirmPayment(
+                        buyPaymentInfo.id,
+                      ),
                 state: state is BuyConfirmLoading ? .loading : .idle,
                 label: S.of(context).buyPaymentConfirm,
               ),
               AppFilledButton(
                 variant: FilledButtonVariant.secondary,
                 label: S.of(context).pendingTransactionDeactivate,
-                onPressed: state is BuyConfirmLoading ? null : () => _confirmAndDeactivate(context),
+                state: state is BuyDeactivateLoading ? .loading : .idle,
+                onPressed: state is BuyConfirmLoading || state is BuyDeactivateLoading
+                    ? null
+                    : () => _confirmAndDeactivate(context),
               ),
             ],
           ),
