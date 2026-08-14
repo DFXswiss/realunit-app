@@ -89,7 +89,7 @@ void main() {
           id: null,
           uid: null,
           type: TransactionType.buy,
-          state: TransactionState.processing,
+          state: TransactionState.waitingForPayment,
           date: DateTime.utc(2026, 5, 15),
         ),
         _tx(id: 1, state: TransactionState.waitingForPayment),

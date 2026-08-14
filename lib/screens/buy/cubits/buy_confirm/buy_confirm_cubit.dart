@@ -57,12 +57,15 @@ class BuyConfirmCubit extends Cubit<BuyConfirmState> {
     try {
       emit(const BuyDeactivateLoading());
       await _buyPaymentInfoService.deactivateQuote('$paymentInfoId');
+      if (isClosed) return;
       emit(const BuyDeactivateSuccess());
     } on ApiException catch (e) {
       developer.log(e.toString());
+      if (isClosed) return;
       emit(const BuyDeactivateFailure());
     } catch (e) {
       developer.log(e.toString());
+      if (isClosed) return;
       emit(const BuyDeactivateFailure());
     }
   }

@@ -162,6 +162,7 @@ void main() {
         id: null,
         uid: null,
         type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
       );
       when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
 
@@ -180,6 +181,7 @@ void main() {
         id: null,
         uid: '',
         type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
       );
       when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
 

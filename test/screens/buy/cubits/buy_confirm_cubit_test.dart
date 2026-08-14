@@ -256,6 +256,19 @@ void main() {
       await first;
     });
 
+    test('deactivateQuote completes without throwing when cubit is closed mid-flight',
+        () async {
+      final gate = Completer<void>();
+      when(() => service.deactivateQuote(any())).thenAnswer((_) => gate.future);
+
+      final cubit = BuyConfirmCubit(service);
+      final future = cubit.deactivateQuote(42);
+      expect(cubit.state, isA<BuyDeactivateLoading>());
+      await cubit.close();
+      gate.complete();
+      await expectLater(future, completes);
+    });
+
     test('confirmPayment while BuyDeactivateLoading does not call confirmPayment service',
         () async {
       final gate = Completer<void>();
