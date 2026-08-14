@@ -14,11 +14,17 @@ import '../../../../helper/helper.dart';
 class _MockPendingCubit extends MockCubit<List<TransactionDto>>
     implements PendingTransactionsCubit {}
 
-TransactionDto _tx({int? id = 1, TransactionType type = TransactionType.buy}) =>
+TransactionDto _tx({
+  int? id = 1,
+  String? uid,
+  TransactionType type = TransactionType.buy,
+  TransactionState state = TransactionState.processing,
+}) =>
     TransactionDto(
       id: id,
+      uid: uid,
       type: type,
-      state: TransactionState.processing,
+      state: state,
       date: DateTime.utc(2026, 5, 15),
     );
 
@@ -64,9 +70,9 @@ void main() {
     testWidgets('buy rows only show deactivate IconButton (sell has none)',
         (tester) async {
       when(() => cubit.state).thenReturn([
-        _tx(id: 1),
+        _tx(id: 1, state: TransactionState.waitingForPayment),
         _tx(id: 2, type: TransactionType.sell),
-        _tx(id: 3),
+        _tx(id: 3, state: TransactionState.waitingForPayment),
       ]);
 
       await tester.pumpApp(host());
@@ -85,7 +91,7 @@ void main() {
           state: TransactionState.processing,
           date: DateTime.utc(2026, 5, 15),
         ),
-        _tx(id: 1),
+        _tx(id: 1, state: TransactionState.waitingForPayment),
       ]);
 
       await tester.pumpApp(host());
@@ -100,7 +106,7 @@ void main() {
           id: null,
           uid: 'waiting-uid',
           type: TransactionType.buy,
-          state: TransactionState.processing,
+          state: TransactionState.waitingForPayment,
           date: DateTime.utc(2026, 5, 15),
         ),
         _tx(id: 2, type: TransactionType.sell),
@@ -111,12 +117,22 @@ void main() {
       expect(find.byType(IconButton), findsOneWidget);
     });
 
+    testWidgets('processing buy with numeric id does not show deactivate IconButton',
+        (tester) async {
+      when(() => cubit.state).thenReturn([
+        _tx(id: 1, state: TransactionState.processing),
+      ]);
+      await tester.pumpApp(host());
+      expect(find.byType(PendingTransactionRow), findsOneWidget);
+      expect(find.byType(IconButton), findsNothing);
+    });
+
     testWidgets('buy IconButton confirm wires to cubit.deactivate once',
         (tester) async {
       when(() => cubit.state).thenReturn([
-        _tx(id: 1),
+        _tx(id: 1, state: TransactionState.waitingForPayment),
         _tx(id: 2, type: TransactionType.sell),
-        _tx(id: 3),
+        _tx(id: 3, state: TransactionState.waitingForPayment),
       ]);
       when(() => cubit.deactivate(any())).thenAnswer((_) async {});
 

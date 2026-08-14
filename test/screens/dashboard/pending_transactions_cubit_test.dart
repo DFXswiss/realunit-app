@@ -95,7 +95,11 @@ void main() {
     });
 
     test('deactivate on a buy with id calls deactivateQuote then reloads', () async {
-      final buyTx = const TransactionDto(id: 7, type: TransactionType.buy);
+      final buyTx = const TransactionDto(
+        id: 7,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
       when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
 
       final cubit = PendingTransactionsCubit(service, buyService);
@@ -113,6 +117,7 @@ void main() {
         id: null,
         uid: 'u-1',
         type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
       );
       when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
 
@@ -135,6 +140,20 @@ void main() {
 
       verifyNever(() => buyService.deactivateQuote(any()));
       // only the constructor load
+      verify(() => service.fetchPendingTransactions()).called(1);
+    });
+
+    test('deactivate on a processing buy with numeric id does not call deactivateQuote', () async {
+      final buyTx = const TransactionDto(
+        id: 7,
+        type: TransactionType.buy,
+        state: TransactionState.processing,
+      );
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+      await cubit.deactivate(buyTx);
+      verifyNever(() => buyService.deactivateQuote(any()));
       verify(() => service.fetchPendingTransactions()).called(1);
     });
 
@@ -175,7 +194,11 @@ void main() {
     });
 
     test('when deactivateQuote throws, exception propagates and list is not reloaded', () async {
-      final buyTx = const TransactionDto(id: 7, type: TransactionType.buy);
+      final buyTx = const TransactionDto(
+        id: 7,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
       when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
       when(
         () => buyService.deactivateQuote(any()),
@@ -197,7 +220,11 @@ void main() {
     test(
       'after successful deactivateQuote, optimistic remove stays if reload fetch fails',
       () async {
-        final buyTx = const TransactionDto(id: 7, type: TransactionType.buy);
+        final buyTx = const TransactionDto(
+          id: 7,
+          type: TransactionType.buy,
+          state: TransactionState.waitingForPayment,
+        );
         var call = 0;
         when(() => service.fetchPendingTransactions()).thenAnswer((_) async {
           call++;
@@ -218,25 +245,48 @@ void main() {
       },
     );
 
-    test('overlapping deactivate does not call deactivateQuote a second time', () async {
-      final buyTx = const TransactionDto(id: 7, type: TransactionType.buy);
-      final otherBuy = const TransactionDto(id: 8, type: TransactionType.buy);
-      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx, otherBuy]);
-
+    test('overlapping deactivate of the same idOrUid does not call deactivateQuote a second time',
+        () async {
+      final buyTx = const TransactionDto(
+        id: 7,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx]);
       final completer = Completer<void>();
       when(() => buyService.deactivateQuote(any())).thenAnswer((_) => completer.future);
-
       final cubit = PendingTransactionsCubit(service, buyService);
       await cubit.stream.firstWhere((s) => s.isNotEmpty);
-
       final first = cubit.deactivate(buyTx);
-      // Second call while first is still in-flight — must be ignored.
-      await cubit.deactivate(otherBuy);
-
+      await cubit.deactivate(buyTx);
       completer.complete();
       await first;
+      verify(() => buyService.deactivateQuote('7')).called(1);
+    });
 
-      verify(() => buyService.deactivateQuote(any())).called(1);
+    test('overlapping deactivate of two different waiting buys both call deactivateQuote',
+        () async {
+      final buyTx = const TransactionDto(
+        id: 7,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      final otherBuy = const TransactionDto(
+        id: 8,
+        type: TransactionType.buy,
+        state: TransactionState.waitingForPayment,
+      );
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buyTx, otherBuy]);
+      final firstGate = Completer<void>();
+      when(() => buyService.deactivateQuote(any())).thenAnswer((_) => firstGate.future);
+      final cubit = PendingTransactionsCubit(service, buyService);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+      final first = cubit.deactivate(buyTx);
+      final second = cubit.deactivate(otherBuy);
+      firstGate.complete();
+      await Future.wait([first, second]);
+      verify(() => buyService.deactivateQuote('7')).called(1);
+      verify(() => buyService.deactivateQuote('8')).called(1);
     });
   });
 }

@@ -58,6 +58,7 @@ class DashboardPendingTransactionsView extends StatelessWidget {
                         key: ValueKey(t.id?.toString() ?? t.uid),
                         transaction: t,
                         onDeactivate: t.type == TransactionType.buy &&
+                                t.state == TransactionState.waitingForPayment &&
                                 (t.id != null || (t.uid != null && t.uid!.isNotEmpty))
                             ? () => context.read<PendingTransactionsCubit>().deactivate(t)
                             : null,
