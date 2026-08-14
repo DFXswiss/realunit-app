@@ -79,7 +79,10 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
           return const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailRequired);
         }
         if (paymentInfo.error == _quoteErrorPrimaryEmailNotConfirmed) {
-          return const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailNotConfirmed);
+          return const BuyPaymentInfoFailure(
+            PaymentInfoError.primaryEmailNotConfirmed,
+            context: 'RealunitBuy',
+          );
         }
         return const BuyPaymentInfoFailure(PaymentInfoError.unknown);
       }
