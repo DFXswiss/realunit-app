@@ -43,3 +43,11 @@ class BuyConfirmFailure extends BuyConfirmState {
   @override
   List<Object?> get props => [error];
 }
+
+class BuyDeactivateSuccess extends BuyConfirmState {
+  const BuyDeactivateSuccess();
+}
+
+class BuyDeactivateFailure extends BuyConfirmState {
+  const BuyDeactivateFailure();
+}

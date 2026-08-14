@@ -2,7 +2,8 @@ enum TransactionType {
   buy('Buy'),
   sell('Sell'),
   swap('Swap'),
-  referral('Referral');
+  referral('Referral')
+  ;
 
   final String value;
   const TransactionType(this.value);
@@ -10,9 +11,9 @@ enum TransactionType {
   static TransactionType? fromString(String? value) {
     if (value == null) return null;
     return TransactionType.values.cast<TransactionType?>().firstWhere(
-          (e) => e?.value == value,
-          orElse: () => null,
-        );
+      (e) => e?.value == value,
+      orElse: () => null,
+    );
   }
 }
 
@@ -31,7 +32,8 @@ enum TransactionState {
   returnPending('ReturnPending'),
   returned('Returned'),
   unassigned('Unassigned'),
-  waitingForPayment('WaitingForPayment');
+  waitingForPayment('WaitingForPayment')
+  ;
 
   final String value;
   const TransactionState(this.value);
@@ -39,9 +41,9 @@ enum TransactionState {
   static TransactionState? fromString(String? value) {
     if (value == null) return null;
     return TransactionState.values.cast<TransactionState?>().firstWhere(
-          (e) => e?.value == value,
-          orElse: () => null,
-        );
+      (e) => e?.value == value,
+      orElse: () => null,
+    );
   }
 
   bool get isPending => this != completed && this != failed && this != returned;
@@ -49,6 +51,7 @@ enum TransactionState {
 
 class TransactionDto {
   final int? id;
+  final String? uid;
   final TransactionType? type;
   final TransactionState? state;
   final double? rate;
@@ -64,6 +67,7 @@ class TransactionDto {
 
   const TransactionDto({
     this.id,
+    this.uid,
     this.type,
     this.state,
     this.rate,
@@ -81,6 +85,7 @@ class TransactionDto {
   factory TransactionDto.fromJson(Map<String, dynamic> json) {
     return TransactionDto(
       id: json['id'] as int?,
+      uid: json['uid'] as String?,
       type: TransactionType.fromString(json['type'] as String?),
       state: TransactionState.fromString(json['state'] as String?),
       rate: (json['rate'] as num?)?.toDouble(),
@@ -100,7 +105,6 @@ class TransactionDto {
 
   bool belongsToWallet(String walletAddress) {
     final address = walletAddress.toLowerCase();
-    return sourceAccount?.toLowerCase() == address ||
-        targetAccount?.toLowerCase() == address;
+    return sourceAccount?.toLowerCase() == address || targetAccount?.toLowerCase() == address;
   }
 }

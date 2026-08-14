@@ -12,6 +12,7 @@ import 'package:realunit_wallet/styles/currency.dart';
 class RealUnitBuyPaymentInfoService extends DFXAuthService {
   static const _buyPaymentInfoPath = '/v1/realunit/buy';
   static String _confirmPaymentPath(int id) => '/v1/realunit/buy/$id/confirm';
+  static String _deactivatePaymentPath(String idOrUid) => '/v1/realunit/buy/$idOrUid/deactivate';
 
   RealUnitBuyPaymentInfoService(super.appStore, super.walletService);
 
@@ -74,5 +75,14 @@ class RealUnitBuyPaymentInfoService extends DFXAuthService {
     final json = jsonDecode(response.body) as Map<String, dynamic>;
     final responseDto = RealUnitBuyConfirmDto.fromJson(json);
     return responseDto;
+  }
+
+  Future<void> deactivateQuote(String idOrUid) async {
+    final uri = buildUri(host, _deactivatePaymentPath(idOrUid));
+    final response = await authenticatedPut(uri);
+    if (response.statusCode != 200) {
+      final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
+      throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+    }
   }
 }

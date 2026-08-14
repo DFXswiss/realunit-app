@@ -16,8 +16,7 @@ import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/tab_selector.dart';
 
-class _MockBuyConfirmCubit extends MockCubit<BuyConfirmState>
-    implements BuyConfirmCubit {}
+class _MockBuyConfirmCubit extends MockCubit<BuyConfirmState> implements BuyConfirmCubit {}
 
 const _info = BuyPaymentInfo(
   amount: 300,
@@ -55,6 +54,7 @@ void main() {
     cubit = _MockBuyConfirmCubit();
     when(() => cubit.state).thenReturn(const BuyConfirmInitial());
     when(() => cubit.confirmPayment(any())).thenAnswer((_) async {});
+    when(() => cubit.deactivateQuote(any())).thenAnswer((_) async {});
   });
 
   Widget host({GoRouter? router}) {
@@ -95,6 +95,12 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirm), findsOneWidget);
     });
 
+    testWidgets('renders the secondary deactivate label', (tester) async {
+      await tester.pumpWidget(host());
+
+      expect(find.text(S.current.pendingTransactionDeactivate), findsOneWidget);
+    });
+
     testWidgets('tapping confirms the payment for the quote id', (tester) async {
       await tester.pumpWidget(host());
 
@@ -102,6 +108,51 @@ void main() {
       await tester.pump();
 
       verify(() => cubit.confirmPayment(42)).called(1);
+    });
+
+    testWidgets('shows a snackbar when deactivate fails', (tester) async {
+      whenListen(
+        cubit,
+        Stream.fromIterable([
+          const BuyDeactivateFailure(),
+        ]),
+        initialState: const BuyConfirmInitial(),
+      );
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+
+      expect(find.text(S.current.pendingTransactionDeactivateFailed), findsOneWidget);
+    });
+
+    testWidgets('deactivate dialog cancel does not call deactivateQuote', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.tap(find.text(S.current.pendingTransactionDeactivate));
+      await tester.pump();
+
+      expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsOneWidget);
+
+      await tester.tap(find.text(S.current.cancel));
+      await tester.pump();
+
+      verifyNever(() => cubit.deactivateQuote(any()));
+    });
+
+    testWidgets('deactivate dialog confirm calls deactivateQuote once', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.tap(find.text(S.current.pendingTransactionDeactivate));
+      await tester.pump();
+
+      expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsOneWidget);
+
+      await tester.tap(
+        find.widgetWithText(TextButton, S.current.pendingTransactionDeactivate),
+      );
+      await tester.pump();
+
+      verify(() => cubit.deactivateQuote(42)).called(1);
     });
 
     testWidgets('shows a loading indicator while confirming', (tester) async {
@@ -112,8 +163,7 @@ void main() {
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
     });
 
-    testWidgets('shows a snackbar with the generic error on failure',
-        (tester) async {
+    testWidgets('shows a snackbar with the generic error on failure', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -128,8 +178,7 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirmFailed), findsOneWidget);
     });
 
-    testWidgets('shows the aktionariat-specific error on a 503 failure',
-        (tester) async {
+    testWidgets('shows the aktionariat-specific error on a 503 failure', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -144,8 +193,7 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirmFailedAktionariat), findsOneWidget);
     });
 
-    testWidgets('shows the minimum-purchase error on an amount-too-low failure',
-        (tester) async {
+    testWidgets('shows the minimum-purchase error on an amount-too-low failure', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -160,9 +208,9 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirmFailedAmountTooLow), findsOneWidget);
     });
 
-    testWidgets(
-        'shows the aktionariat-specific error on a primary-email-required failure',
-        (tester) async {
+    testWidgets('shows the aktionariat-specific error on a primary-email-required failure', (
+      tester,
+    ) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -178,33 +226,32 @@ void main() {
     });
 
     GoRouter detailsRouter({BuyPaymentInfo info = _info}) => GoRouter(
-          initialLocation: '/buy',
-          routes: [
-            GoRoute(
-              name: AppRoutes.buy,
-              path: '/buy',
-              builder: (_, _) => Scaffold(
-                body: BlocProvider<BuyConfirmCubit>.value(
-                  value: cubit,
-                  child: BuyConfirmButtonView(
-                    buyPaymentInfo: info,
-                  ),
-                ),
+      initialLocation: '/buy',
+      routes: [
+        GoRoute(
+          name: AppRoutes.buy,
+          path: '/buy',
+          builder: (_, _) => Scaffold(
+            body: BlocProvider<BuyConfirmCubit>.value(
+              value: cubit,
+              child: BuyConfirmButtonView(
+                buyPaymentInfo: info,
               ),
             ),
-            GoRoute(
-              name: AppRoutes.buyPaymentDetails,
-              path: '/buyPaymentDetails',
-              builder: (_, state) => BuyPaymentDetailsPage(
-                params: state.extra as BuyPaymentDetailsParams,
-              ),
-            ),
-          ],
-        );
+          ),
+        ),
+        GoRoute(
+          name: AppRoutes.buyPaymentDetails,
+          path: '/buyPaymentDetails',
+          builder: (_, state) => BuyPaymentDetailsPage(
+            params: state.extra as BuyPaymentDetailsParams,
+          ),
+        ),
+      ],
+    );
 
     testWidgets('backward compatible: a reference-only success navigates to the '
-        'details page, shows the reference as Verwendungszweck and no QR tab',
-        (tester) async {
+        'details page, shows the reference as Verwendungszweck and no QR tab', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([

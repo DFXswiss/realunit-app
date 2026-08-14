@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/pending_transactions_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/pending_transaction_row.dart';
@@ -16,6 +17,7 @@ class DashboardPendingTransactions extends StatelessWidget {
     return BlocProvider(
       create: (context) => PendingTransactionsCubit(
         getIt<TransactionHistoryService>(),
+        getIt<RealUnitBuyPaymentInfoService>(),
       ),
       child: const DashboardPendingTransactionsView(),
     );
@@ -50,7 +52,16 @@ class DashboardPendingTransactionsView extends StatelessWidget {
               ),
               child: Column(
                 spacing: 12.0,
-                children: transactions.map((t) => PendingTransactionRow(transaction: t)).toList(),
+                children: transactions
+                    .map(
+                      (t) => PendingTransactionRow(
+                        transaction: t,
+                        onDeactivate: t.type == TransactionType.buy
+                            ? () => context.read<PendingTransactionsCubit>().deactivate(t)
+                            : null,
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ],

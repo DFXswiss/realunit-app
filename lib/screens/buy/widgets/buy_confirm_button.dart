@@ -65,26 +65,65 @@ class BuyConfirmButtonView extends StatelessWidget {
           final text = switch (state.error) {
             BuyConfirmError.aktionariat => S.of(context).buyPaymentConfirmFailedAktionariat,
             BuyConfirmError.amountTooLow => S.of(context).buyPaymentConfirmFailedAmountTooLow,
-            BuyConfirmError.primaryEmailRequired => S.of(context).buyPaymentConfirmFailedAktionariat,
+            BuyConfirmError.primaryEmailRequired =>
+              S.of(context).buyPaymentConfirmFailedAktionariat,
             BuyConfirmError.unknown => S.of(context).buyPaymentConfirmFailed,
           };
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(text)),
           );
         }
+        if (state is BuyDeactivateSuccess) {
+          context.pop();
+        }
+        if (state is BuyDeactivateFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(S.of(context).pendingTransactionDeactivateFailed)),
+          );
+        }
       },
       builder: (context, state) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
-          child: AppFilledButton(
-            onPressed: () => context.read<BuyConfirmCubit>().confirmPayment(
-              buyPaymentInfo.id,
-            ),
-            state: state is BuyConfirmLoading ? .loading : .idle,
-            label: S.of(context).buyPaymentConfirm,
+          child: Column(
+            children: [
+              AppFilledButton(
+                onPressed: () => context.read<BuyConfirmCubit>().confirmPayment(
+                  buyPaymentInfo.id,
+                ),
+                state: state is BuyConfirmLoading ? .loading : .idle,
+                label: S.of(context).buyPaymentConfirm,
+              ),
+              AppFilledButton(
+                variant: FilledButtonVariant.secondary,
+                label: S.of(context).pendingTransactionDeactivate,
+                onPressed: () => _confirmAndDeactivate(context),
+              ),
+            ],
           ),
         );
       },
     );
+  }
+
+  Future<void> _confirmAndDeactivate(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        content: Text(S.of(dialogContext).pendingTransactionDeactivateConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(S.of(dialogContext).cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(S.of(dialogContext).pendingTransactionDeactivate),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await context.read<BuyConfirmCubit>().deactivateQuote(buyPaymentInfo.id);
   }
 }

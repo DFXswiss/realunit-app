@@ -7,10 +7,12 @@ import 'package:realunit_wallet/styles/colors.dart';
 
 class PendingTransactionRow extends StatelessWidget {
   final TransactionDto transaction;
+  final Future<void> Function()? onDeactivate;
 
   const PendingTransactionRow({
     super.key,
     required this.transaction,
+    this.onDeactivate,
   });
 
   bool get _isBuy => transaction.type == TransactionType.buy;
@@ -82,9 +84,43 @@ class PendingTransactionRow extends StatelessWidget {
               ],
             ),
           ),
+          if (_isBuy && onDeactivate != null)
+            IconButton(
+              tooltip: S.of(context).pendingTransactionDeactivate,
+              icon: const Icon(Icons.close),
+              onPressed: () => _confirmAndDeactivate(context),
+            ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmAndDeactivate(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        content: Text(S.of(dialogContext).pendingTransactionDeactivateConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(S.of(dialogContext).cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(S.of(dialogContext).pendingTransactionDeactivate),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || onDeactivate == null) return;
+    try {
+      await onDeactivate!();
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(S.of(context).pendingTransactionDeactivateFailed)),
+      );
+    }
   }
 
   String _formatAmount(double amount) {

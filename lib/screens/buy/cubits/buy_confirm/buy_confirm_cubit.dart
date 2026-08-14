@@ -50,4 +50,18 @@ class BuyConfirmCubit extends Cubit<BuyConfirmState> {
       emit(const BuyConfirmFailure(BuyConfirmError.unknown));
     }
   }
+
+  Future<void> deactivateQuote(int paymentInfoId) async {
+    try {
+      emit(const BuyConfirmLoading());
+      await _buyPaymentInfoService.deactivateQuote('$paymentInfoId');
+      emit(const BuyDeactivateSuccess());
+    } on ApiException catch (e) {
+      developer.log(e.toString());
+      emit(const BuyDeactivateFailure());
+    } catch (e) {
+      developer.log(e.toString());
+      emit(const BuyDeactivateFailure());
+    }
+  }
 }
