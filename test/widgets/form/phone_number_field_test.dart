@@ -72,6 +72,20 @@ void main() {
       expect(harness.controller.value, isNull);
     });
 
+    testWidgets('shows the required error for an empty prefix', (tester) async {
+      final harness = await _pumpPhoneField(tester);
+
+      await tester.enterText(_prefixField(), '');
+      final isValid = harness.formKey.currentState!.validate();
+      await tester.pump();
+
+      expect(isValid, isFalse);
+      expect(
+        find.text(_phoneError(tester, (s) => s.registerPhoneNumberPrefixInvalid)),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('shows the digits-only error for non-digit input', (tester) async {
       final harness = await _pumpPhoneField(tester);
 
