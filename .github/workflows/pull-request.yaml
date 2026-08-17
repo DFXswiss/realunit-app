@@ -100,6 +100,15 @@ jobs:
           else
             git fetch --no-tags --depth=1 origin "$BASE"
           fi
+          # actions/checkout is shallow. A depth-1 fetch of the base SHA
+          # does not connect histories, so `git diff BASE...HEAD` dies
+          # with "no merge base". Deepen until the two tips meet.
+          if ! git merge-base "$BASE" HEAD >/dev/null 2>&1; then
+            git fetch --no-tags --deepen=200 origin
+          fi
+          if ! git merge-base "$BASE" HEAD >/dev/null 2>&1; then
+            git fetch --unshallow --no-tags origin || git fetch --no-tags --deepen=1000 origin
+          fi
           bash scripts/check-touched-ui-coverage.sh coverage/lcov.info "$BASE"
 
       # Narrow the coverage report to the README-defined activated surface:

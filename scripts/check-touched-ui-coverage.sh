@@ -26,6 +26,11 @@ export LC_ALL=C
 
 # Collect touched UI files relative to the merge base. Triple-dot uses the
 # merge-base of BASE and HEAD so the set matches the PR diff.
+if ! git merge-base "$BASE" HEAD >/dev/null 2>&1; then
+  echo "error: no merge base between $BASE and HEAD — fetch more history" >&2
+  exit 1
+fi
+
 touched="$(mktemp)"
 trap 'rm -f "$touched"' EXIT
 
