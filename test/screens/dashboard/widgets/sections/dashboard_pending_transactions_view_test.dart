@@ -34,19 +34,18 @@ TransactionDto _tx({
 
 void main() {
   late _MockPendingCubit cubit;
-  late bool cubitClosed;
 
   setUpAll(() {
     registerFallbackValue(_tx());
     registerFallbackValue('');
+    registerFallbackValue(null);
   });
 
   setUp(() {
     cubit = _MockPendingCubit();
-    cubitClosed = false;
     when(() => cubit.reload()).thenAnswer((_) async {});
     when(() => cubit.drop(any())).thenReturn(null);
-    when(() => cubit.isClosed).thenAnswer((_) => cubitClosed);
+    when(() => cubit.applyDetailReturn(any())).thenAnswer((_) async {});
   });
 
   Widget host() => BlocProvider<PendingTransactionsCubit>.value(
@@ -193,34 +192,10 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      verify(() => cubit.drop('1')).called(1);
-      verify(() => cubit.reload()).called(1);
+      verify(() => cubit.applyDetailReturn('1')).called(1);
     });
 
-    testWidgets('closed cubit after pop is a no-op', (tester) async {
-      when(() => cubit.state).thenReturn([
-        _tx(id: 1, state: TransactionState.waitingForPayment),
-      ]);
-
-      await tester.pumpWidget(hostWithRouter());
-      await tester.pump();
-
-      await tester.tap(find.byKey(const ValueKey('pendingTx-1')));
-      await tester.pump();
-      await tester.pump();
-      expect(find.byKey(const ValueKey('pending-detail-marker')), findsOneWidget);
-
-      cubitClosed = true;
-      final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
-      navigator.pop('1');
-      await tester.pump();
-      await tester.pump();
-
-      verifyNever(() => cubit.drop(any()));
-      verifyNever(() => cubit.reload());
-    });
-
-    testWidgets('pop without a cancelled id reloads without drop', (tester) async {
+    testWidgets('pop without a cancelled id still applies the return', (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 1, state: TransactionState.waitingForPayment),
       ]);
@@ -237,8 +212,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      verifyNever(() => cubit.drop(any()));
-      verify(() => cubit.reload()).called(1);
+      verify(() => cubit.applyDetailReturn(null)).called(1);
     });
 
     testWidgets('unmount while the detail route is open still reloads the cubit', (tester) async {
@@ -308,8 +282,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      verifyNever(() => cubit.drop(any()));
-      verify(() => cubit.reload()).called(1);
+      verify(() => cubit.applyDetailReturn(null)).called(1);
     });
 
     testWidgets('tap on sell row also navigates (details without cancel CTA)', (tester) async {

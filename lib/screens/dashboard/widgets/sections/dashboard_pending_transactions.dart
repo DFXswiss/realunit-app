@@ -63,13 +63,7 @@ class DashboardPendingTransactionsView extends StatelessWidget {
                             AppRoutes.pendingTransaction,
                             extra: t,
                           );
-                          // The cubit lives on DashboardPage and survives this
-                          // view being swapped (zero vs non-zero balance).
-                          if (pending.isClosed) return;
-                          if (removed != null && removed.isNotEmpty) {
-                            pending.drop(removed);
-                          }
-                          await pending.reload();
+                          await pending.applyDetailReturn(removed);
                         },
                       ),
                     )

@@ -144,6 +144,42 @@ void main() {
       expect(cubit.state, isEmpty);
     });
 
+    test('applyDetailReturn drops then reloads', () async {
+      final buy = const TransactionDto(id: 7, type: TransactionType.buy);
+      final sell = const TransactionDto(id: 8, type: TransactionType.sell);
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buy, sell]);
+
+      final cubit = PendingTransactionsCubit(service);
+      await cubit.stream.firstWhere((s) => s.length == 2);
+
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [sell]);
+      await cubit.applyDetailReturn('7');
+
+      expect(cubit.state, [sell]);
+      verify(() => service.fetchPendingTransactions()).called(2);
+    });
+
+    test('applyDetailReturn with null only reloads', () async {
+      final buy = const TransactionDto(id: 7, type: TransactionType.buy);
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buy]);
+
+      final cubit = PendingTransactionsCubit(service);
+      await cubit.stream.firstWhere((s) => s.isNotEmpty);
+
+      await cubit.applyDetailReturn(null);
+      expect(cubit.state, [buy]);
+      verify(() => service.fetchPendingTransactions()).called(2);
+    });
+
+    test('applyDetailReturn on a closed cubit is a no-op', () async {
+      when(() => service.fetchPendingTransactions()).thenAnswer((_) async => []);
+      final cubit = PendingTransactionsCubit(service);
+      await cubit.close();
+
+      await cubit.applyDetailReturn('7');
+      verify(() => service.fetchPendingTransactions()).called(1);
+    });
+
     test('drop with empty id is a no-op', () async {
       final buy = const TransactionDto(id: 7, type: TransactionType.buy);
       when(() => service.fetchPendingTransactions()).thenAnswer((_) async => [buy]);

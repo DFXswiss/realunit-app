@@ -21,6 +21,16 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
     emit(state.where((t) => (t.id?.toString() ?? t.uid) != idOrUid).toList());
   }
 
+  /// Applies the detail-page pop result. Safe after the list view unmounts
+  /// because the cubit lives on [DashboardPage].
+  Future<void> applyDetailReturn(String? idOrUid) async {
+    if (isClosed) return;
+    if (idOrUid != null && idOrUid.isNotEmpty) {
+      drop(idOrUid);
+    }
+    await reload();
+  }
+
   Future<void> _loadPendingTransactions() async {
     final generation = ++_loadGeneration;
     try {
