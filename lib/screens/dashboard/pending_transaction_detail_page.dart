@@ -174,18 +174,21 @@ class PendingTransactionDetailView extends StatelessWidget {
   }
 
   Future<void> _confirmAndDeactivate(BuildContext context) async {
+    // Read strings from the page context. Alchemist / overlay routes do not
+    // always inherit S, so S.of(dialogContext) can be null.
+    final s = S.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        content: Text(S.of(dialogContext).pendingTransactionDeactivateConfirm),
+        content: Text(s.pendingTransactionDeactivateConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(S.of(dialogContext).cancel),
+            child: Text(s.cancel),
           ),
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(S.of(dialogContext).pendingTransactionDeactivate),
+            child: Text(s.pendingTransactionDeactivate),
           ),
         ],
       ),
