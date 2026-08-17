@@ -213,36 +213,41 @@ class CancelQuoteConfirmSheet extends StatelessWidget {
             margin: const EdgeInsets.only(top: 5),
             width: 36,
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  strings.pendingTransactionDeactivateConfirm,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: RealUnitColors.neutral500,
-                  ),
+          ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+            ),
+            child: ScrollableActionsLayout(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+              body: Text(
+                strings.pendingTransactionDeactivateConfirm,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: RealUnitColors.neutral500,
                 ),
-                const SizedBox(height: 24),
-                Row(
-                  spacing: 12,
-                  children: [
-                    Expanded(
-                      child: AppFilledButton(
-                        variant: FilledButtonVariant.secondary,
-                        onPressed: () => Navigator.of(context).pop(false),
-                        label: strings.cancel,
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Row(
+                    spacing: 12,
+                    children: [
+                      Expanded(
+                        child: AppFilledButton(
+                          variant: FilledButtonVariant.secondary,
+                          onPressed: () => Navigator.of(context).pop(false),
+                          label: strings.cancel,
+                        ),
                       ),
-                    ),
-                    Expanded(
-                      child: AppFilledButton(
-                        onPressed: () => Navigator.of(context).pop(true),
-                        label: strings.pendingTransactionDeactivate,
+                      Expanded(
+                        child: AppFilledButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          label: strings.pendingTransactionDeactivate,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
