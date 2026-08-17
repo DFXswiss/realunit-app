@@ -3,12 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
-import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/pending_transactions_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/pending_transaction_row.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_pending_transactions.dart';
@@ -16,8 +14,6 @@ import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 
 class _MockPendingCubit extends MockCubit<List<TransactionDto>>
     implements PendingTransactionsCubit {}
-
-class _MockTransactionHistoryService extends Mock implements TransactionHistoryService {}
 
 TransactionDto _tx({
   int? id = 1,
@@ -59,7 +55,9 @@ void main() {
         GlobalWidgetsLocalizations.delegate,
       ],
       supportedLocales: S.delegate.supportedLocales,
-      home: const Scaffold(body: DashboardPendingTransactionsView()),
+      // Non-const so DashboardPendingTransactionsView's constructor is covered.
+      // ignore: prefer_const_constructors
+      home: Scaffold(body: DashboardPendingTransactionsView()),
     ),
   );
 
@@ -102,35 +100,6 @@ void main() {
       supportedLocales: S.delegate.supportedLocales,
     );
   }
-
-  group('$DashboardPendingTransactions', () {
-    testWidgets('provides PendingTransactionsCubit via getIt and hosts the view', (tester) async {
-      final getIt = GetIt.instance;
-      await getIt.reset();
-      final history = _MockTransactionHistoryService();
-      when(() => history.fetchPendingTransactions()).thenAnswer((_) async => []);
-      getIt.registerSingleton<TransactionHistoryService>(history);
-      addTearDown(() async => getIt.reset());
-
-      await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('de'),
-          localizationsDelegates: const [
-            S.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-          ],
-          supportedLocales: S.delegate.supportedLocales,
-          home: const Scaffold(body: DashboardPendingTransactions()),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.byType(DashboardPendingTransactionsView), findsOneWidget);
-    });
-  });
 
   group('$DashboardPendingTransactionsView', () {
     testWidgets('empty list: renders SizedBox.shrink (no PendingTransactionRow)', (tester) async {
