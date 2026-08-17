@@ -34,6 +34,7 @@ TransactionDto _tx({
 
 void main() {
   late _MockPendingCubit cubit;
+  late bool cubitClosed;
 
   setUpAll(() {
     registerFallbackValue(_tx());
@@ -42,9 +43,10 @@ void main() {
 
   setUp(() {
     cubit = _MockPendingCubit();
+    cubitClosed = false;
     when(() => cubit.reload()).thenAnswer((_) async {});
     when(() => cubit.drop(any())).thenReturn(null);
-    when(() => cubit.isClosed).thenReturn(false);
+    when(() => cubit.isClosed).thenAnswer((_) => cubitClosed);
   });
 
   Widget host() => BlocProvider<PendingTransactionsCubit>.value(
@@ -199,7 +201,6 @@ void main() {
       when(() => cubit.state).thenReturn([
         _tx(id: 1, state: TransactionState.waitingForPayment),
       ]);
-      when(() => cubit.isClosed).thenReturn(true);
 
       await tester.pumpWidget(hostWithRouter());
       await tester.pump();
@@ -207,7 +208,9 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('pendingTx-1')));
       await tester.pump();
       await tester.pump();
+      expect(find.byKey(const ValueKey('pending-detail-marker')), findsOneWidget);
 
+      cubitClosed = true;
       final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
       navigator.pop('1');
       await tester.pump();
