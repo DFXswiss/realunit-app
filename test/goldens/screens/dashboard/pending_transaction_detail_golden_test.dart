@@ -1,4 +1,3 @@
-import 'package:alchemist/alchemist.dart' show precacheImages;
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -59,16 +58,12 @@ void main() {
     );
 
     goldenTest(
-      'deactivate confirm dialog open',
+      'deactivate confirm dialog',
       fileName: 'pending_transaction_detail_deactivate_overlay',
       constraints: phoneConstraints,
-      pumpBeforeTest: (tester) async {
-        await precacheImages(tester);
-        await tester.pump();
-        await tester.tap(find.text(S.current.pendingTransactionDeactivate));
-        await tester.pump();
-      },
-      builder: () => wrapForGolden(buildSubject(buyWaiting)),
+      builder: () => wrapForGolden(
+        CancelQuoteConfirmDialog(strings: S.current),
+      ),
     );
 
     goldenTest(

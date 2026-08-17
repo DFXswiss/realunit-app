@@ -174,26 +174,43 @@ class PendingTransactionDetailView extends StatelessWidget {
   }
 
   Future<void> _confirmAndDeactivate(BuildContext context) async {
-    // Read strings from the page context. Alchemist / overlay routes do not
-    // always inherit S, so S.of(dialogContext) can be null.
-    final s = S.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        content: Text(s.pendingTransactionDeactivateConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(s.cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(s.pendingTransactionDeactivate),
-          ),
-        ],
+      builder: (dialogContext) => CancelQuoteConfirmDialog(
+        strings: S.of(context),
       ),
     );
     if (confirmed != true || !context.mounted) return;
     await context.read<PendingTransactionDetailCubit>().deactivate(transaction);
+  }
+}
+
+/// Confirm dialog for cancelling a waiting buy quote.
+///
+/// Takes [S] from the page context so Alchemist overlay routes (which do not
+/// inherit localizations) can still golden the same widget.
+class CancelQuoteConfirmDialog extends StatelessWidget {
+  final S strings;
+
+  const CancelQuoteConfirmDialog({
+    super.key,
+    required this.strings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      content: Text(strings.pendingTransactionDeactivateConfirm),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: Text(strings.cancel),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: Text(strings.pendingTransactionDeactivate),
+        ),
+      ],
+    );
   }
 }
