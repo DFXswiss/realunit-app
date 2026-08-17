@@ -108,8 +108,8 @@ void main() {
     );
   }
 
-  /// Success dual-CTA: real BuyConfirmCubit via GetIt service + GoRouter for
-  /// confirm navigation; deactivate opens an AlertDialog.
+  /// Success CTA: real BuyConfirmCubit via GetIt service + GoRouter for
+  /// confirm navigation. Cancellation is not on this screen.
   void stubSuccessCtaState() {
     when(() => buyPaymentInfoCubit.state).thenReturn(
       const BuyPaymentInfoSuccess(
@@ -132,7 +132,6 @@ void main() {
     when(() => buyService.confirmPayment(any())).thenAnswer(
       (_) async => const RealUnitBuyConfirmDto(reference: 'REF-456'),
     );
-    when(() => buyService.deactivateQuote(any())).thenAnswer((_) async {});
   }
 
   Widget buildSubject() {
@@ -256,9 +255,9 @@ void main() {
     }
   });
 
-  // Success two-CTA: separate matrix groups so each cell performs overflow +
-  // exactly one real tap (confirm navigates; deactivate opens a dialog).
-  group('BuyView Success dual-CTA matrix — confirm (full device × textScale)', () {
+  // Success confirm CTA: overflow + one real tap (confirm navigates).
+  // Cancellation is not on this screen — it lives on the pending-tx detail page.
+  group('BuyView Success confirm matrix (full device × textScale)', () {
     for (final cell in kFullResponsiveMatrix) {
       testWidgets('${cell.id}_success_confirm', (tester) async {
         await withTargetPlatform(cell.device.platform, () async {
@@ -277,31 +276,6 @@ void main() {
             find.text(S.current.buyPaymentConfirm),
             within: find.byType(BuyView),
             reason: '${cell.label}: Success confirm CTA not tappable',
-          );
-        });
-      });
-    }
-  });
-
-  group('BuyView Success dual-CTA matrix — deactivate (full device × textScale)', () {
-    for (final cell in kFullResponsiveMatrix) {
-      testWidgets('${cell.id}_success_deactivate', (tester) async {
-        await withTargetPlatform(cell.device.platform, () async {
-          stubSuccessCtaState();
-
-          await expectNoLayoutOverflow(
-            tester,
-            () async {
-              await pumpSuccessScreen(tester, cell);
-            },
-            reason: 'overflow on ${cell.label} (Success deactivate)',
-          );
-
-          await expectFullyTappable(
-            tester,
-            find.text(S.current.pendingTransactionDeactivate),
-            within: find.byType(BuyView),
-            reason: '${cell.label}: Success deactivate CTA not tappable',
           );
         });
       });

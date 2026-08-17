@@ -14,6 +14,9 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 /// confirms the purchase (binding) via [BuyConfirmCubit]; on success it opens
 /// the `Zahlungsdetails` page with the bank-transfer instructions, on failure
 /// it surfaces the typed error as a snackbar.
+///
+/// Cancelling a quote is only available after a binding purchase, on the
+/// pending-transaction detail page — not on this confirm screen.
 class BuyConfirmButton extends StatelessWidget {
   final BuyPaymentInfo buyPaymentInfo;
 
@@ -73,63 +76,21 @@ class BuyConfirmButtonView extends StatelessWidget {
             SnackBar(content: Text(text)),
           );
         }
-        if (state is BuyDeactivateSuccess) {
-          context.pop();
-        }
-        if (state is BuyDeactivateFailure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(S.of(context).pendingTransactionDeactivateFailed)),
-          );
-        }
       },
       builder: (context, state) {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
-          child: Column(
-            spacing: 8.0,
-            children: [
-              AppFilledButton(
-                onPressed: state is BuyConfirmLoading || state is BuyDeactivateLoading
-                    ? null
-                    : () => context.read<BuyConfirmCubit>().confirmPayment(
-                        buyPaymentInfo.id,
-                      ),
-                state: state is BuyConfirmLoading ? .loading : .idle,
-                label: S.of(context).buyPaymentConfirm,
-              ),
-              AppFilledButton(
-                variant: FilledButtonVariant.secondary,
-                label: S.of(context).pendingTransactionDeactivate,
-                state: state is BuyDeactivateLoading ? .loading : .idle,
-                onPressed: state is BuyConfirmLoading || state is BuyDeactivateLoading
-                    ? null
-                    : () => _confirmAndDeactivate(context),
-              ),
-            ],
+          child: AppFilledButton(
+            onPressed: state is BuyConfirmLoading
+                ? null
+                : () => context.read<BuyConfirmCubit>().confirmPayment(
+                    buyPaymentInfo.id,
+                  ),
+            state: state is BuyConfirmLoading ? .loading : .idle,
+            label: S.of(context).buyPaymentConfirm,
           ),
         );
       },
     );
-  }
-
-  Future<void> _confirmAndDeactivate(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        content: Text(S.of(dialogContext).pendingTransactionDeactivateConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(S.of(dialogContext).cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(S.of(dialogContext).pendingTransactionDeactivate),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-    await context.read<BuyConfirmCubit>().deactivateQuote(buyPaymentInfo.id);
   }
 }

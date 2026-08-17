@@ -27,33 +27,6 @@ void main() {
     });
   });
 
-  group('BuyDeactivateLoading', () {
-    test('two instances are equal and props are empty', () {
-      final a = BuyDeactivateLoading();
-      final b = BuyDeactivateLoading();
-      expect(a, equals(b));
-      expect(a.props, isEmpty);
-    });
-  });
-
-  group('BuyDeactivateSuccess', () {
-    test('two instances are equal and props are empty', () {
-      final a = BuyDeactivateSuccess();
-      final b = BuyDeactivateSuccess();
-      expect(a, equals(b));
-      expect(a.props, isEmpty);
-    });
-  });
-
-  group('BuyDeactivateFailure', () {
-    test('two instances are equal and props are empty', () {
-      final a = BuyDeactivateFailure();
-      final b = BuyDeactivateFailure();
-      expect(a, equals(b));
-      expect(a.props, isEmpty);
-    });
-  });
-
   group('BuyConfirmSuccess', () {
     test('same fields are equal and props match', () {
       final a = BuyConfirmSuccess(
@@ -128,26 +101,10 @@ void main() {
       expect(BuyConfirmInitial(), isNot(equals(BuyConfirmLoading())));
     });
 
-    test('Initial vs DeactivateLoading are unequal', () {
-      expect(BuyConfirmInitial(), isNot(equals(BuyDeactivateLoading())));
-    });
-
-    test('ConfirmLoading vs DeactivateLoading are unequal', () {
-      expect(BuyConfirmLoading(), isNot(equals(BuyDeactivateLoading())));
-    });
-
     test('Success vs Failure are unequal', () {
       final s = BuyConfirmSuccess(reference: 'ref');
       final f = BuyConfirmFailure(BuyConfirmError.unknown);
       expect(s, isNot(equals(f)));
-    });
-
-    test('DeactivateSuccess vs DeactivateFailure are unequal', () {
-      expect(BuyDeactivateSuccess(), isNot(equals(BuyDeactivateFailure())));
-    });
-
-    test('Initial vs DeactivateSuccess are unequal', () {
-      expect(BuyConfirmInitial(), isNot(equals(BuyDeactivateSuccess())));
     });
   });
 }

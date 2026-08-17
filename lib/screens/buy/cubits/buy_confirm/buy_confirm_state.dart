@@ -17,10 +17,6 @@ class BuyConfirmLoading extends BuyConfirmState {
   const BuyConfirmLoading();
 }
 
-class BuyDeactivateLoading extends BuyConfirmState {
-  const BuyDeactivateLoading();
-}
-
 class BuyConfirmSuccess extends BuyConfirmState {
   // `reference` is always returned by the confirm endpoint and is the
   // purpose-of-payment fallback. `remittanceInfo` is the API-designated purpose
@@ -46,12 +42,4 @@ class BuyConfirmFailure extends BuyConfirmState {
 
   @override
   List<Object?> get props => [error];
-}
-
-class BuyDeactivateSuccess extends BuyConfirmState {
-  const BuyDeactivateSuccess();
-}
-
-class BuyDeactivateFailure extends BuyConfirmState {
-  const BuyDeactivateFailure();
 }

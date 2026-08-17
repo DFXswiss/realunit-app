@@ -25,7 +25,7 @@ class BuyConfirmCubit extends Cubit<BuyConfirmState> {
       super(const BuyConfirmInitial());
 
   Future<void> confirmPayment(int paymentInfoId) async {
-    if (state is BuyConfirmLoading || state is BuyDeactivateLoading) return;
+    if (state is BuyConfirmLoading) return;
     try {
       emit(const BuyConfirmLoading());
       final dto = await _buyPaymentInfoService.confirmPayment(paymentInfoId);
@@ -49,24 +49,6 @@ class BuyConfirmCubit extends Cubit<BuyConfirmState> {
     } catch (e) {
       developer.log(e.toString());
       emit(const BuyConfirmFailure(BuyConfirmError.unknown));
-    }
-  }
-
-  Future<void> deactivateQuote(int paymentInfoId) async {
-    if (state is BuyConfirmLoading || state is BuyDeactivateLoading) return;
-    try {
-      emit(const BuyDeactivateLoading());
-      await _buyPaymentInfoService.deactivateQuote('$paymentInfoId');
-      if (isClosed) return;
-      emit(const BuyDeactivateSuccess());
-    } on ApiException catch (e) {
-      developer.log(e.toString());
-      if (isClosed) return;
-      emit(const BuyDeactivateFailure());
-    } catch (e) {
-      developer.log(e.toString());
-      if (isClosed) return;
-      emit(const BuyDeactivateFailure());
     }
   }
 }

@@ -195,6 +195,13 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     productionPath: 'lib/screens/buy/buy_page.dart',
   ),
   ResponsiveSurface(
+    id: 'pending_transaction_detail',
+    description: 'Pending transaction detail page (cancel-quote CTA)',
+    matrixTestPath:
+        'test/screens/dashboard/pending_transaction_detail_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/dashboard/pending_transaction_detail_page.dart',
+  ),
+  ResponsiveSurface(
     id: 'pay_quote_page',
     description: 'Pay quote page (confirm CTA)',
     matrixTestPath: 'test/screens/pay/pay_quote_responsive_matrix_test.dart',

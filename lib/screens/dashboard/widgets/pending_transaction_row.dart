@@ -5,28 +5,21 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 
-class PendingTransactionRow extends StatefulWidget {
+class PendingTransactionRow extends StatelessWidget {
   final TransactionDto transaction;
-  final Future<void> Function()? onDeactivate;
+  final VoidCallback? onTap;
 
   const PendingTransactionRow({
     super.key,
     required this.transaction,
-    this.onDeactivate,
+    this.onTap,
   });
 
-  @override
-  State<PendingTransactionRow> createState() => _PendingTransactionRowState();
-}
-
-class _PendingTransactionRowState extends State<PendingTransactionRow> {
-  bool _busy = false;
-
-  bool get _isBuy => widget.transaction.type == TransactionType.buy;
+  bool get _isBuy => transaction.type == TransactionType.buy;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       decoration: BoxDecoration(
         borderRadius: .circular(20),
         color: RealUnitColors.basic.white,
@@ -55,7 +48,7 @@ class _PendingTransactionRowState extends State<PendingTransactionRow> {
                   ),
                 ),
                 Text(
-                  widget.transaction.state == .waitingForPayment
+                  transaction.state == .waitingForPayment
                       ? S.of(context).transactionWaitingForPayment
                       : S.of(context).transactionPending,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -69,18 +62,18 @@ class _PendingTransactionRowState extends State<PendingTransactionRow> {
             child: Column(
               crossAxisAlignment: .end,
               children: [
-                if (widget.transaction.inputAmount != null && widget.transaction.inputAsset != null)
+                if (transaction.inputAmount != null && transaction.inputAsset != null)
                   Text(
-                    '${_formatAmount(widget.transaction.inputAmount!)} ${widget.transaction.inputAsset}',
+                    '${_formatAmount(transaction.inputAmount!)} ${transaction.inputAsset}',
                     textAlign: .end,
                     maxLines: 2,
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       fontWeight: .w600,
                     ),
                   ),
-                if (widget.transaction.date != null)
+                if (transaction.date != null)
                   Text(
-                    DateFormat('MMM dd, yyyy').format(widget.transaction.date!.toLocal()),
+                    DateFormat('MMM dd, yyyy').format(transaction.date!.toLocal()),
                     textAlign: .end,
                     maxLines: 1,
                     overflow: .ellipsis,
@@ -91,47 +84,20 @@ class _PendingTransactionRowState extends State<PendingTransactionRow> {
               ],
             ),
           ),
-          if (_isBuy && widget.onDeactivate != null)
-            IconButton(
-              tooltip: S.of(context).pendingTransactionDeactivate,
-              icon: const Icon(Icons.close),
-              onPressed: _busy ? null : () => _confirmAndDeactivate(context),
-            ),
         ],
       ),
     );
-  }
 
-  Future<void> _confirmAndDeactivate(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        content: Text(S.of(dialogContext).pendingTransactionDeactivateConfirm),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(S.of(dialogContext).cancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text(S.of(dialogContext).pendingTransactionDeactivate),
-          ),
-        ],
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: .circular(20),
+        onTap: onTap,
+        child: content,
       ),
     );
-    if (confirmed != true || widget.onDeactivate == null || !mounted) return;
-    setState(() => _busy = true);
-    try {
-      await widget.onDeactivate!();
-    } catch (_) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(S.of(context).pendingTransactionDeactivateFailed)),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 
   String _formatAmount(double amount) {

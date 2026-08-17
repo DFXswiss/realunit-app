@@ -1,12 +1,17 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/sell_payment_info.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/buy/buy_page.dart';
 import 'package:realunit_wallet/screens/buy/buy_payment_details_page.dart';
 import 'package:realunit_wallet/screens/create_wallet/create_wallet_page.dart';
+import 'package:realunit_wallet/screens/dashboard/cubits/pending_transaction_detail/pending_transaction_detail_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/dashboard_page.dart';
+import 'package:realunit_wallet/screens/dashboard/pending_transaction_detail_page.dart';
 import 'package:realunit_wallet/screens/debug_auth/debug_auth_page.dart';
 import 'package:realunit_wallet/screens/hardware_connect_bitbox/bitbox_address_recovery_page.dart';
 import 'package:realunit_wallet/screens/home/home_page.dart';
@@ -47,6 +52,7 @@ import 'package:realunit_wallet/screens/transaction_history/transaction_history_
 import 'package:realunit_wallet/screens/verify_seed/verify_seed_page.dart';
 import 'package:realunit_wallet/screens/web_view/web_view_page.dart';
 import 'package:realunit_wallet/screens/welcome/welcome_page.dart';
+import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_link_entry.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
@@ -147,6 +153,18 @@ final GoRouter routerConfig = GoRouter(
           name: AppRoutes.transactionHistory,
           path: 'transactionHistory',
           builder: (_, _) => const TransactionHistoryPage(),
+        ),
+        GoRoute(
+          name: AppRoutes.pendingTransaction,
+          path: 'pendingTransaction',
+          builder: (_, state) => BlocProvider(
+            create: (_) => PendingTransactionDetailCubit(
+              getIt<RealUnitBuyPaymentInfoService>(),
+            ),
+            child: PendingTransactionDetailPage(
+              transaction: state.extra as TransactionDto,
+            ),
+          ),
         ),
       ],
     ),

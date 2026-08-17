@@ -186,48 +186,6 @@ void main() {
       expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.unknown);
     });
 
-    test('deactivateQuote calls service and emits BuyDeactivateSuccess', () async {
-      when(() => service.deactivateQuote(any())).thenAnswer((_) async {});
-
-      final cubit = BuyConfirmCubit(service);
-      final done = cubit.stream.firstWhere((s) => s is BuyDeactivateSuccess);
-      await cubit.deactivateQuote(42);
-      await done;
-
-      expect(cubit.state, isA<BuyDeactivateSuccess>());
-      verify(() => service.deactivateQuote('42')).called(1);
-    });
-
-    test('deactivateQuote emits BuyDeactivateFailure when service throws', () async {
-      when(
-        () => service.deactivateQuote(any()),
-      ).thenAnswer((_) async => throw Exception('network'));
-
-      final cubit = BuyConfirmCubit(service);
-      final done = cubit.stream.firstWhere((s) => s is BuyDeactivateFailure);
-      await cubit.deactivateQuote(42);
-      await done;
-
-      expect(cubit.state, isA<BuyDeactivateFailure>());
-    });
-
-    test('deactivateQuote emits BuyDeactivateFailure on ApiException', () async {
-      when(() => service.deactivateQuote(any())).thenAnswer(
-        (_) async => throw const ApiException(
-          statusCode: 500,
-          code: 'INTERNAL',
-          message: 'oops',
-        ),
-      );
-
-      final cubit = BuyConfirmCubit(service);
-      final done = cubit.stream.firstWhere((s) => s is BuyDeactivateFailure);
-      await cubit.deactivateQuote(42);
-      await done;
-
-      expect(cubit.state, isA<BuyDeactivateFailure>());
-    });
-
     test('confirmPayment while loading does not call the service again', () async {
       final gate = Completer<RealUnitBuyConfirmDto>();
       when(() => service.confirmPayment(any())).thenAnswer((_) => gate.future);
@@ -237,63 +195,6 @@ void main() {
       expect(cubit.state, isA<BuyConfirmLoading>());
       await cubit.confirmPayment(42);
       verify(() => service.confirmPayment(42)).called(1);
-
-      gate.complete(const RealUnitBuyConfirmDto(reference: 'RU'));
-      await first;
-    });
-
-    test('deactivateQuote while loading does not call the service again', () async {
-      final gate = Completer<void>();
-      when(() => service.deactivateQuote(any())).thenAnswer((_) => gate.future);
-
-      final cubit = BuyConfirmCubit(service);
-      final first = cubit.deactivateQuote(42);
-      expect(cubit.state, isA<BuyDeactivateLoading>());
-      await cubit.deactivateQuote(42);
-      verify(() => service.deactivateQuote('42')).called(1);
-
-      gate.complete();
-      await first;
-    });
-
-    test('deactivateQuote completes without throwing when cubit is closed mid-flight',
-        () async {
-      final gate = Completer<void>();
-      when(() => service.deactivateQuote(any())).thenAnswer((_) => gate.future);
-
-      final cubit = BuyConfirmCubit(service);
-      final future = cubit.deactivateQuote(42);
-      expect(cubit.state, isA<BuyDeactivateLoading>());
-      await cubit.close();
-      gate.complete();
-      await expectLater(future, completes);
-    });
-
-    test('confirmPayment while BuyDeactivateLoading does not call confirmPayment service',
-        () async {
-      final gate = Completer<void>();
-      when(() => service.deactivateQuote(any())).thenAnswer((_) => gate.future);
-
-      final cubit = BuyConfirmCubit(service);
-      final first = cubit.deactivateQuote(42);
-      expect(cubit.state, isA<BuyDeactivateLoading>());
-      await cubit.confirmPayment(42);
-      verifyNever(() => service.confirmPayment(any()));
-
-      gate.complete();
-      await first;
-    });
-
-    test('deactivateQuote while BuyConfirmLoading does not call deactivateQuote service',
-        () async {
-      final gate = Completer<RealUnitBuyConfirmDto>();
-      when(() => service.confirmPayment(any())).thenAnswer((_) => gate.future);
-
-      final cubit = BuyConfirmCubit(service);
-      final first = cubit.confirmPayment(42);
-      expect(cubit.state, isA<BuyConfirmLoading>());
-      await cubit.deactivateQuote(42);
-      verifyNever(() => service.deactivateQuote(any()));
 
       gate.complete(const RealUnitBuyConfirmDto(reference: 'RU'));
       await first;

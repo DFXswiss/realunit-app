@@ -73,15 +73,42 @@ jobs:
       # baselines.
       - run: flutter test --coverage --exclude-tags golden
 
+      # Per-file 100% line-coverage gate for every UI file this PR touches
+      # under lib/screens/** or lib/widgets/** (pages, views, widgets — not
+      # cubits/blocs, not *.g.dart). Runs against the FULL lcov.info before
+      # the packages/cubits/blocs extract below, so widget coverage is not
+      # stripped away first. The floor on packages/cubits/blocs is unchanged.
+      - name: Enforce 100% line coverage on touched UI files
+        run: |
+          set -euo pipefail
+          if [ ! -f coverage/lcov.info ]; then
+            echo "::error::coverage/lcov.info not found — cannot enforce touched UI coverage"
+            exit 1
+          fi
+          # PRs use github.base_ref (e.g. staging/develop). Push/dispatch have
+          # no base_ref — fall back to develop so the step stays defined.
+          # Prefer the PR base SHA (always present on pull_request). Fetch that
+          # single commit so a shallow checkout can still diff touched files.
+          BASE="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$BASE" ]; then
+            BASE_REF="${{ github.base_ref }}"
+            if [ -z "${BASE_REF}" ]; then
+              BASE_REF="develop"
+            fi
+            git fetch --no-tags --depth=50 origin "$BASE_REF"
+            BASE="origin/${BASE_REF}"
+          else
+            git fetch --no-tags --depth=1 origin "$BASE"
+          fi
+          bash scripts/check-touched-ui-coverage.sh coverage/lcov.info "$BASE"
+
       # Narrow the coverage report to the README-defined activated surface:
       #   lib/packages/**             — services, repositories, signers, utils
       #   lib/screens/**/cubit(s)/**  — Cubit logic per feature
       #   lib/screens/**/bloc/**      — Bloc logic per feature
-      # Widget files (lib/screens/**/*_page.dart, lib/widgets/**) are covered
-      # by `testWidgets` specs and excluded from the line-coverage scope by
-      # design — see README "Coverage scope". Threshold enforcement is the
-      # next step (see README "Coverage infrastructure roadmap"); this step
-      # only produces the scoped baseline + a human-readable summary.
+      # Widget files (lib/screens/**/*_page.dart, lib/widgets/**) stay outside
+      # this floor extract; when a PR touches them they are gated by the
+      # touched-UI check above instead — see README "Coverage scope".
       #
       # The extract patterns use lcov's fnmatch matcher, where `*` is greedy
       # across `/` — so `lib/packages/*` matches arbitrarily deep paths under

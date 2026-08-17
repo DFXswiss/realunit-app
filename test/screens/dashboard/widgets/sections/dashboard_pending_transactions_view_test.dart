@@ -1,18 +1,26 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
+import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/pending_transactions_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/pending_transaction_row.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_pending_transactions.dart';
-
-import '../../../../helper/helper.dart';
+import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 
 class _MockPendingCubit extends MockCubit<List<TransactionDto>>
     implements PendingTransactionsCubit {}
+
+class _MockTransactionHistoryService extends Mock implements TransactionHistoryService {}
+
+class _MockBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
 
 TransactionDto _tx({
   int? id = 1,
@@ -37,19 +45,103 @@ void main() {
 
   setUp(() {
     cubit = _MockPendingCubit();
+    when(() => cubit.reload()).thenAnswer((_) async {});
   });
 
   Widget host() => BlocProvider<PendingTransactionsCubit>.value(
         value: cubit,
-        child: const Scaffold(body: DashboardPendingTransactionsView()),
+        child: MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: const Scaffold(body: DashboardPendingTransactionsView()),
+        ),
       );
+
+  Widget hostWithRouter() {
+    final router = GoRouter(
+      initialLocation: '/dashboard',
+      routes: [
+        GoRoute(
+          name: AppRoutes.dashboard,
+          path: '/dashboard',
+          builder: (_, _) => BlocProvider<PendingTransactionsCubit>.value(
+            value: cubit,
+            child: const Scaffold(body: DashboardPendingTransactionsView()),
+          ),
+          routes: [
+            GoRoute(
+              name: AppRoutes.pendingTransaction,
+              path: 'pendingTransaction',
+              builder: (_, state) => Scaffold(
+                body: Text(
+                  'detail-${(state.extra as TransactionDto).id}',
+                  key: const ValueKey('pending-detail-marker'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    return MaterialApp.router(
+      routerConfig: router,
+      locale: const Locale('de'),
+      localizationsDelegates: const [
+        S.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      supportedLocales: S.delegate.supportedLocales,
+    );
+  }
+
+  group('$DashboardPendingTransactions', () {
+    testWidgets('provides PendingTransactionsCubit via getIt and hosts the view',
+        (tester) async {
+      final getIt = GetIt.instance;
+      await getIt.reset();
+      final history = _MockTransactionHistoryService();
+      final buyService = _MockBuyPaymentInfoService();
+      when(() => history.fetchPendingTransactions()).thenAnswer((_) async => []);
+      getIt.registerSingleton<TransactionHistoryService>(history);
+      getIt.registerSingleton<RealUnitBuyPaymentInfoService>(buyService);
+      addTearDown(() async => getIt.reset());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: const Scaffold(body: DashboardPendingTransactions()),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(DashboardPendingTransactionsView), findsOneWidget);
+    });
+  });
 
   group('$DashboardPendingTransactionsView', () {
     testWidgets('empty list: renders SizedBox.shrink (no PendingTransactionRow)',
         (tester) async {
       when(() => cubit.state).thenReturn([]);
 
-      await tester.pumpApp(host());
+      await tester.pumpWidget(host());
+      await tester.pump();
 
       expect(find.byType(PendingTransactionRow), findsNothing);
     });
@@ -62,101 +154,75 @@ void main() {
         _tx(id: 3),
       ]);
 
-      await tester.pumpApp(host());
+      await tester.pumpWidget(host());
+      await tester.pump();
 
       expect(find.byType(PendingTransactionRow), findsNWidgets(3));
       expect(find.byKey(const ValueKey('pendingTx-1')), findsOneWidget);
     });
 
-    testWidgets('buy rows only show deactivate IconButton (sell has none)',
-        (tester) async {
+    testWidgets('never shows a deactivate IconButton on any row', (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 1, state: TransactionState.waitingForPayment),
         _tx(id: 2, type: TransactionType.sell),
         _tx(id: 3, state: TransactionState.waitingForPayment),
       ]);
 
-      await tester.pumpApp(host());
+      await tester.pumpWidget(host());
+      await tester.pump();
 
-      // Two buy rows only; sell onDeactivate is null → no IconButton.
-      expect(find.byType(IconButton), findsNWidgets(2));
-    });
-
-    testWidgets('buy without id and uid does not show deactivate IconButton',
-        (tester) async {
-      when(() => cubit.state).thenReturn([
-        TransactionDto(
-          id: null,
-          uid: null,
-          type: TransactionType.buy,
-          state: TransactionState.waitingForPayment,
-          date: DateTime.utc(2026, 5, 15),
-        ),
-        _tx(id: 1, state: TransactionState.waitingForPayment),
-      ]);
-
-      await tester.pumpApp(host());
-
-      expect(find.byType(PendingTransactionRow), findsNWidgets(2));
-      expect(find.byType(IconButton), findsOneWidget);
-    });
-
-    testWidgets('buy with uid only shows deactivate IconButton', (tester) async {
-      when(() => cubit.state).thenReturn([
-        TransactionDto(
-          id: null,
-          uid: 'waiting-uid',
-          type: TransactionType.buy,
-          state: TransactionState.waitingForPayment,
-          date: DateTime.utc(2026, 5, 15),
-        ),
-        _tx(id: 2, type: TransactionType.sell),
-      ]);
-
-      await tester.pumpApp(host());
-
-      expect(find.byType(IconButton), findsOneWidget);
-      expect(find.byKey(const ValueKey('pendingTx-waiting-uid')), findsOneWidget);
-    });
-
-    testWidgets('processing buy with numeric id does not show deactivate IconButton',
-        (tester) async {
-      when(() => cubit.state).thenReturn([
-        _tx(id: 1, state: TransactionState.processing),
-      ]);
-      await tester.pumpApp(host());
-      expect(find.byType(PendingTransactionRow), findsOneWidget);
       expect(find.byType(IconButton), findsNothing);
     });
 
-    testWidgets('buy IconButton confirm wires to cubit.deactivate once',
+    testWidgets('tap on buy-waiting row navigates to pending detail and reloads',
         (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 1, state: TransactionState.waitingForPayment),
         _tx(id: 2, type: TransactionType.sell),
-        _tx(id: 3, state: TransactionState.waitingForPayment),
       ]);
-      when(() => cubit.deactivate(any())).thenAnswer((_) async {});
 
-      await tester.pumpApp(host());
+      await tester.pumpWidget(hostWithRouter());
+      await tester.pump();
 
-      await tester.tap(find.byType(IconButton).first);
+      await tester.tap(find.byKey(const ValueKey('pendingTx-1')));
       // CupertinoActivityIndicator animates indefinitely — no pumpAndSettle.
       await tester.pump();
-
-      await tester.tap(
-        find.widgetWithText(TextButton, S.current.pendingTransactionDeactivate),
-      );
       await tester.pump();
 
-      verify(() => cubit.deactivate(any())).called(1);
+      expect(find.byKey(const ValueKey('pending-detail-marker')), findsOneWidget);
+      expect(find.text('detail-1'), findsOneWidget);
+
+      // Pop back so the reload after pushNamed runs.
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
+      navigator.pop();
+      await tester.pump();
+      await tester.pump();
+
+      verify(() => cubit.reload()).called(1);
+    });
+
+    testWidgets('tap on sell row also navigates (details without cancel CTA)',
+        (tester) async {
+      when(() => cubit.state).thenReturn([
+        _tx(id: 2, type: TransactionType.sell),
+      ]);
+
+      await tester.pumpWidget(hostWithRouter());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('pendingTx-2')));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('detail-2'), findsOneWidget);
     });
 
     testWidgets('non-empty list also renders a section header above the rows',
         (tester) async {
       when(() => cubit.state).thenReturn([_tx()]);
 
-      await tester.pumpApp(host());
+      await tester.pumpWidget(host());
+      await tester.pump();
 
       // Header position: the first Text widget is rendered before the
       // PendingTransactionRow's children. We only pin that the header Text
@@ -170,6 +236,23 @@ void main() {
           .length;
       expect(headerCount, greaterThan(0));
       expect(find.byType(PendingTransactionRow), findsOneWidget);
+    });
+
+    testWidgets('uid-only row uses uid in the ValueKey', (tester) async {
+      when(() => cubit.state).thenReturn([
+        TransactionDto(
+          id: null,
+          uid: 'waiting-uid',
+          type: TransactionType.buy,
+          state: TransactionState.waitingForPayment,
+          date: DateTime.utc(2026, 5, 15),
+        ),
+      ]);
+
+      await tester.pumpWidget(host());
+      await tester.pump();
+
+      expect(find.byKey(const ValueKey('pendingTx-waiting-uid')), findsOneWidget);
     });
   });
 }

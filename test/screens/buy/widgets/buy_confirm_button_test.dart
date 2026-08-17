@@ -1,24 +1,27 @@
-import 'dart:async';
-
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/buy_payment_info.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/screens/buy/buy_payment_details_page.dart';
 import 'package:realunit_wallet/screens/buy/cubits/buy_confirm/buy_confirm_cubit.dart';
 import 'package:realunit_wallet/screens/buy/widgets/buy_confirm_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_details_card.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/tab_selector.dart';
 
 class _MockBuyConfirmCubit extends MockCubit<BuyConfirmState> implements BuyConfirmCubit {}
+
+class _MockBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
 
 const _info = BuyPaymentInfo(
   amount: 300,
@@ -56,7 +59,6 @@ void main() {
     cubit = _MockBuyConfirmCubit();
     when(() => cubit.state).thenReturn(const BuyConfirmInitial());
     when(() => cubit.confirmPayment(any())).thenAnswer((_) async {});
-    when(() => cubit.deactivateQuote(any())).thenAnswer((_) async {});
   });
 
   Widget host({GoRouter? router}) {
@@ -90,6 +92,34 @@ void main() {
     );
   }
 
+  group('$BuyConfirmButton', () {
+    testWidgets('wires a real cubit from getIt and renders the confirm label', (tester) async {
+      final getIt = GetIt.instance;
+      await getIt.reset();
+      getIt.registerSingleton<RealUnitBuyPaymentInfoService>(_MockBuyPaymentInfoService());
+      addTearDown(() async => getIt.reset());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: Scaffold(body: BuyConfirmButton(buyPaymentInfo: _info)),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(BuyConfirmButtonView), findsOneWidget);
+      expect(find.text(S.current.buyPaymentConfirm), findsOneWidget);
+      expect(find.text(S.current.pendingTransactionDeactivate), findsNothing);
+    });
+  });
+
   group('$BuyConfirmButtonView', () {
     testWidgets('renders the binding-buy label', (tester) async {
       await tester.pumpWidget(host());
@@ -97,10 +127,11 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirm), findsOneWidget);
     });
 
-    testWidgets('renders the secondary deactivate label', (tester) async {
+    testWidgets('does not render a secondary deactivate button', (tester) async {
       await tester.pumpWidget(host());
 
-      expect(find.text(S.current.pendingTransactionDeactivate), findsOneWidget);
+      expect(find.text(S.current.pendingTransactionDeactivate), findsNothing);
+      expect(find.byType(AppFilledButton), findsOneWidget);
     });
 
     testWidgets('tapping confirms the payment for the quote id', (tester) async {
@@ -112,135 +143,12 @@ void main() {
       verify(() => cubit.confirmPayment(42)).called(1);
     });
 
-    testWidgets('shows a snackbar when deactivate fails', (tester) async {
-      whenListen(
-        cubit,
-        Stream.fromIterable([
-          const BuyDeactivateFailure(),
-        ]),
-        initialState: const BuyConfirmInitial(),
-      );
-
-      await tester.pumpWidget(host());
-      await tester.pump();
-
-      expect(find.text(S.current.pendingTransactionDeactivateFailed), findsOneWidget);
-    });
-
-    testWidgets('deactivate dialog cancel does not call deactivateQuote', (tester) async {
-      await tester.pumpWidget(host());
-
-      await tester.tap(find.text(S.current.pendingTransactionDeactivate));
-      await tester.pump();
-
-      expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsOneWidget);
-
-      await tester.tap(find.text(S.current.cancel));
-      await tester.pump();
-
-      verifyNever(() => cubit.deactivateQuote(any()));
-    });
-
-    testWidgets('deactivate dialog confirm calls deactivateQuote once', (tester) async {
-      await tester.pumpWidget(host());
-
-      await tester.tap(find.text(S.current.pendingTransactionDeactivate));
-      await tester.pump();
-
-      expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsOneWidget);
-
-      await tester.tap(
-        find.widgetWithText(TextButton, S.current.pendingTransactionDeactivate),
-      );
-      await tester.pump();
-
-      verify(() => cubit.deactivateQuote(42)).called(1);
-    });
-
-    testWidgets('BuyDeactivateSuccess pops the pushed confirm route', (tester) async {
-      // Production uses GoRouter context.pop(). Start on /parent, then push
-      // /parent/child so there is a stack entry. Emit success only after
-      // the confirm view is mounted.
-      final states = StreamController<BuyConfirmState>();
-      addTearDown(states.close);
-      whenListen(
-        cubit,
-        states.stream,
-        initialState: const BuyConfirmInitial(),
-      );
-
-      final router = GoRouter(
-        initialLocation: '/parent',
-        routes: [
-          GoRoute(
-            path: '/parent',
-            builder: (_, _) => const Scaffold(body: Text('parent-marker')),
-            routes: [
-              GoRoute(
-                path: 'child',
-                builder: (_, _) => Scaffold(
-                  body: BlocProvider<BuyConfirmCubit>.value(
-                    value: cubit,
-                    child: const BuyConfirmButtonView(buyPaymentInfo: _info),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-
-      await tester.pumpWidget(host(router: router));
-      await tester.pump();
-      expect(find.text('parent-marker'), findsOneWidget);
-
-      router.push('/parent/child');
-      await tester.pump();
-      await tester.pump();
-      expect(find.byType(BuyConfirmButtonView), findsOneWidget);
-
-      states.add(const BuyDeactivateSuccess());
-      await tester.pump();
-
-      expect(find.text('parent-marker'), findsOneWidget);
-      expect(find.byType(BuyConfirmButtonView), findsNothing);
-    });
-
     testWidgets('shows a loading indicator while confirming', (tester) async {
       when(() => cubit.state).thenReturn(const BuyConfirmLoading());
 
       await tester.pumpWidget(host());
 
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
-    });
-
-    testWidgets('deactivate label is inert while BuyConfirmLoading', (tester) async {
-      when(() => cubit.state).thenReturn(const BuyConfirmLoading());
-
-      await tester.pumpWidget(host());
-      await tester.tap(find.text(S.current.pendingTransactionDeactivate));
-      await tester.pump();
-
-      expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsNothing);
-      verifyNever(() => cubit.deactivateQuote(any()));
-    });
-
-    testWidgets('shows a loading indicator while deactivating', (tester) async {
-      when(() => cubit.state).thenReturn(const BuyDeactivateLoading());
-
-      await tester.pumpWidget(host());
-
-      expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
-    });
-
-    testWidgets('confirm tap is inert during BuyDeactivateLoading', (tester) async {
-      when(() => cubit.state).thenReturn(const BuyDeactivateLoading());
-
-      await tester.pumpWidget(host());
-      await tester.tap(find.text(S.current.buyPaymentConfirm));
-      await tester.pump();
-
-      verifyNever(() => cubit.confirmPayment(any()));
     });
 
     testWidgets('shows a snackbar with the generic error on failure', (tester) async {
