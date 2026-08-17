@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
@@ -5,8 +7,7 @@ import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/dto/real
 import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/screens/buy/cubits/buy_confirm/buy_confirm_cubit.dart';
 
-class _MockBuyPaymentInfoService extends Mock
-    implements RealUnitBuyPaymentInfoService {}
+class _MockBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
 
 void main() {
   late _MockBuyPaymentInfoService service;
@@ -20,8 +21,7 @@ void main() {
       expect(BuyConfirmCubit(service).state, isA<BuyConfirmInitial>());
     });
 
-    test('confirmPayment emits Success with the confirm remittance info and QR',
-        () async {
+    test('confirmPayment emits Success with the confirm remittance info and QR', () async {
       when(() => service.confirmPayment(any())).thenAnswer(
         (_) async => const RealUnitBuyConfirmDto(
           reference: 'REF-123',
@@ -176,8 +176,7 @@ void main() {
     });
 
     test('confirmPayment emits Failure(unknown) on generic exception', () async {
-      when(() => service.confirmPayment(any()))
-          .thenAnswer((_) async => throw Exception('network'));
+      when(() => service.confirmPayment(any())).thenAnswer((_) async => throw Exception('network'));
 
       final cubit = BuyConfirmCubit(service);
       final done = cubit.stream.firstWhere((s) => s is BuyConfirmFailure);
@@ -185,6 +184,20 @@ void main() {
       await done;
 
       expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.unknown);
+    });
+
+    test('confirmPayment while loading does not call the service again', () async {
+      final gate = Completer<RealUnitBuyConfirmDto>();
+      when(() => service.confirmPayment(any())).thenAnswer((_) => gate.future);
+
+      final cubit = BuyConfirmCubit(service);
+      final first = cubit.confirmPayment(42);
+      expect(cubit.state, isA<BuyConfirmLoading>());
+      await cubit.confirmPayment(42);
+      verify(() => service.confirmPayment(42)).called(1);
+
+      gate.complete(const RealUnitBuyConfirmDto(reference: 'RU'));
+      await first;
     });
   });
 }

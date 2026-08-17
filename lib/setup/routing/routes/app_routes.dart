@@ -2,6 +2,7 @@ abstract final class AppRoutes {
   static const home = 'home';
   static const dashboard = 'dashboard';
   static const transactionHistory = 'transactionHistory';
+  static const pendingTransaction = 'pendingTransaction';
   static const buy = 'buy';
   static const buyPaymentDetails = 'buyPaymentDetails';
   static const sell = 'sell';

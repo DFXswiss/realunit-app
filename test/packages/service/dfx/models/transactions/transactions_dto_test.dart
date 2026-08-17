@@ -45,7 +45,8 @@ void main() {
 
       test('all other states ARE pending', () {
         for (final s in TransactionState.values) {
-          final shouldBePending = s != TransactionState.completed &&
+          final shouldBePending =
+              s != TransactionState.completed &&
               s != TransactionState.failed &&
               s != TransactionState.returned;
           expect(s.isPending, shouldBePending, reason: 'state=$s');
@@ -58,6 +59,7 @@ void main() {
     test('parses a complete row with all fields populated', () {
       final dto = TransactionDto.fromJson({
         'id': 42,
+        'uid': 'quote-uid-42',
         'type': 'Buy',
         'state': 'Processing',
         'rate': 1.05,
@@ -73,6 +75,7 @@ void main() {
       });
 
       expect(dto.id, 42);
+      expect(dto.uid, 'quote-uid-42');
       expect(dto.type, TransactionType.buy);
       expect(dto.state, TransactionState.processing);
       expect(dto.rate, 1.05);
@@ -88,6 +91,7 @@ void main() {
     test('every field is optional (all nulls produce all-null dto)', () {
       final dto = TransactionDto.fromJson({
         'id': null,
+        'uid': null,
         'type': null,
         'state': null,
         'rate': null,
@@ -103,10 +107,25 @@ void main() {
       });
 
       expect(dto.id, isNull);
+      expect(dto.uid, isNull);
       expect(dto.type, isNull);
       expect(dto.state, isNull);
       expect(dto.rate, isNull);
       expect(dto.date, isNull);
+    });
+
+    test('waiting quote has null id and a uid', () {
+      final dto = TransactionDto.fromJson({
+        'id': null,
+        'uid': 'waiting-uid',
+        'type': 'Buy',
+        'state': 'WaitingForPayment',
+      });
+
+      expect(dto.id, isNull);
+      expect(dto.uid, 'waiting-uid');
+      expect(dto.type, TransactionType.buy);
+      expect(dto.state, TransactionState.waitingForPayment);
     });
 
     test('integer numeric fields are widened to double', () {

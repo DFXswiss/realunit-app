@@ -348,6 +348,61 @@ void main() {
       });
     });
 
+    group('deactivateQuote', () {
+      test('PUTs /v1/realunit/buy/{id}/deactivate with Authorization and empty 200', () async {
+        String? capturedMethod;
+        String? capturedPath;
+        Map<String, String>? capturedHeaders;
+        String? capturedBody;
+        final appStore = buildAppStore((request) async {
+          capturedMethod = request.method;
+          capturedPath = request.url.path;
+          capturedHeaders = request.headers;
+          capturedBody = request.body;
+          return http.Response('', 200);
+        });
+
+        service = RealUnitBuyPaymentInfoService(appStore, walletService);
+        await service.deactivateQuote('123');
+
+        expect(capturedMethod, 'PUT');
+        expect(capturedPath, '/v1/realunit/buy/123/deactivate');
+        expect(capturedHeaders!['Authorization'], 'Bearer test-auth-token');
+        expect(capturedBody, isEmpty);
+      });
+
+      test('works with a uid path', () async {
+        String? capturedPath;
+        final appStore = buildAppStore((request) async {
+          capturedPath = request.url.path;
+          return http.Response('', 200);
+        });
+
+        service = RealUnitBuyPaymentInfoService(appStore, walletService);
+        await service.deactivateQuote('abc-uid-1');
+
+        expect(capturedPath, '/v1/realunit/buy/abc-uid-1/deactivate');
+      });
+
+      test('throws ApiException on non-200 status code', () async {
+        final appStore = buildAppStore(
+          (request) async => http.Response(
+            '{"statusCode": 404, "message": "Not found"}',
+            404,
+          ),
+        );
+
+        service = RealUnitBuyPaymentInfoService(appStore, walletService);
+
+        await expectLater(
+          service.deactivateQuote('999'),
+          throwsA(
+            isA<ApiException>().having((e) => e.statusCode, 'statusCode', 404),
+          ),
+        );
+      });
+    });
+
     group('malformed JSON responses', () {
       test('confirmPayment with non-JSON 200 throws FormatException', () async {
         final appStore = buildAppStore(

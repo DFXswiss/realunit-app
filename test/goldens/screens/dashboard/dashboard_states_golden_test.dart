@@ -149,11 +149,13 @@ void main() {
     buy('0xrecent3', 100, DateTime.utc(2026, 5, 15, 9, 15)),
   ];
 
+  // First row is a binding buy still waiting for payment (cancellable only
+  // from the detail page). Rows are tappable; there is no close IconButton.
   final pendingTransactions = <TransactionDto>[
     TransactionDto(
       id: 1,
       type: TransactionType.buy,
-      state: TransactionState.processing,
+      state: TransactionState.waitingForPayment,
       inputAmount: 500,
       inputAsset: 'CHF',
       date: DateTime.utc(2026, 5, 21, 8),

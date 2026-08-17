@@ -14,6 +14,9 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 /// confirms the purchase (binding) via [BuyConfirmCubit]; on success it opens
 /// the `Zahlungsdetails` page with the bank-transfer instructions, on failure
 /// it surfaces the typed error as a snackbar.
+///
+/// Cancelling a quote is only available after a binding purchase, on the
+/// pending-transaction detail page — not on this confirm screen.
 class BuyConfirmButton extends StatelessWidget {
   final BuyPaymentInfo buyPaymentInfo;
 
@@ -65,7 +68,8 @@ class BuyConfirmButtonView extends StatelessWidget {
           final text = switch (state.error) {
             BuyConfirmError.aktionariat => S.of(context).buyPaymentConfirmFailedAktionariat,
             BuyConfirmError.amountTooLow => S.of(context).buyPaymentConfirmFailedAmountTooLow,
-            BuyConfirmError.primaryEmailRequired => S.of(context).buyPaymentConfirmFailedAktionariat,
+            BuyConfirmError.primaryEmailRequired =>
+              S.of(context).buyPaymentConfirmFailedAktionariat,
             BuyConfirmError.unknown => S.of(context).buyPaymentConfirmFailed,
           };
           ScaffoldMessenger.of(context).showSnackBar(
@@ -77,9 +81,11 @@ class BuyConfirmButtonView extends StatelessWidget {
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: AppFilledButton(
-            onPressed: () => context.read<BuyConfirmCubit>().confirmPayment(
-              buyPaymentInfo.id,
-            ),
+            onPressed: state is BuyConfirmLoading
+                ? null
+                : () => context.read<BuyConfirmCubit>().confirmPayment(
+                    buyPaymentInfo.id,
+                  ),
             state: state is BuyConfirmLoading ? .loading : .idle,
             label: S.of(context).buyPaymentConfirm,
           ),

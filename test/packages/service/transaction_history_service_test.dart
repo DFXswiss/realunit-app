@@ -9,6 +9,7 @@ import 'package:realunit_wallet/packages/config/network_mode.dart';
 import 'package:realunit_wallet/packages/repository/cache_repository.dart';
 import 'package:realunit_wallet/packages/repository/transaction_repository.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
@@ -91,13 +92,14 @@ void main() {
         expect(path, '/v1/transaction/detail');
       });
 
-      test('returns [] on non-200 (does not throw)', () async {
+      test('throws ApiException on non-200', () async {
         sessionCache.setAuthToken('jwt-1');
         final client = MockClient((_) async => http.Response('boom', 500));
 
-        final list = await build(client).fetchPendingTransactions();
-
-        expect(list, isEmpty);
+        await expectLater(
+          build(client).fetchPendingTransactions(),
+          throwsA(isA<ApiException>()),
+        );
       });
 
       test('filters out completed transactions (isPending=false)', () async {

@@ -13,6 +13,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/config/api_config.dart';
@@ -21,12 +22,15 @@ import 'package:realunit_wallet/packages/repository/supported_fiat_repository.da
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_brokerbot_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_price_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/buy_payment_info.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/dto/real_unit_buy_confirm_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/payment_info_error.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/screens/buy/buy_page.dart';
 import 'package:realunit_wallet/screens/buy/cubits/buy_converter/buy_converter_cubit.dart';
 import 'package:realunit_wallet/screens/buy/cubits/buy_payment_info/buy_payment_info_cubit.dart';
+import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
@@ -104,6 +108,32 @@ void main() {
     );
   }
 
+  /// Success CTA: real BuyConfirmCubit via GetIt service + GoRouter for
+  /// confirm navigation. Cancellation is not on this screen.
+  void stubSuccessCtaState() {
+    when(() => buyPaymentInfoCubit.state).thenReturn(
+      const BuyPaymentInfoSuccess(
+        BuyPaymentInfo(
+          amount: 300,
+          id: 1,
+          iban: 'iban',
+          bic: 'bic',
+          name: 'name',
+          street: 'street',
+          number: 'number',
+          zip: 'zip',
+          city: 'city',
+          country: 'country',
+          currency: Currency.chf,
+        ),
+      ),
+    );
+    final buyService = GetIt.instance<RealUnitBuyPaymentInfoService>();
+    when(() => buyService.confirmPayment(any())).thenAnswer(
+      (_) async => const RealUnitBuyConfirmDto(reference: 'REF-456'),
+    );
+  }
+
   Widget buildSubject() {
     return MultiBlocProvider(
       providers: [
@@ -143,6 +173,63 @@ void main() {
     await tester.pump(const Duration(milliseconds: 50));
   }
 
+  /// Success host needs GoRouter: confirm tap pushes buyPaymentDetails.
+  Future<void> pumpSuccessScreen(
+    WidgetTester tester,
+    MatrixCell cell, {
+    MediaQueryData? mediaQueryOverride,
+  }) async {
+    final mediaQuery = mediaQueryOverride ?? cell.mediaQuery;
+    await tester.binding.setSurfaceSize(mediaQuery.size);
+    addTearDown(() async => await tester.binding.setSurfaceSize(null));
+
+    final router = GoRouter(
+      initialLocation: '/parent/child',
+      routes: [
+        GoRoute(
+          path: '/parent',
+          builder: (_, _) => const Scaffold(body: Text('parent-marker')),
+          routes: [
+            GoRoute(
+              path: 'child',
+              builder: (_, _) => MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: converterCubit),
+                  BlocProvider.value(value: buyPaymentInfoCubit),
+                ],
+                child: const BuyView(),
+              ),
+            ),
+          ],
+        ),
+        GoRoute(
+          name: AppRoutes.buyPaymentDetails,
+          path: '/buyPaymentDetails',
+          builder: (_, _) => const Scaffold(body: Text('details-marker')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MediaQuery(
+        data: mediaQuery,
+        child: MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+  }
+
   group('BuyView responsive matrix (full device × textScale)', () {
     for (final cell in kFullResponsiveMatrix) {
       testWidgets(cell.id, (tester) async {
@@ -162,6 +249,33 @@ void main() {
             find.byType(AppFilledButton),
             within: find.byType(BuyView),
             reason: '${cell.label}: buy CTA not tappable',
+          );
+        });
+      });
+    }
+  });
+
+  // Success confirm CTA: overflow + one real tap (confirm navigates).
+  // Cancellation is not on this screen — it lives on the pending-tx detail page.
+  group('BuyView Success confirm matrix (full device × textScale)', () {
+    for (final cell in kFullResponsiveMatrix) {
+      testWidgets('${cell.id}_success_confirm', (tester) async {
+        await withTargetPlatform(cell.device.platform, () async {
+          stubSuccessCtaState();
+
+          await expectNoLayoutOverflow(
+            tester,
+            () async {
+              await pumpSuccessScreen(tester, cell);
+            },
+            reason: 'overflow on ${cell.label} (Success confirm)',
+          );
+
+          await expectFullyTappable(
+            tester,
+            find.text(S.current.buyPaymentConfirm),
+            within: find.byType(BuyView),
+            reason: '${cell.label}: Success confirm CTA not tappable',
           );
         });
       });

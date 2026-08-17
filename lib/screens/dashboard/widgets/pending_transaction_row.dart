@@ -7,17 +7,19 @@ import 'package:realunit_wallet/styles/colors.dart';
 
 class PendingTransactionRow extends StatelessWidget {
   final TransactionDto transaction;
+  final VoidCallback? onTap;
 
   const PendingTransactionRow({
     super.key,
     required this.transaction,
+    this.onTap,
   });
 
   bool get _isBuy => transaction.type == TransactionType.buy;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final content = Container(
       decoration: BoxDecoration(
         borderRadius: .circular(20),
         color: RealUnitColors.basic.white,
@@ -83,6 +85,17 @@ class PendingTransactionRow extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: .circular(20),
+        onTap: onTap,
+        child: content,
       ),
     );
   }

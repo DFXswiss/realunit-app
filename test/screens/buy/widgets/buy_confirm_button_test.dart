@@ -4,20 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/buy_payment_info.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/screens/buy/buy_payment_details_page.dart';
 import 'package:realunit_wallet/screens/buy/cubits/buy_confirm/buy_confirm_cubit.dart';
 import 'package:realunit_wallet/screens/buy/widgets/buy_confirm_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_details_card.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/tab_selector.dart';
 
-class _MockBuyConfirmCubit extends MockCubit<BuyConfirmState>
-    implements BuyConfirmCubit {}
+class _MockBuyConfirmCubit extends MockCubit<BuyConfirmState> implements BuyConfirmCubit {}
+
+class _MockBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
 
 const _info = BuyPaymentInfo(
   amount: 300,
@@ -88,11 +92,48 @@ void main() {
     );
   }
 
+  group('$BuyConfirmButton', () {
+    testWidgets('wires a real cubit from getIt and renders the confirm label', (tester) async {
+      final getIt = GetIt.instance;
+      await getIt.reset();
+      getIt.registerSingleton<RealUnitBuyPaymentInfoService>(_MockBuyPaymentInfoService());
+      addTearDown(() async => getIt.reset());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('de'),
+          localizationsDelegates: [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          // Non-const so BuyConfirmButton's constructor lines are covered.
+          // ignore: prefer_const_constructors
+          home: Scaffold(body: BuyConfirmButton(buyPaymentInfo: _info)),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(BuyConfirmButtonView), findsOneWidget);
+      expect(find.text(S.current.buyPaymentConfirm), findsOneWidget);
+      expect(find.text(S.current.pendingTransactionDeactivate), findsNothing);
+    });
+  });
+
   group('$BuyConfirmButtonView', () {
     testWidgets('renders the binding-buy label', (tester) async {
       await tester.pumpWidget(host());
 
       expect(find.text(S.current.buyPaymentConfirm), findsOneWidget);
+    });
+
+    testWidgets('does not render a secondary deactivate button', (tester) async {
+      await tester.pumpWidget(host());
+
+      expect(find.text(S.current.pendingTransactionDeactivate), findsNothing);
+      expect(find.byType(AppFilledButton), findsOneWidget);
     });
 
     testWidgets('tapping confirms the payment for the quote id', (tester) async {
@@ -112,8 +153,7 @@ void main() {
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
     });
 
-    testWidgets('shows a snackbar with the generic error on failure',
-        (tester) async {
+    testWidgets('shows a snackbar with the generic error on failure', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -128,8 +168,7 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirmFailed), findsOneWidget);
     });
 
-    testWidgets('shows the aktionariat-specific error on a 503 failure',
-        (tester) async {
+    testWidgets('shows the aktionariat-specific error on a 503 failure', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -144,8 +183,7 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirmFailedAktionariat), findsOneWidget);
     });
 
-    testWidgets('shows the minimum-purchase error on an amount-too-low failure',
-        (tester) async {
+    testWidgets('shows the minimum-purchase error on an amount-too-low failure', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -160,9 +198,9 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirmFailedAmountTooLow), findsOneWidget);
     });
 
-    testWidgets(
-        'shows the aktionariat-specific error on a primary-email-required failure',
-        (tester) async {
+    testWidgets('shows the aktionariat-specific error on a primary-email-required failure', (
+      tester,
+    ) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -178,33 +216,32 @@ void main() {
     });
 
     GoRouter detailsRouter({BuyPaymentInfo info = _info}) => GoRouter(
-          initialLocation: '/buy',
-          routes: [
-            GoRoute(
-              name: AppRoutes.buy,
-              path: '/buy',
-              builder: (_, _) => Scaffold(
-                body: BlocProvider<BuyConfirmCubit>.value(
-                  value: cubit,
-                  child: BuyConfirmButtonView(
-                    buyPaymentInfo: info,
-                  ),
-                ),
+      initialLocation: '/buy',
+      routes: [
+        GoRoute(
+          name: AppRoutes.buy,
+          path: '/buy',
+          builder: (_, _) => Scaffold(
+            body: BlocProvider<BuyConfirmCubit>.value(
+              value: cubit,
+              child: BuyConfirmButtonView(
+                buyPaymentInfo: info,
               ),
             ),
-            GoRoute(
-              name: AppRoutes.buyPaymentDetails,
-              path: '/buyPaymentDetails',
-              builder: (_, state) => BuyPaymentDetailsPage(
-                params: state.extra as BuyPaymentDetailsParams,
-              ),
-            ),
-          ],
-        );
+          ),
+        ),
+        GoRoute(
+          name: AppRoutes.buyPaymentDetails,
+          path: '/buyPaymentDetails',
+          builder: (_, state) => BuyPaymentDetailsPage(
+            params: state.extra as BuyPaymentDetailsParams,
+          ),
+        ),
+      ],
+    );
 
     testWidgets('backward compatible: a reference-only success navigates to the '
-        'details page, shows the reference as Verwendungszweck and no QR tab',
-        (tester) async {
+        'details page, shows the reference as Verwendungszweck and no QR tab', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([

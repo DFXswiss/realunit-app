@@ -92,8 +92,8 @@ jobs:
           set -euo pipefail
           bash scripts/assemble-handbook-screenshots.sh /tmp/handbook-shots
           count=$(ls -1 /tmp/handbook-shots/*.png | wc -l | tr -d ' ')
-          if [ "$count" != "279" ]; then
-            echo "expected 279 screenshots, got $count" >&2
+          if [ "$count" != "282" ]; then
+            echo "expected 282 screenshots, got $count" >&2
             exit 1
           fi
 
@@ -173,11 +173,11 @@ jobs:
             exit 1
           fi
 
-          # Screenshots dir must contain all 279 PNGs assembled from Goldens.
+          # Screenshots dir must contain all 282 PNGs assembled from Goldens.
           # Hit one of them through the auth gate to verify wiring end-to-end.
-          # Mix of the original 01-61 range and the 62-269 batch (every Golden
+          # Mix of the original 01-61 range and the 62-272 batch (every Golden
           # baseline) so a regression in either half surfaces here.
-          for name in 01-welcome 11-dashboard 26-terms 35-dashboard-with-balance 46-buy-kyc-required 52-sell-unknown-error 53-buy-payment-details 61-kyc-registration-tax-tin-error 62-welcome-page-android 219-settings-security-page-default 268-phone-number-field-default 269-dashboard-insider-unlocked; do
+          for name in 01-welcome 11-dashboard 26-terms 35-dashboard-with-balance 46-buy-kyc-required 52-sell-unknown-error 53-buy-payment-details 61-kyc-registration-tax-tin-error 62-welcome-page-android 219-settings-security-page-default 268-phone-number-field-default 269-dashboard-insider-unlocked 270-pending-transaction-detail-buy-waiting 272-pending-transaction-detail-not-cancellable; do
             code=$(curl -s -o /dev/null -w '%{http_code}' -u "${HANDBOOK_USER:-x}:${HANDBOOK_PASS:-x}" "http://127.0.0.1:8080/screenshots/${name}.png")
             # 200 (auth happens to match) or 401 (auth fails but file exists)
             # both prove the file is on disk. 404 means it was not assembled.

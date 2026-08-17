@@ -25,6 +25,7 @@ class BuyConfirmCubit extends Cubit<BuyConfirmState> {
       super(const BuyConfirmInitial());
 
   Future<void> confirmPayment(int paymentInfoId) async {
+    if (state is BuyConfirmLoading) return;
     try {
       emit(const BuyConfirmLoading());
       final dto = await _buyPaymentInfoService.confirmPayment(paymentInfoId);

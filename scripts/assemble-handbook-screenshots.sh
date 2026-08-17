@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Assemble the 279 handbook screenshots from the visual-regression Golden
+# Assemble the 282 handbook screenshots from the visual-regression Golden
 # baselines. The flat `NN-name.png` output layout matches what
 # docs/handbook/de/index.html links to (`<img src="../screenshots/NN-name.png">`
 # — the relative path resolves to `docs/handbook/screenshots/NN-name.png`).
@@ -317,6 +317,9 @@ MAPPING=(
   "267-debug-auth-page-authenticating=screens/debug_auth/goldens/macos/debug_auth_page_authenticating.png"
   "268-phone-number-field-default=widgets/form/goldens/macos/phone_number_field_default.png"
   "269-dashboard-insider-unlocked=screens/dashboard/goldens/macos/dashboard_insider_unlocked.png"
+  "270-pending-transaction-detail-buy-waiting=screens/dashboard/goldens/macos/pending_transaction_detail_buy_waiting.png"
+  "271-pending-transaction-detail-deactivate-overlay=screens/dashboard/goldens/macos/pending_transaction_detail_deactivate_overlay.png"
+  "272-pending-transaction-detail-not-cancellable=screens/dashboard/goldens/macos/pending_transaction_detail_not_cancellable.png"
 )
 
 missing=()

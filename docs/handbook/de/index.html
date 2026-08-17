@@ -3833,7 +3833,55 @@
                 />
               </div>
               <div class="desc">
-                Unter dem Kurschart erscheint die Karte <b>Ausstehende Transaktionen</b> mit noch laufenden DFX-Aufträgen: <b>Kauf / In Bearbeitung / 500 CHF</b> und <b>Verkauf / Warte auf Zahlung / 30 REALU</b>, jeweils mit Datum und drehendem Ladeindikator. Der Nutzer sieht dies, solange ein Kauf oder Verkauf beim Zahlungsdienst noch nicht abgeschlossen ist; da hier noch kein Guthaben vorliegt, folgen darunter Token-Illustration und Kaufen-Button.
+                Unter dem Kurschart erscheint die Karte <b>Ausstehende Transaktionen</b> mit noch laufenden DFX-Aufträgen: <b>Kauf / Warte auf Zahlung / 500 CHF</b> (verbindlicher Kauf) und <b>Verkauf / Warte auf Zahlung / 30 REALU</b>, jeweils mit Datum und drehendem Ladeindikator. Die Zeilen sind tippbar und öffnen die Detailseite der jeweiligen Transaktion; es gibt kein X-Icon zum Stornieren auf der Zeile. Der Nutzer sieht dies, solange ein Kauf oder Verkauf beim Zahlungsdienst noch nicht abgeschlossen ist; da hier noch kein Guthaben vorliegt, folgen darunter Token-Illustration und Kaufen-Button.
+              </div>
+            </div>
+            <div class="test" id="270-pending-transaction-detail-buy-waiting">
+              <div class="head">
+                <a class="name permalink" href="#270-pending-transaction-detail-buy-waiting">270-pending-transaction-detail-buy-waiting</a>
+                <button class="copy-link" type="button" data-target="270-pending-transaction-detail-buy-waiting" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">screens/dashboard/goldens/macos/pending_transaction_detail_buy_waiting.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/270-pending-transaction-detail-buy-waiting.png"
+                  alt="Detailseite eines ausstehenden Kaufs mit Storno-Button"
+                />
+              </div>
+              <div class="desc">
+                Detailseite eines verbindlichen Kaufs im Status <b>Warte auf Zahlung</b>: Typ, Status, Betrag, Asset und ID der Transaktion. Unten sticky der sekundäre Button <b>Angebot stornieren</b> — nur hier, und nur nach dem verbindlichen Kauf, ist Storno erlaubt.
+              </div>
+            </div>
+            <div class="test" id="271-pending-transaction-detail-deactivate-overlay">
+              <div class="head">
+                <a class="name permalink" href="#271-pending-transaction-detail-deactivate-overlay">271-pending-transaction-detail-deactivate-overlay</a>
+                <button class="copy-link" type="button" data-target="271-pending-transaction-detail-deactivate-overlay" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">screens/dashboard/goldens/macos/pending_transaction_detail_deactivate_overlay.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/271-pending-transaction-detail-deactivate-overlay.png"
+                  alt="Bestätigungsdialog zum Stornieren des Kaufangebots"
+                />
+              </div>
+              <div class="desc">
+                Nach Tippen auf <b>Angebot stornieren</b> erscheint der Bestätigungsdialog mit Abbrechen und erneuter Storno-Aktion. Erst nach Bestätigung wird der Deactivate-Request gesendet.
+              </div>
+            </div>
+            <div class="test" id="272-pending-transaction-detail-not-cancellable">
+              <div class="head">
+                <a class="name permalink" href="#272-pending-transaction-detail-not-cancellable">272-pending-transaction-detail-not-cancellable</a>
+                <button class="copy-link" type="button" data-target="272-pending-transaction-detail-not-cancellable" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">screens/dashboard/goldens/macos/pending_transaction_detail_not_cancellable.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/272-pending-transaction-detail-not-cancellable.png"
+                  alt="Detailseite ohne Storno-Button (Verkauf oder in Bearbeitung)"
+                />
+              </div>
+              <div class="desc">
+                Detailseite einer ausstehenden Transaktion, die nicht stornierbar ist (z. B. Verkauf oder Kauf in Bearbeitung): dieselben Felder wie beim Kauf, aber ohne den Button <b>Angebot stornieren</b>.
               </div>
             </div>
             <div class="test" id="93-dashboard-recent-transactions">
