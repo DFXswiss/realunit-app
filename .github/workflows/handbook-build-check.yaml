@@ -92,8 +92,8 @@ jobs:
           set -euo pipefail
           bash scripts/assemble-handbook-screenshots.sh /tmp/handbook-shots
           count=$(ls -1 /tmp/handbook-shots/*.png | wc -l | tr -d ' ')
-          if [ "$count" != "279" ]; then
-            echo "expected 279 screenshots, got $count" >&2
+          if [ "$count" != "282" ]; then
+            echo "expected 282 screenshots, got $count" >&2
             exit 1
           fi
 
