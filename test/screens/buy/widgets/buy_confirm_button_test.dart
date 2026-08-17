@@ -109,6 +109,8 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
           ],
           supportedLocales: S.delegate.supportedLocales,
+          // Non-const so BuyConfirmButton's constructor lines are covered.
+          // ignore: prefer_const_constructors
           home: Scaffold(body: BuyConfirmButton(buyPaymentInfo: _info)),
         ),
       );
