@@ -132,6 +132,20 @@ void main() {
       );
     });
 
+    test('API isValid=false with error=PrimaryEmailNotConfirmed → '
+        'Failure carries context', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(isValid: false, error: 'PrimaryEmailNotConfirmed'),
+          );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect((cubit.state as BuyPaymentInfoFailure).context, 'RealunitBuy');
+    });
+
     test('API isValid=false with unknown error → generic Failure', () async {
       when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
           .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooHigh', minVolume: 100));
