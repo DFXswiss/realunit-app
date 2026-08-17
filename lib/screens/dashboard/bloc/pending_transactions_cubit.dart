@@ -2,41 +2,23 @@ import 'dart:developer' as developer show log;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
-import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 
 class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
-  PendingTransactionsCubit(
-    this._transactionHistoryService,
-    this._buyPaymentInfoService,
-  ) : super([]) {
+  PendingTransactionsCubit(this._transactionHistoryService) : super([]) {
     _loadPendingTransactions();
   }
 
   final TransactionHistoryService _transactionHistoryService;
-  final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
-  final _inFlight = <String>{};
   int _loadGeneration = 0;
 
   Future<void> reload() => _loadPendingTransactions();
 
-  Future<void> deactivate(TransactionDto transaction) async {
-    if (transaction.type != TransactionType.buy ||
-        transaction.state != TransactionState.waitingForPayment) {
-      return;
-    }
-    final idOrUid = transaction.id?.toString() ?? transaction.uid;
-    if (idOrUid == null || idOrUid.isEmpty) return;
-    if (_inFlight.contains(idOrUid)) return;
-    _inFlight.add(idOrUid);
-    try {
-      await _buyPaymentInfoService.deactivateQuote(idOrUid);
-      if (isClosed) return;
-      emit(state.where((t) => (t.id?.toString() ?? t.uid) != idOrUid).toList());
-      await reload();
-    } finally {
-      _inFlight.remove(idOrUid);
-    }
+  /// Drops a quote from the local list after a successful cancel on the
+  /// detail page, so a failed reload cannot bring the cancelled row back.
+  void drop(String idOrUid) {
+    if (idOrUid.isEmpty) return;
+    emit(state.where((t) => (t.id?.toString() ?? t.uid) != idOrUid).toList());
   }
 
   Future<void> _loadPendingTransactions() async {

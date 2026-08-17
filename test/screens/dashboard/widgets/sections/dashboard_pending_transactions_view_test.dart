@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
-import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/pending_transactions_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/pending_transaction_row.dart';
@@ -19,8 +18,6 @@ class _MockPendingCubit extends MockCubit<List<TransactionDto>>
     implements PendingTransactionsCubit {}
 
 class _MockTransactionHistoryService extends Mock implements TransactionHistoryService {}
-
-class _MockBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
 
 TransactionDto _tx({
   int? id = 1,
@@ -41,11 +38,13 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(_tx());
+    registerFallbackValue('');
   });
 
   setUp(() {
     cubit = _MockPendingCubit();
     when(() => cubit.reload()).thenAnswer((_) async {});
+    when(() => cubit.drop(any())).thenReturn(null);
   });
 
   Widget host() => BlocProvider<PendingTransactionsCubit>.value(
@@ -109,10 +108,8 @@ void main() {
       final getIt = GetIt.instance;
       await getIt.reset();
       final history = _MockTransactionHistoryService();
-      final buyService = _MockBuyPaymentInfoService();
       when(() => history.fetchPendingTransactions()).thenAnswer((_) async => []);
       getIt.registerSingleton<TransactionHistoryService>(history);
-      getIt.registerSingleton<RealUnitBuyPaymentInfoService>(buyService);
       addTearDown(() async => getIt.reset());
 
       await tester.pumpWidget(
@@ -192,12 +189,13 @@ void main() {
       expect(find.byKey(const ValueKey('pending-detail-marker')), findsOneWidget);
       expect(find.text('detail-1'), findsOneWidget);
 
-      // Pop back so the reload after pushNamed runs.
+      // Pop the cancelled id so the list drops the row even if reload fails.
       final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
-      navigator.pop();
+      navigator.pop('1');
       await tester.pump();
       await tester.pump();
 
+      verify(() => cubit.drop('1')).called(1);
       verify(() => cubit.reload()).called(1);
     });
 

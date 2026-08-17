@@ -7,7 +7,6 @@ import 'package:realunit_wallet/packages/repository/balance_repository.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_price_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_account_service.dart';
-import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/balance_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -55,7 +54,6 @@ class DashboardPage extends StatelessWidget {
         BlocProvider(
           create: (context) => PendingTransactionsCubit(
             getIt<TransactionHistoryService>(),
-            getIt<RealUnitBuyPaymentInfoService>(),
           ),
         ),
       ],

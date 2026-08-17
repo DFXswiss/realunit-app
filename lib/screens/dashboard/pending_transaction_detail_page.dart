@@ -44,7 +44,7 @@ class PendingTransactionDetailView extends StatelessWidget {
     return BlocConsumer<PendingTransactionDetailCubit, PendingTransactionDetailState>(
       listener: (context, state) {
         if (state is PendingTransactionDetailSuccess) {
-          context.pop();
+          context.pop(transaction.id?.toString() ?? transaction.uid);
         }
         if (state is PendingTransactionDetailFailure) {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
-import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/pending_transactions_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/pending_transaction_row.dart';
@@ -19,7 +18,6 @@ class DashboardPendingTransactions extends StatelessWidget {
     return BlocProvider(
       create: (context) => PendingTransactionsCubit(
         getIt<TransactionHistoryService>(),
-        getIt<RealUnitBuyPaymentInfoService>(),
       ),
       child: const DashboardPendingTransactionsView(),
     );
@@ -60,13 +58,15 @@ class DashboardPendingTransactionsView extends StatelessWidget {
                         key: ValueKey('pendingTx-${t.id?.toString() ?? t.uid}'),
                         transaction: t,
                         onTap: () async {
-                          await context.pushNamed(
+                          final removed = await context.pushNamed<String>(
                             AppRoutes.pendingTransaction,
                             extra: t,
                           );
-                          if (context.mounted) {
-                            context.read<PendingTransactionsCubit>().reload();
+                          if (!context.mounted) return;
+                          if (removed != null && removed.isNotEmpty) {
+                            context.read<PendingTransactionsCubit>().drop(removed);
                           }
+                          await context.read<PendingTransactionsCubit>().reload();
                         },
                       ),
                     )
