@@ -25,16 +25,15 @@ TransactionDto _tx({
   double? inputAmount = 500,
   String? inputAsset = 'CHF',
   DateTime? date,
-}) =>
-    TransactionDto(
-      id: id,
-      uid: uid,
-      type: type,
-      state: state,
-      inputAmount: inputAmount,
-      inputAsset: inputAsset,
-      date: date ?? DateTime.utc(2026, 5, 21, 8),
-    );
+}) => TransactionDto(
+  id: id,
+  uid: uid,
+  type: type,
+  state: state,
+  inputAmount: inputAmount,
+  inputAsset: inputAsset,
+  date: date ?? DateTime.utc(2026, 5, 21, 8),
+);
 
 void main() {
   late _MockDetailCubit cubit;
@@ -200,7 +199,7 @@ void main() {
       await tester.pump();
       expect(find.text('parent-marker'), findsOneWidget);
 
-      router.push('/parent/child');
+      final popped = router.push<String>('/parent/child');
       await tester.pump();
       await tester.pump();
       expect(find.byType(PendingTransactionDetailView), findsOneWidget);
@@ -208,8 +207,52 @@ void main() {
       states.add(const PendingTransactionDetailSuccess());
       await tester.pump();
 
+      expect(await popped, '1');
       expect(find.text('parent-marker'), findsOneWidget);
       expect(find.byType(PendingTransactionDetailView), findsNothing);
+    });
+
+    testWidgets('Success pops the uid when id is null', (tester) async {
+      final states = StreamController<PendingTransactionDetailState>();
+      addTearDown(states.close);
+      whenListen(
+        cubit,
+        states.stream,
+        initialState: const PendingTransactionDetailInitial(),
+      );
+
+      final router = GoRouter(
+        initialLocation: '/parent',
+        routes: [
+          GoRoute(
+            path: '/parent',
+            builder: (_, _) => const Scaffold(body: Text('parent-marker')),
+            routes: [
+              GoRoute(
+                path: 'child',
+                builder: (_, _) => BlocProvider<PendingTransactionDetailCubit>.value(
+                  value: cubit,
+                  child: PendingTransactionDetailView(
+                    transaction: _tx(id: null, uid: 'u-wait'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(host(_tx(id: null, uid: 'u-wait'), router: router));
+      await tester.pump();
+
+      final popped = router.push<String>('/parent/child');
+      await tester.pump();
+      await tester.pump();
+
+      states.add(const PendingTransactionDetailSuccess());
+      await tester.pump();
+
+      expect(await popped, 'u-wait');
     });
 
     testWidgets('renders amount-only and asset-only when the other is missing', (tester) async {

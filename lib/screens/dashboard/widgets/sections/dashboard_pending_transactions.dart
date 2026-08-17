@@ -58,15 +58,18 @@ class DashboardPendingTransactionsView extends StatelessWidget {
                         key: ValueKey('pendingTx-${t.id?.toString() ?? t.uid}'),
                         transaction: t,
                         onTap: () async {
+                          final pending = context.read<PendingTransactionsCubit>();
                           final removed = await context.pushNamed<String>(
                             AppRoutes.pendingTransaction,
                             extra: t,
                           );
-                          if (!context.mounted) return;
+                          // The cubit lives on DashboardPage and survives this
+                          // view being swapped (zero vs non-zero balance).
+                          if (pending.isClosed) return;
                           if (removed != null && removed.isNotEmpty) {
-                            context.read<PendingTransactionsCubit>().drop(removed);
+                            pending.drop(removed);
                           }
-                          await context.read<PendingTransactionsCubit>().reload();
+                          await pending.reload();
                         },
                       ),
                     )

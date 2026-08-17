@@ -44,6 +44,7 @@ void main() {
     cubit = _MockPendingCubit();
     when(() => cubit.reload()).thenAnswer((_) async {});
     when(() => cubit.drop(any())).thenReturn(null);
+    when(() => cubit.isClosed).thenReturn(false);
   });
 
   Widget host() => BlocProvider<PendingTransactionsCubit>.value(
@@ -194,6 +195,28 @@ void main() {
       verify(() => cubit.reload()).called(1);
     });
 
+    testWidgets('closed cubit after pop is a no-op', (tester) async {
+      when(() => cubit.state).thenReturn([
+        _tx(id: 1, state: TransactionState.waitingForPayment),
+      ]);
+      when(() => cubit.isClosed).thenReturn(true);
+
+      await tester.pumpWidget(hostWithRouter());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('pendingTx-1')));
+      await tester.pump();
+      await tester.pump();
+
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
+      navigator.pop('1');
+      await tester.pump();
+      await tester.pump();
+
+      verifyNever(() => cubit.drop(any()));
+      verifyNever(() => cubit.reload());
+    });
+
     testWidgets('pop without a cancelled id reloads without drop', (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 1, state: TransactionState.waitingForPayment),
@@ -215,7 +238,7 @@ void main() {
       verify(() => cubit.reload()).called(1);
     });
 
-    testWidgets('unmount while the detail route is open is a no-op', (tester) async {
+    testWidgets('unmount while the detail route is open still reloads the cubit', (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 1, state: TransactionState.waitingForPayment),
       ]);
@@ -283,7 +306,7 @@ void main() {
       await tester.pump();
 
       verifyNever(() => cubit.drop(any()));
-      verifyNever(() => cubit.reload());
+      verify(() => cubit.reload()).called(1);
     });
 
     testWidgets('tap on sell row also navigates (details without cancel CTA)', (tester) async {
