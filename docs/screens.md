@@ -50,6 +50,7 @@ Column meaning:
 | PIN & lock | `VerifyPinPage` | `verifyPin` | `/verifyPin` | `86`, `87` |
 | Dashboard & trading | `DashboardPage` | `dashboard` | `/dashboard` | `35`, `89`, `90`, `91`, `92`, `93`, `94` |
 | Dashboard & trading | `TransactionHistoryPage` | `transactionHistory` | `/dashboard/transactionHistory` | `36`, `95`, `96`, `97`, `98`, `99`, `100` |
+| Dashboard & trading | `PendingTransactionDetailPage` | `pendingTransaction` | `/dashboard/pendingTransaction` | `270`, `271`, `272` |
 | Dashboard & trading | `BuyPage` | `buy` | `/buy` | `44`, `45`, `46`, `47`, `48`, `103`, `104`, `105`, `106`, `107`, `108`, `109`, `110`, `111`, `112`, `113` |
 | Dashboard & trading | `BuyPaymentDetailsPage` | `buyPaymentDetails` | `/buyPaymentDetails` | `53`, `114`, `115`, `116`, `117` |
 | Dashboard & trading | `SellPage` | `sell` | `/sell` | `49`, `50`, `51`, `52`, `118`, `119`, `120`, `123`, `124`, `125` |
@@ -116,7 +117,7 @@ Column meaning:
 | KYC | `KycMergeProcessingPage` | — | — | `210` |
 | Shared widgets | `PhoneNumberField` | — | — | `268` |
 
-76 screens — 44 routed (`GoRoute`) + 32 non-routed. The table also carries
+77 screens — 45 routed (`GoRoute`) + 32 non-routed. The table also carries
 one shared form-widget baseline (`PhoneNumberField`), which is not a screen.
 
 ## Notes
