@@ -104,6 +104,18 @@ void main() {
       expect(find.byType(AppFilledButton), findsNothing);
     });
 
+    testWidgets('sell detail title is type-neutral', (tester) async {
+      await tester.pumpWidget(
+        host(_tx(type: TransactionType.sell, state: TransactionState.processing)),
+      );
+      await tester.pump();
+
+      final title = tester.widget<Text>(
+        find.byKey(const ValueKey('pendingTxDetailTitle')),
+      );
+      expect(title.data, S.current.pendingTransactionDetailTitle);
+    });
+
     testWidgets('buy + processing has no deactivate button', (tester) async {
       await tester.pumpWidget(
         host(_tx(state: TransactionState.processing)),
@@ -113,32 +125,43 @@ void main() {
       expect(find.text(S.current.pendingTransactionDeactivate), findsNothing);
     });
 
-    testWidgets('dialog cancel does not call deactivate', (tester) async {
+    testWidgets('sheet cancel does not call deactivate', (tester) async {
       await tester.pumpWidget(host(_tx()));
       await tester.pump();
 
       await tester.tap(find.text(S.current.pendingTransactionDeactivate));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
+      expect(find.byType(CancelQuoteConfirmSheet), findsOneWidget);
       expect(find.text(S.current.pendingTransactionDeactivateConfirm), findsOneWidget);
 
-      await tester.tap(find.text(S.current.cancel));
-      await tester.pump();
+      final sheetCancel = find.descendant(
+        of: find.byType(CancelQuoteConfirmSheet),
+        matching: find.widgetWithText(AppFilledButton, S.current.cancel),
+      );
+      await tester.tap(sheetCancel);
+      await tester.pumpAndSettle();
 
       verifyNever(() => cubit.deactivate(any()));
+      expect(find.byType(CancelQuoteConfirmSheet), findsNothing);
     });
 
-    testWidgets('dialog confirm calls deactivate once', (tester) async {
+    testWidgets('sheet confirm calls deactivate once', (tester) async {
       await tester.pumpWidget(host(_tx(id: 42)));
       await tester.pump();
 
       await tester.tap(find.text(S.current.pendingTransactionDeactivate));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
-      await tester.tap(
-        find.widgetWithText(TextButton, S.current.pendingTransactionDeactivate),
+      final sheetConfirm = find.descendant(
+        of: find.byType(CancelQuoteConfirmSheet),
+        matching: find.widgetWithText(
+          AppFilledButton,
+          S.current.pendingTransactionDeactivate,
+        ),
       );
-      await tester.pump();
+      await tester.tap(sheetConfirm);
+      await tester.pumpAndSettle();
 
       verify(() => cubit.deactivate(any())).called(1);
     });
@@ -150,6 +173,24 @@ void main() {
       await tester.pump();
 
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
+    });
+
+    testWidgets('PopScope blocks pop while loading', (tester) async {
+      when(() => cubit.state).thenReturn(const PendingTransactionDetailLoading());
+
+      await tester.pumpWidget(host(_tx()));
+      await tester.pump();
+
+      final popScope = tester.widget<PopScope>(find.byType(PopScope));
+      expect(popScope.canPop, isFalse);
+    });
+
+    testWidgets('PopScope allows pop on initial', (tester) async {
+      await tester.pumpWidget(host(_tx()));
+      await tester.pump();
+
+      final popScope = tester.widget<PopScope>(find.byType(PopScope));
+      expect(popScope.canPop, isTrue);
     });
 
     testWidgets('shows snackbar on Failure', (tester) async {
@@ -344,6 +385,94 @@ void main() {
       );
       await tester.pump();
       expect(find.text('—'), findsOneWidget);
+    });
+  });
+
+  group('$CancelQuoteConfirmSheet', () {
+    Widget sheetHost(Widget home) => MaterialApp(
+      locale: const Locale('de'),
+      localizationsDelegates: const [
+        S.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      supportedLocales: S.delegate.supportedLocales,
+      home: home,
+    );
+
+    testWidgets('non-const constructor and both button pops', (tester) async {
+      // Load localizations so S.current is available for the non-const ctor.
+      await tester.pumpWidget(sheetHost(const SizedBox.shrink()));
+      await tester.pump();
+
+      // Non-const so CancelQuoteConfirmSheet's constructor lines are covered.
+      // ignore: prefer_const_constructors
+      final sheet = CancelQuoteConfirmSheet(strings: S.current);
+
+      await tester.pumpWidget(
+        sheetHost(
+          Builder(
+            builder: (context) => Scaffold(
+              body: Column(
+                children: [
+                  AppFilledButton(
+                    label: 'open-cancel',
+                    onPressed: () {
+                      showModalBottomSheet<bool>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => sheet,
+                      );
+                    },
+                  ),
+                  AppFilledButton(
+                    label: 'open-confirm',
+                    onPressed: () {
+                      // Second non-const pump path for the primary button.
+                      // ignore: prefer_const_constructors
+                      showModalBottomSheet<bool>(
+                        context: context,
+                        isScrollControlled: true,
+                        builder: (_) => CancelQuoteConfirmSheet(strings: S.current),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('open-cancel'));
+      await tester.pumpAndSettle();
+      expect(find.byType(CancelQuoteConfirmSheet), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(CancelQuoteConfirmSheet),
+          matching: find.widgetWithText(AppFilledButton, S.current.cancel),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(CancelQuoteConfirmSheet), findsNothing);
+
+      await tester.tap(find.text('open-confirm'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(CancelQuoteConfirmSheet),
+          matching: find.widgetWithText(
+            AppFilledButton,
+            S.current.pendingTransactionDeactivate,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(CancelQuoteConfirmSheet), findsNothing);
     });
   });
 }

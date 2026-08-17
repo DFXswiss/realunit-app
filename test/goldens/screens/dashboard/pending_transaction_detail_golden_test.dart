@@ -45,9 +45,9 @@ void main() {
   });
 
   Widget buildSubject(TransactionDto tx) => BlocProvider<PendingTransactionDetailCubit>.value(
-        value: cubit,
-        child: PendingTransactionDetailView(transaction: tx),
-      );
+    value: cubit,
+    child: PendingTransactionDetailView(transaction: tx),
+  );
 
   group('$PendingTransactionDetailView', () {
     goldenTest(
@@ -58,11 +58,11 @@ void main() {
     );
 
     goldenTest(
-      'deactivate confirm dialog',
+      'deactivate confirm sheet',
       fileName: 'pending_transaction_detail_deactivate_overlay',
       constraints: phoneConstraints,
       builder: () => wrapForGolden(
-        CancelQuoteConfirmDialog(strings: S.current),
+        CancelQuoteConfirmSheet(strings: S.current),
       ),
     );
 

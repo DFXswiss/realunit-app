@@ -7,6 +7,7 @@ import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/tra
 import 'package:realunit_wallet/screens/dashboard/cubits/pending_transaction_detail/pending_transaction_detail_cubit.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/handlebars.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 /// Detail page for a single pending transaction from the dashboard list.
@@ -55,94 +56,95 @@ class PendingTransactionDetailView extends StatelessWidget {
       builder: (context, state) {
         final loading = state is PendingTransactionDetailLoading;
         final idOrUid = transaction.id?.toString() ?? transaction.uid;
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(
-              S.of(context).pendingTransactionDetailTitle,
-              key: const ValueKey('pendingTxDetailTitle'),
+        return PopScope(
+          canPop: !loading,
+          child: Scaffold(
+            appBar: AppBar(
+              title: Text(
+                S.of(context).pendingTransactionDetailTitle,
+                key: const ValueKey('pendingTxDetailTitle'),
+              ),
             ),
-          ),
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: ScrollableActionsLayout(
-                body: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  spacing: 16,
-                  children: [
-                    Text(
-                      _typeLabel(context),
-                      key: const ValueKey('pendingTxDetailType'),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      _statusLabel(context),
-                      key: const ValueKey('pendingTxDetailStatus'),
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: RealUnitColors.neutral500,
-                      ),
-                    ),
-                    if (transaction.inputAmount != null && transaction.inputAsset != null)
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: ScrollableActionsLayout(
+                  body: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    spacing: 16,
+                    children: [
                       Text(
-                        '${_formatAmount(transaction.inputAmount!)} ${transaction.inputAsset}',
-                        key: const ValueKey('pendingTxDetailAmount'),
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        _typeLabel(context),
+                        key: const ValueKey('pendingTxDetailType'),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
-                      )
-                    else ...[
-                      if (transaction.inputAmount != null)
+                      ),
+                      Text(
+                        _statusLabel(context),
+                        key: const ValueKey('pendingTxDetailStatus'),
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: RealUnitColors.neutral500,
+                        ),
+                      ),
+                      if (transaction.inputAmount != null && transaction.inputAsset != null)
                         Text(
-                          _formatAmount(transaction.inputAmount!),
+                          '${_formatAmount(transaction.inputAmount!)} ${transaction.inputAsset}',
                           key: const ValueKey('pendingTxDetailAmount'),
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
-                        ),
-                      if (transaction.inputAsset != null)
+                        )
+                      else ...[
+                        if (transaction.inputAmount != null)
+                          Text(
+                            _formatAmount(transaction.inputAmount!),
+                            key: const ValueKey('pendingTxDetailAmount'),
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        if (transaction.inputAsset != null)
+                          Text(
+                            transaction.inputAsset!,
+                            key: const ValueKey('pendingTxDetailAsset'),
+                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
+                      if (transaction.date != null)
                         Text(
-                          transaction.inputAsset!,
-                          key: const ValueKey('pendingTxDetailAsset'),
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
+                          DateFormat('MMM dd, yyyy').format(transaction.date!.toLocal()),
+                          key: const ValueKey('pendingTxDetailDate'),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: RealUnitColors.neutral500,
+                          ),
+                        ),
+                      if (idOrUid != null && idOrUid.isNotEmpty)
+                        Text(
+                          idOrUid,
+                          key: const ValueKey('pendingTxDetailId'),
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: RealUnitColors.neutral500,
                           ),
                         ),
                     ],
-                    if (transaction.date != null)
-                      Text(
-                        DateFormat('MMM dd, yyyy').format(transaction.date!.toLocal()),
-                        key: const ValueKey('pendingTxDetailDate'),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: RealUnitColors.neutral500,
-                        ),
-                      ),
-                    if (idOrUid != null && idOrUid.isNotEmpty)
-                      Text(
-                        idOrUid,
-                        key: const ValueKey('pendingTxDetailId'),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: RealUnitColors.neutral500,
-                        ),
-                      ),
-                  ],
-                ),
-                actions: _isCancellable
-                    ? [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          child: AppFilledButton(
-                            variant: FilledButtonVariant.secondary,
-                            label: S.of(context).pendingTransactionDeactivate,
-                            state: loading ? .loading : .idle,
-                            onPressed: loading
-                                ? null
-                                : () => _confirmAndDeactivate(context),
+                  ),
+                  actions: _isCancellable
+                      ? [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: AppFilledButton(
+                              variant: FilledButtonVariant.secondary,
+                              label: S.of(context).pendingTransactionDeactivate,
+                              state: loading ? .loading : .idle,
+                              onPressed: loading ? null : () => _confirmAndDeactivate(context),
+                            ),
                           ),
-                        ),
-                      ]
-                    : const [],
+                        ]
+                      : const [],
+                ),
               ),
             ),
           ),
@@ -174,9 +176,12 @@ class PendingTransactionDetailView extends StatelessWidget {
   }
 
   Future<void> _confirmAndDeactivate(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (dialogContext) => CancelQuoteConfirmDialog(
+      isScrollControlled: true,
+      builder: (sheetContext) => CancelQuoteConfirmSheet(
+        // Page context, not sheetContext: Alchemist overlay routes do not inherit
+        // localizations.
         strings: S.of(context),
       ),
     );
@@ -185,32 +190,65 @@ class PendingTransactionDetailView extends StatelessWidget {
   }
 }
 
-/// Confirm dialog for cancelling a waiting buy quote.
+/// Confirm sheet for cancelling a waiting buy quote.
 ///
 /// Takes [S] from the page context so Alchemist overlay routes (which do not
 /// inherit localizations) can still golden the same widget.
-class CancelQuoteConfirmDialog extends StatelessWidget {
+class CancelQuoteConfirmSheet extends StatelessWidget {
   final S strings;
 
-  const CancelQuoteConfirmDialog({
+  const CancelQuoteConfirmSheet({
     super.key,
     required this.strings,
   });
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      content: Text(strings.pendingTransactionDeactivateConfirm),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(strings.cancel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(strings.pendingTransactionDeactivate),
-        ),
-      ],
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Handlebars.horizontal(
+            context,
+            margin: const EdgeInsets.only(top: 5),
+            width: 36,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  strings.pendingTransactionDeactivateConfirm,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: RealUnitColors.neutral500,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  spacing: 12,
+                  children: [
+                    Expanded(
+                      child: AppFilledButton(
+                        variant: FilledButtonVariant.secondary,
+                        onPressed: () => Navigator.of(context).pop(false),
+                        label: strings.cancel,
+                      ),
+                    ),
+                    Expanded(
+                      child: AppFilledButton(
+                        onPressed: () => Navigator.of(context).pop(true),
+                        label: strings.pendingTransactionDeactivate,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

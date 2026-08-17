@@ -34,7 +34,9 @@ fi
 touched="$(mktemp)"
 trap 'rm -f "$touched"' EXIT
 
-git diff --name-only "${BASE}...HEAD" | while IFS= read -r f; do
+# ACMR: Added/Copied/Modified/Renamed — exclude Deletes so a removed UI file
+# is not required to appear in lcov.
+git diff --diff-filter=ACMR --name-only "${BASE}...HEAD" | while IFS= read -r f; do
   case "$f" in
     lib/screens/*|lib/widgets/*) ;;
     *) continue ;;
@@ -56,6 +58,11 @@ fi
 failed=0
 
 while IFS= read -r file; do
+  # Skip paths that no longer exist on disk (e.g. renamed away mid-diff).
+  if [ ! -f "$file" ]; then
+    continue
+  fi
+
   # Normalise SF: paths the same way as check-coverage-visibility.sh:
   # absolute .../lib/foo → lib/foo; relative lib/foo passes through.
   section="$(
@@ -105,6 +112,7 @@ while IFS= read -r file; do
 
   if [ "$lh" -ne "$lf" ]; then
     echo "error: $file line coverage ${lh}/${lf} is below 100%" >&2
+    printf '%s' "$section" | grep -E '^DA:[0-9]+,0$' >&2 || true
     failed=1
     continue
   fi

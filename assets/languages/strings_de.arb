@@ -220,7 +220,7 @@
   "pendingTransactionDeactivate": "Angebot stornieren",
   "pendingTransactionDeactivateConfirm": "Dieses ausstehende Kaufangebot stornieren?",
   "pendingTransactionDeactivateFailed": "Das Angebot konnte nicht storniert werden. Bitte versuchen Sie es erneut.",
-  "pendingTransactionDetailTitle": "Ausstehender Kauf",
+  "pendingTransactionDetailTitle": "Ausstehende Transaktion",
   "pendingTransactions": "Ausstehende Transaktionen",
   "personalData": "Persönliche Daten",
   "phone": "Telefon",

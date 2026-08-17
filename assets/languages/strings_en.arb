@@ -220,7 +220,7 @@
   "pendingTransactionDeactivate": "Cancel quote",
   "pendingTransactionDeactivateConfirm": "Cancel this pending buy quote?",
   "pendingTransactionDeactivateFailed": "The quote could not be cancelled. Please try again.",
-  "pendingTransactionDetailTitle": "Pending purchase",
+  "pendingTransactionDetailTitle": "Pending transaction",
   "pendingTransactions": "Pending transactions",
   "personalData": "Personal data",
   "phone": "Phone",
