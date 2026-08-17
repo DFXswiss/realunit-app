@@ -199,6 +199,46 @@ void main() {
       verify(() => cubit.reload()).called(1);
     });
 
+    testWidgets('pop without a cancelled id reloads without drop', (tester) async {
+      when(() => cubit.state).thenReturn([
+        _tx(id: 1, state: TransactionState.waitingForPayment),
+      ]);
+
+      await tester.pumpWidget(hostWithRouter());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('pendingTx-1')));
+      await tester.pump();
+      await tester.pump();
+
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator).first);
+      navigator.pop();
+      await tester.pump();
+      await tester.pump();
+
+      verifyNever(() => cubit.drop(any()));
+      verify(() => cubit.reload()).called(1);
+    });
+
+    testWidgets('unmount while the detail route is open is a no-op', (tester) async {
+      when(() => cubit.state).thenReturn([
+        _tx(id: 1, state: TransactionState.waitingForPayment),
+      ]);
+
+      await tester.pumpWidget(hostWithRouter());
+      await tester.pump();
+
+      await tester.tap(find.byKey(const ValueKey('pendingTx-1')));
+      await tester.pump();
+      await tester.pump();
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+
+      verifyNever(() => cubit.drop(any()));
+      verifyNever(() => cubit.reload());
+    });
+
     testWidgets('tap on sell row also navigates (details without cancel CTA)',
         (tester) async {
       when(() => cubit.state).thenReturn([
