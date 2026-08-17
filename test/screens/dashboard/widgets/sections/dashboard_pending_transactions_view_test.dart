@@ -24,14 +24,13 @@ TransactionDto _tx({
   String? uid,
   TransactionType type = TransactionType.buy,
   TransactionState state = TransactionState.processing,
-}) =>
-    TransactionDto(
-      id: id,
-      uid: uid,
-      type: type,
-      state: state,
-      date: DateTime.utc(2026, 5, 15),
-    );
+}) => TransactionDto(
+  id: id,
+  uid: uid,
+  type: type,
+  state: state,
+  date: DateTime.utc(2026, 5, 15),
+);
 
 void main() {
   late _MockPendingCubit cubit;
@@ -48,19 +47,19 @@ void main() {
   });
 
   Widget host() => BlocProvider<PendingTransactionsCubit>.value(
-        value: cubit,
-        child: MaterialApp(
-          locale: const Locale('de'),
-          localizationsDelegates: const [
-            S.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-          ],
-          supportedLocales: S.delegate.supportedLocales,
-          home: const Scaffold(body: DashboardPendingTransactionsView()),
-        ),
-      );
+    value: cubit,
+    child: MaterialApp(
+      locale: const Locale('de'),
+      localizationsDelegates: const [
+        S.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
+      supportedLocales: S.delegate.supportedLocales,
+      home: const Scaffold(body: DashboardPendingTransactionsView()),
+    ),
+  );
 
   Widget hostWithRouter() {
     final router = GoRouter(
@@ -103,8 +102,7 @@ void main() {
   }
 
   group('$DashboardPendingTransactions', () {
-    testWidgets('provides PendingTransactionsCubit via getIt and hosts the view',
-        (tester) async {
+    testWidgets('provides PendingTransactionsCubit via getIt and hosts the view', (tester) async {
       final getIt = GetIt.instance;
       await getIt.reset();
       final history = _MockTransactionHistoryService();
@@ -133,8 +131,7 @@ void main() {
   });
 
   group('$DashboardPendingTransactionsView', () {
-    testWidgets('empty list: renders SizedBox.shrink (no PendingTransactionRow)',
-        (tester) async {
+    testWidgets('empty list: renders SizedBox.shrink (no PendingTransactionRow)', (tester) async {
       when(() => cubit.state).thenReturn([]);
 
       await tester.pumpWidget(host());
@@ -143,8 +140,7 @@ void main() {
       expect(find.byType(PendingTransactionRow), findsNothing);
     });
 
-    testWidgets('non-empty list: renders one PendingTransactionRow per tx',
-        (tester) async {
+    testWidgets('non-empty list: renders one PendingTransactionRow per tx', (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 1),
         _tx(id: 2, type: TransactionType.sell),
@@ -171,8 +167,7 @@ void main() {
       expect(find.byType(IconButton), findsNothing);
     });
 
-    testWidgets('tap on buy-waiting row navigates to pending detail and reloads',
-        (tester) async {
+    testWidgets('tap on buy-waiting row navigates to pending detail and reloads', (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 1, state: TransactionState.waitingForPayment),
         _tx(id: 2, type: TransactionType.sell),
@@ -225,22 +220,73 @@ void main() {
         _tx(id: 1, state: TransactionState.waitingForPayment),
       ]);
 
-      await tester.pumpWidget(hostWithRouter());
+      final showList = ValueNotifier(true);
+      addTearDown(showList.dispose);
+      final router = GoRouter(
+        initialLocation: '/dashboard',
+        routes: [
+          GoRoute(
+            name: AppRoutes.dashboard,
+            path: '/dashboard',
+            builder: (_, _) => ValueListenableBuilder<bool>(
+              valueListenable: showList,
+              builder: (_, visible, _) => BlocProvider<PendingTransactionsCubit>.value(
+                value: cubit,
+                child: Scaffold(
+                  body: visible
+                      ? const DashboardPendingTransactionsView()
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ),
+            routes: [
+              GoRoute(
+                name: AppRoutes.pendingTransaction,
+                path: 'pendingTransaction',
+                builder: (_, state) => Scaffold(
+                  body: Text(
+                    'detail-${(state.extra as TransactionDto).id}',
+                    key: const ValueKey('pending-detail-marker'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+        ),
+      );
       await tester.pump();
 
       await tester.tap(find.byKey(const ValueKey('pendingTx-1')));
       await tester.pump();
       await tester.pump();
+      expect(find.byKey(const ValueKey('pending-detail-marker')), findsOneWidget);
 
-      await tester.pumpWidget(const SizedBox.shrink());
+      // Unmount the list view but keep the navigator so pushNamed can resolve.
+      showList.value = false;
+      await tester.pump();
+      router.pop();
+      await tester.pump();
       await tester.pump();
 
       verifyNever(() => cubit.drop(any()));
       verifyNever(() => cubit.reload());
     });
 
-    testWidgets('tap on sell row also navigates (details without cancel CTA)',
-        (tester) async {
+    testWidgets('tap on sell row also navigates (details without cancel CTA)', (tester) async {
       when(() => cubit.state).thenReturn([
         _tx(id: 2, type: TransactionType.sell),
       ]);
@@ -255,8 +301,7 @@ void main() {
       expect(find.text('detail-2'), findsOneWidget);
     });
 
-    testWidgets('non-empty list also renders a section header above the rows',
-        (tester) async {
+    testWidgets('non-empty list also renders a section header above the rows', (tester) async {
       when(() => cubit.state).thenReturn([_tx()]);
 
       await tester.pumpWidget(host());
