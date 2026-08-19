@@ -149,9 +149,9 @@ void main() {
     testWidgets('renders every field the personal-data step submits', (tester) async {
       await tester.pumpApp(buildSubject(KycPersonalDataView(url: url, initialUserData: userDataDto())));
 
-      // six placed directly (first/last name, street, house number, postcode, city) plus the one
-      // PhoneNumberField nests for the number input
-      expect(find.byType(LabeledTextField), findsNWidgets(7));
+      // six placed directly (first/last name, street, house number, postcode, city) plus the two
+      // PhoneNumberField nests for prefix and number
+      expect(find.byType(LabeledTextField), findsNWidgets(8));
       expect(find.byType(PhoneNumberField), findsOne);
       expect(find.byType(CountryField), findsOne);
       expect(find.byType(FilledButton), findsOne);
@@ -180,7 +180,7 @@ void main() {
       await tester.pumpApp(buildSubject(KycPersonalDataView(url: url, initialUserData: dto)));
       await tester.pumpAndSettle();
 
-      expect(find.text('+41'), findsOne);
+      expect(find.text('41'), findsOne);
     });
 
     // The country lookup is fire-and-forget; without a catch a failing GET escapes as an uncaught
