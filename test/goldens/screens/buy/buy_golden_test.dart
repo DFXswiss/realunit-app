@@ -271,6 +271,28 @@ void main() {
     );
 
     goldenTest(
+      'invalid amount format failure',
+      fileName: 'buy_invalid_amount_format',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoFailure(PaymentInfoError.invalidAmountFormat),
+        );
+        when(() => converterCubit.state).thenReturn(
+          const BuyConverterState(
+            // Mixed grouping+decimal. The field formatter only rewrites a
+            // lone thousands group (`1.000` → `1000`); this value reaches
+            // chargedFiatAmount, which throws FormatException.
+            fiatText: '1.300,75',
+            sharesText: '',
+            currency: Currency.chf,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
       'price source unavailable failure shows API message',
       fileName: 'buy_price_source_unavailable',
       constraints: const BoxConstraints.tightFor(width: 390, height: 844),
