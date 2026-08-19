@@ -48,7 +48,7 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
       } catch (e) {
         developer.log(e.toString());
         if (isClosed || mySeq != _seq) return;
-        emit(state.copyWith(loading: false));
+        emit(state.copyWith(loading: false, sharesText: ''));
       }
     });
   }
@@ -75,7 +75,7 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
       } catch (e) {
         developer.log(e.toString());
         if (isClosed || mySeq != _seq) return;
-        emit(state.copyWith(loading: false));
+        emit(state.copyWith(loading: false, fiatText: ''));
       }
     });
   }
@@ -99,7 +99,7 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
     } catch (e) {
       developer.log(e.toString());
       if (isClosed || mySeq != _seq) return;
-      emit(state.copyWith(loading: false));
+      emit(state.copyWith(loading: false, sharesText: ''));
     }
   }
 
