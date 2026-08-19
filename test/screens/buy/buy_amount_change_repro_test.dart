@@ -120,52 +120,104 @@ void main() {
     );
 
     testWidgets(
-      'typing 1.000 (thousands grouping) does not show the support-contact error',
+      'typing 1.000 (thousands grouping) is shown as 1000 and does not show an error',
       (tester) async {
         await _pumpLoadedBuyPage(tester);
 
         await _enterAmount(tester, '1.000');
 
         final snapshot = _snapshot(tester);
-        final amount = tester.widget<TextField>(_amountField);
-
         expect(
           find.text(S.current.invalidAmountFormatTitle),
-          findsOneWidget,
+          findsNothing,
           reason:
-              'Typing 1.000 (grouping-ambiguous) must show the specific '
-              'ambiguous-amount hint. $snapshot',
+              'Typing 1.000 must be rewritten to 1000; the ambiguous-amount '
+              'hint must not appear. $snapshot',
         );
         expect(
           find.text(S.current.invalidAmountFormatDescription),
-          findsOneWidget,
-          reason:
-              'Typing 1.000 (grouping-ambiguous) must show the specific '
-              'ambiguous-amount description. $snapshot',
-        );
-        expect(
-          find.text(S.current.paymentInformationFailed),
           findsNothing,
           reason:
-              'Typing 1.000 (grouping-ambiguous) must not become the generic '
-              'support-contact error. $snapshot',
+              'Typing 1.000 must be rewritten to 1000; the ambiguous-amount '
+              'description must not appear. $snapshot',
         );
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '1000',
+          reasonPrefix:
+              'Typing 1.000 must appear in the field as 1000 and keep a valid '
+              'quote. The field normalises the thousands group before the '
+              'parser sees it.',
+        );
+      },
+    );
+
+    testWidgets(
+      'typing 1.000 character by character leaves partials alone, then shows 1000',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+        await tester.enterText(_amountField, '');
+        await tester.pump();
+
+        for (final value in ['1', '1.', '1.0', '1.00']) {
+          await tester.enterText(_amountField, value);
+          await tester.pump();
+          expect(
+            tester.widget<TextField>(_amountField).controller!.text,
+            value,
+            reason:
+                'Intermediate "$value" must stay as typed; the formatter must '
+                'not rewrite partial thousands-group input. ${_snapshot(tester)}',
+          );
+        }
+
+        await tester.enterText(_amountField, '1.000');
+        await tester.pump();
+
+        final afterGroup = tester.widget<TextField>(_amountField).controller!;
         expect(
-          find.text(S.current.paymentInformationFailedDescription),
-          findsNothing,
+          afterGroup.text,
+          '1000',
           reason:
-              'Typing 1.000 (grouping-ambiguous) must not show the support '
-              'description. $snapshot',
+              'The last character of 1.000 must rewrite the field to 1000. '
+              '${_snapshot(tester)}',
         );
         expect(
-          find.byType(CupertinoActivityIndicator),
-          findsNothing,
-          reason: 'Payment info is still spinning. $snapshot',
+          afterGroup.selection,
+          const TextSelection.collapsed(offset: 4),
+          reason:
+              'After rewriting 1.000 to 1000 the caret must sit at the end '
+              'so further typing appends. ${_snapshot(tester)}',
+        );
+
+        for (final value in ['1000.', '1000.0', '1000.00']) {
+          await tester.enterText(_amountField, value);
+          await tester.pump();
+          expect(
+            tester.widget<TextField>(_amountField).controller!.text,
+            value,
+            reason:
+                'Continuation "$value" must stay as typed. ${_snapshot(tester)}',
+          );
+        }
+
+        await tester.enterText(_amountField, '1000.000');
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '1000000',
+          reasonPrefix:
+              'Typing .000 after 1000 must appear in the field as 1000000 '
+              'and keep a valid quote.',
         );
         expect(
-          amount.controller!.text,
-          '1.000',
-          reason: 'Amount field is not "1.000". $snapshot',
+          tester.widget<TextField>(_amountField).controller!.selection,
+          const TextSelection.collapsed(offset: 7),
+          reason:
+              'After rewriting 1000.000 to 1000000 the caret must sit at '
+              'the end. ${_snapshot(tester)}',
         );
       },
     );

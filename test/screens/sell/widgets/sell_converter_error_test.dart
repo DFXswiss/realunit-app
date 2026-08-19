@@ -95,4 +95,60 @@ void main() {
       expect(find.byType(SnackBar), findsNothing);
     },
   );
+
+  testWidgets(
+    'typing 1.000 in the you-receive field is shown as 1000',
+    (tester) async {
+      when(() => fiatRepo.getSellable()).thenAnswer((_) async => const [Currency.chf]);
+      when(() => converterCubit.onFiatChanged(any())).thenAnswer((_) async {});
+
+      final sharesController = TextEditingController();
+      final fiatController = TextEditingController();
+      addTearDown(sharesController.dispose);
+      addTearDown(fiatController.dispose);
+
+      await tester.pumpApp(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<SellConverterCubit>.value(value: converterCubit),
+            BlocProvider<SellBalanceCubit>.value(value: balanceCubit),
+          ],
+          child: Scaffold(
+            body: SellConverter(
+              amountController: sharesController,
+              resultController: fiatController,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      final fiatField = find.byWidgetPredicate(
+        (widget) => widget is TextField && widget.controller == fiatController,
+      );
+
+      for (final value in ['1', '1.', '1.0', '1.00']) {
+        await tester.enterText(fiatField, value);
+        await tester.pump();
+        expect(
+          fiatController.text,
+          value,
+          reason: 'Intermediate "$value" must stay as typed in the sell fiat field.',
+        );
+      }
+
+      await tester.enterText(fiatField, '1.000');
+      await tester.pump();
+
+      expect(fiatController.text, '1000');
+      expect(fiatController.selection, const TextSelection.collapsed(offset: 4));
+      expect(sharesController.text, isEmpty);
+
+      await tester.enterText(fiatField, '1000.000');
+      await tester.pump();
+
+      expect(fiatController.text, '1000000');
+      expect(fiatController.selection, const TextSelection.collapsed(offset: 7));
+    },
+  );
 }

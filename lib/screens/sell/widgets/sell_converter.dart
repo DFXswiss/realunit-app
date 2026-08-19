@@ -14,6 +14,7 @@ import 'package:realunit_wallet/screens/sell/widgets/sell_max_amount_button.dart
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:realunit_wallet/widgets/fiat_input_formatter.dart';
 
 class SellConverter extends StatefulWidget {
   const SellConverter({
@@ -222,7 +223,7 @@ class _SellConverterState extends State<SellConverter> {
                   child: TextField(
                     controller: _resultController,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    inputFormatters: const [FiatInputFormatter()],
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       contentPadding: EdgeInsets.symmetric(

@@ -7,6 +7,16 @@ double? tryParseFiatAmount(String input) {
   return double.tryParse(input.replaceAll(',', '.'));
 }
 
+/// Strips a lone thousands group (`1.000` / `1,000` → `1000`).
+///
+/// EUR and CHF have two decimal places, so a separator followed by exactly
+/// three digits cannot be a decimal. Every other input is returned unchanged,
+/// including partials (`1.`, `1.0`, `1.00`) and real decimals (`300,75`).
+String normalizeFiatInput(String input) {
+  if (!RegExp(r'^\d+[.,]\d{3}$').hasMatch(input)) return input;
+  return input.replaceAll('.', '').replaceAll(',', '');
+}
+
 /// The whole-currency integer the backend charges for the raw [input] the user
 /// typed (e.g. `300,75` → `301`); empty input counts as zero.
 int chargedFiatAmount(String input) {

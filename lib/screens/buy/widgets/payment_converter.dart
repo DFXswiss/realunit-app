@@ -11,6 +11,7 @@ import 'package:realunit_wallet/screens/buy/cubits/buy_converter/buy_converter_c
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:realunit_wallet/widgets/fiat_input_formatter.dart';
 
 class PaymentConverter extends StatefulWidget {
   const PaymentConverter({
@@ -100,7 +101,7 @@ class _PaymentConverterState extends State<PaymentConverter> {
                   child: TextField(
                     controller: _amountController,
                     keyboardType: const .numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    inputFormatters: const [FiatInputFormatter()],
                     decoration: const InputDecoration(
                       border: .none,
                       contentPadding: .symmetric(
