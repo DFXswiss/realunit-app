@@ -44,6 +44,17 @@ class SellButton extends StatelessWidget {
             }
             return;
           }
+          if (state.error == .invalidAmountFormat) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(S.of(context).invalidAmountFormatDescription),
+                  backgroundColor: RealUnitColors.status.red600,
+                ),
+              );
+            }
+            return;
+          }
           if (context.mounted && state.message.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(

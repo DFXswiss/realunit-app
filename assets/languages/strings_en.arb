@@ -111,6 +111,8 @@
   "identityCheckProcessDescription": "Next, you need to verify your identity. Please have your ID ready and allow camera access on your device.",
   "identityCheckRequired": "Identity check required",
   "imprint": "Imprint",
+  "invalidAmountFormatDescription": "Please enter the amount without a thousands separator, for example 1000 instead of 1.000.",
+  "invalidAmountFormatTitle": "Amount is ambiguous",
   "kyc": "Onboarding process",
   "kycAccountMergeDescription": "Your identity was found in another account. A merge request has been created. Please confirm it via the email you received.",
   "kycAccountMergeTitle": "Account merge required",

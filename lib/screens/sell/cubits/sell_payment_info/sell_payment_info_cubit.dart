@@ -115,6 +115,14 @@ class SellPaymentInfoCubit extends Cubit<SellPaymentInfoState> {
           message: e.message,
         ),
       );
+    } on FormatException catch (e) {
+      if (isClosed) return;
+      emit(
+        SellPaymentInfoFailure(
+          PaymentInfoError.invalidAmountFormat,
+          message: e.toString(),
+        ),
+      );
     } catch (e) {
       developer.log(e.toString());
       if (isClosed) return;

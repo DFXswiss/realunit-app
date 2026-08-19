@@ -113,6 +113,8 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       }
       developer.log(e.toString());
       return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.message);
+    } on FormatException {
+      return const BuyPaymentInfoFailure(PaymentInfoError.invalidAmountFormat);
     } catch (e) {
       developer.log(e.toString());
       return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.toString());

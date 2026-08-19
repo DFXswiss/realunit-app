@@ -179,6 +179,18 @@ void main() {
       verify(() => service.getPaymentInfo(301, currency: Currency.chf)).called(1);
     });
 
+    test('grouping-ambiguous amount (1.000) → Failure(invalidAmountFormat), not unknown', () async {
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '1.000');
+
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect(
+        (cubit.state as BuyPaymentInfoFailure).error,
+        PaymentInfoError.invalidAmountFormat,
+      );
+      verifyNever(() => service.getPaymentInfo(any(), currency: any(named: 'currency')));
+    });
+
     test('KycLevelRequiredException → Failure(kycRequired, requiredLevel)', () async {
       when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
           .thenAnswer(

@@ -7,4 +7,5 @@ enum PaymentInfoError {
   bitboxDisconnected,
   priceSourceUnavailable,
   unknown,
+  invalidAmountFormat,
 }

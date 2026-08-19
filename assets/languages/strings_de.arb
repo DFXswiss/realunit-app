@@ -111,6 +111,8 @@
   "identityCheckProcessDescription": "Als nächstes müssen Sie Ihre Identität verifizieren. Bitte halten Sie Ihren Ausweis bereit und erlauben Sie den Kamerazugriff auf dem Gerät.",
   "identityCheckRequired": "Identitätsprüfung erforderlich",
   "imprint": "Impressum",
+  "invalidAmountFormatDescription": "Bitte geben Sie den Betrag ohne Tausenderpunkt ein, zum Beispiel 1000 statt 1.000.",
+  "invalidAmountFormatTitle": "Betrag nicht eindeutig",
   "kyc": "Eröffnungsprozess",
   "kycAccountMergeDescription": "Ihre Identität wurde bereits in einem anderen Konto gefunden. Eine Zusammenführungsanfrage wurde erstellt. Bitte bestätigen Sie diese über die E-Mail, die Sie erhalten haben.",
   "kycAccountMergeTitle": "Kontozusammenführung erforderlich",
