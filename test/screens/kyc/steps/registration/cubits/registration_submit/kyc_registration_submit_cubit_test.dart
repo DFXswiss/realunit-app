@@ -182,7 +182,11 @@ void main() {
       act: (cubit) => _submitFromRegistration(cubit, _registration()),
       expect: () => [
         KycRegistrationSubmitLoading(),
-        isA<KycRegistrationSubmitFailure>(),
+        isA<KycRegistrationSubmitFailure>().having(
+          (s) => s.message,
+          'message',
+          'wallet linked to other account',
+        ),
       ],
     );
 
@@ -212,6 +216,21 @@ void main() {
       expect: () => [
         KycRegistrationSubmitLoading(),
         const KycRegistrationSubmitFailure('Mail could not be fetched'),
+      ],
+    );
+
+    blocTest<KycRegistrationSubmitCubit, KycRegistrationSubmitState>(
+      'emits Failure with API message when getUser throws ApiException',
+      setUp: () {
+        when(() => kycService.getUser()).thenThrow(
+          const ApiException(statusCode: 401, code: 'X', message: 'Unauthorized'),
+        );
+      },
+      build: buildCubit,
+      act: (cubit) => _submitFromRegistration(cubit, _registration()),
+      expect: () => [
+        KycRegistrationSubmitLoading(),
+        isA<KycRegistrationSubmitFailure>().having((s) => s.message, 'message', 'Unauthorized'),
       ],
     );
 

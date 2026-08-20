@@ -2,6 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
 import 'package:realunit_wallet/screens/kyc/steps/nationality/cubit/kyc_nationality/kyc_nationality_cubit.dart';
 
@@ -69,6 +70,26 @@ void main() {
           'message',
           contains('boom'),
         ),
+      ],
+    );
+
+    blocTest<KycNationalityCubit, KycNationalityState>(
+      'ApiException → Failure with API message as-is',
+      setUp: () => when(() => service.setData(any(), any())).thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 400,
+          code: 'X',
+          message: 'Invalid nationality',
+        ),
+      ),
+      build: build,
+      act: (c) => c.registerNationality(
+        url: 'https://kyc/nat',
+        nationality: _switzerland,
+      ),
+      expect: () => [
+        const KycNationalityLoading(),
+        const KycNationalityFailure('Invalid nationality'),
       ],
     );
   });

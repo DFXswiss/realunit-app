@@ -167,6 +167,21 @@ void main() {
       expect(info.eip7702.recipient, '0xRecipient');
     });
 
+    test('503 without message → ApiException, not an invented gas-funding string', () async {
+      final client = MockClient(
+        (_) async => http.Response(jsonEncode({'statusCode': 503, 'code': 'X'}), 503),
+      );
+
+      expect(
+        () => build(client).prepareTransfer(
+          const RealUnitTransferDto(toAddress: '0xRecipient', amount: 5),
+        ),
+        throwsA(
+          isA<ApiException>().having((e) => e.statusCode, 'statusCode', 503),
+        ),
+      );
+    });
+
     test('503 → TransferGasFundingUnavailableException', () async {
       final client = MockClient(
         (_) async => http.Response(
@@ -252,6 +267,17 @@ void main() {
       expect(
         () => _confirm(build(client), _info()),
         throwsA(isA<TransferSignatureUnsupportedException>()),
+      );
+    });
+
+    test('503 on confirm without message → ApiException', () async {
+      final client = MockClient(
+        (_) async => http.Response(jsonEncode({'statusCode': 503, 'code': 'X'}), 503),
+      );
+
+      expect(
+        () => _confirm(build(client), _info()),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', 503)),
       );
     });
 

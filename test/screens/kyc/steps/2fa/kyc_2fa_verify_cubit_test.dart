@@ -2,6 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/screens/kyc/steps/2fa/cubits/kyc_2fa_verify/kyc_2fa_verify_cubit.dart';
 
 class _MockKycService extends Mock implements DfxKycService {}
@@ -47,6 +48,23 @@ void main() {
           'errorMessage',
           contains('wrong code'),
         ),
+      ],
+    );
+
+    blocTest<Kyc2FaVerifyCubit, Kyc2FaVerifyState>(
+      'ApiException → Failure with API message as-is',
+      setUp: () => when(() => service.verify2FaCode(any())).thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 400,
+          code: 'X',
+          message: 'Invalid code',
+        ),
+      ),
+      build: build,
+      act: (c) => c.verifyCode('000000'),
+      expect: () => [
+        const Kyc2FaVerifyLoading(),
+        const Kyc2FaVerifyFailure(errorMessage: 'Invalid code'),
       ],
     );
   });
