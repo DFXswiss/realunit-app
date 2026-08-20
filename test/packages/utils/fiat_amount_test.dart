@@ -47,6 +47,10 @@ void main() {
 
     test('returns null on multi-separator input', () {
       expect(tryParseFiatAmount('1.300,75'), isNull);
+      // Consecutive thousands groups are stripped by [normalizeFiatInput]
+      // before the parser sees them. The parser itself still rejects the
+      // raw grouped form.
+      expect(tryParseFiatAmount('1.000.000'), isNull);
     });
 
     test('returns null on grouping-ambiguous input (separator + 3 digits)', () {
@@ -57,6 +61,49 @@ void main() {
     test('still accepts unambiguous decimals', () {
       expect(tryParseFiatAmount('0,5'), 0.5);
       expect(tryParseFiatAmount('1,50'), 1.5);
+    });
+  });
+
+  group('normalizeFiatInput', () {
+    test('strips a lone thousands group', () {
+      expect(normalizeFiatInput('1.000'), '1000');
+      expect(normalizeFiatInput('1,000'), '1000');
+      expect(normalizeFiatInput('10.000'), '10000');
+      expect(normalizeFiatInput('10,000'), '10000');
+    });
+
+    test('strips consecutive thousands groups with the same separator', () {
+      expect(normalizeFiatInput('1.000.000'), '1000000');
+      expect(normalizeFiatInput('1,000,000'), '1000000');
+      expect(normalizeFiatInput('10.000.000'), '10000000');
+      expect(normalizeFiatInput('1000.000.000'), '1000000000');
+    });
+
+    test('strips mixed thousands grouping plus a decimal of the other separator', () {
+      expect(normalizeFiatInput('1.000,50'), '1000,50');
+      expect(normalizeFiatInput('1,000.50'), '1000.50');
+      expect(normalizeFiatInput('1.000,5'), '1000,5');
+      expect(normalizeFiatInput('1,000.5'), '1000.5');
+      expect(normalizeFiatInput('1.300,75'), '1300,75');
+      expect(normalizeFiatInput('1.000.000,50'), '1000000,50');
+      expect(normalizeFiatInput('1,000,000.50'), '1000000.50');
+    });
+
+    test('leaves every other input unchanged', () {
+      expect(normalizeFiatInput('300'), '300');
+      expect(normalizeFiatInput('300,75'), '300,75');
+      expect(normalizeFiatInput('0,5'), '0,5');
+      expect(normalizeFiatInput('1.000,000'), '1.000,000');
+      expect(normalizeFiatInput('1,000.000'), '1,000.000');
+      expect(normalizeFiatInput('1.000.50'), '1.000.50');
+      expect(normalizeFiatInput('1,000,50'), '1,000,50');
+      expect(normalizeFiatInput('3,5,7'), '3,5,7');
+    });
+
+    test('leaves partial thousands-group input unchanged', () {
+      expect(normalizeFiatInput('1.'), '1.');
+      expect(normalizeFiatInput('1.0'), '1.0');
+      expect(normalizeFiatInput('1.00'), '1.00');
     });
   });
 }

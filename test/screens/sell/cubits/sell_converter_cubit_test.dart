@@ -104,6 +104,32 @@ void main() {
       expect(cubit.state.loading, isFalse);
     });
 
+    test('onFiatChanged clears stale sharesText when a later conversion fails', () async {
+      when(() => service.getSellShares('300', any())).thenAnswer(
+        (_) async => BrokerbotSellSharesDto(
+          targetAmount: 300,
+          shares: 209,
+          pricePerShare: 1.43,
+          currency: 'CHF',
+        ),
+      );
+      when(() => service.getSellShares('1.000', any())).thenAnswer(
+        (_) async => throw Exception('Shares request failed: amountInput is not valid'),
+      );
+
+      final cubit = SellConverterCubit(service);
+      await cubit.onFiatChanged('300');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(cubit.state.sharesText, '209');
+
+      await cubit.onFiatChanged('1.000');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+
+      expect(cubit.state.fiatText, '1.000');
+      expect(cubit.state.sharesText, '');
+      expect(cubit.state.loading, isFalse);
+    });
+
     test('onSharesChanged writes estimatedAmount with matching fractional digits', () async {
       when(() => service.getSellPrice(any(), any())).thenAnswer(
         (_) async => BrokerbotSellPriceDto(
@@ -136,6 +162,32 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 250));
 
       expect(cubit.state.sharesText, '5');
+      expect(cubit.state.fiatText, '');
+      expect(cubit.state.loading, isFalse);
+    });
+
+    test('onSharesChanged clears stale fiatText when a later conversion fails', () async {
+      when(() => service.getSellPrice('5', any())).thenAnswer(
+        (_) async => BrokerbotSellPriceDto(
+          shares: 5,
+          estimatedAmount: 7.15,
+          pricePerShare: 1.43,
+          currency: 'CHF',
+        ),
+      );
+      when(() => service.getSellPrice('x', any())).thenAnswer(
+        (_) async => throw Exception('SellPrice request failed: sharesInput is not valid'),
+      );
+
+      final cubit = SellConverterCubit(service);
+      await cubit.onSharesChanged('5');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(cubit.state.fiatText, '7.15');
+
+      await cubit.onSharesChanged('x');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+
+      expect(cubit.state.sharesText, 'x');
       expect(cubit.state.fiatText, '');
       expect(cubit.state.loading, isFalse);
     });
@@ -210,6 +262,31 @@ void main() {
       await cubit.onCurrencyChanged(Currency.eur);
 
       expect(cubit.state.currency, Currency.eur);
+      expect(cubit.state.loading, isFalse);
+    });
+
+    test('onCurrencyChanged clears stale fiatText when conversion fails', () async {
+      when(() => service.getSellPrice(any(), Currency.chf)).thenAnswer(
+        (_) async => BrokerbotSellPriceDto(
+          shares: 10,
+          estimatedAmount: 14.30,
+          pricePerShare: 1.43,
+          currency: 'CHF',
+        ),
+      );
+      when(() => service.getSellPrice(any(), Currency.eur)).thenAnswer(
+        (_) async => throw Exception('throttle'),
+      );
+
+      final cubit = SellConverterCubit(service);
+      await cubit.onSharesChanged('10');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+      expect(cubit.state.fiatText, '14.30');
+
+      await cubit.onCurrencyChanged(Currency.eur);
+
+      expect(cubit.state.currency, Currency.eur);
+      expect(cubit.state.fiatText, '');
       expect(cubit.state.loading, isFalse);
     });
 

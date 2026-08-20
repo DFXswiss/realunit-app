@@ -7,6 +7,44 @@ double? tryParseFiatAmount(String input) {
   return double.tryParse(input.replaceAll(',', '.'));
 }
 
+/// Consecutive groups of three digits with the same separator.
+final _sameGrouping = RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)$');
+
+/// Thousands groups plus 1–2 digits of the other separator.
+final _mixedGrouping = RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)([.,])(\d{1,2})$');
+
+/// Grouping separator to drop from [input], or null if [input] is unchanged.
+String? _groupingSeparatorToStrip(String input) {
+  final same = _sameGrouping.firstMatch(input);
+  if (same != null) return same[2]!;
+  final mixed = _mixedGrouping.firstMatch(input);
+  if (mixed != null && mixed[2] != mixed[4]) return mixed[2]!;
+  return null;
+}
+
+/// Strips thousands grouping (`1.000` / `1,000` / `1.000.000` → integer).
+///
+/// EUR and CHF have two decimal places, so a separator followed by exactly
+/// three digits cannot be a decimal. Consecutive groups with the same
+/// separator are unambiguous thousands grouping, so a paste of `1.000.000`
+/// matches what typing the same characters one by one already produced.
+/// Mixed thousands + 1–2 decimal digits of the other separator (`1.000,50` /
+/// `1,000.50`) drop the thousands separator and keep the decimal, so paste
+/// matches typing. Real decimals (`300,75`) and partials (`1.`, `1.0`,
+/// `1.00`) are returned unchanged, as is mixed input that is not uniquely
+/// thousands-then-decimal (`1.000,000`, `3,5,7`).
+String normalizeFiatInput(String input) {
+  final separator = _groupingSeparatorToStrip(input);
+  if (separator == null) return input;
+  return input.replaceAll(separator, '');
+}
+
+/// The grouping separator [normalizeFiatInput] strips from [input], or null
+/// if [input] is left unchanged.
+String? strippedFiatGroupingSeparator(String input) {
+  return _groupingSeparatorToStrip(input);
+}
+
 /// The whole-currency integer the backend charges for the raw [input] the user
 /// typed (e.g. `300,75` → `301`); empty input counts as zero.
 int chargedFiatAmount(String input) {
