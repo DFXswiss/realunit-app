@@ -185,6 +185,7 @@ void main() {
       final f = cubit.state as SellPaymentInfoFailure;
       expect(f.error, PaymentInfoError.kycRequired);
       expect(f.requiredLevel, 30);
+      expect(f.message, 'KYC required');
     });
 
     test('KycLevelRequiredException with context → Failure carries context', () async {
@@ -258,6 +259,7 @@ void main() {
         (cubit.state as SellPaymentInfoFailure).error,
         PaymentInfoError.registrationRequired,
       );
+      expect((cubit.state as SellPaymentInfoFailure).message, 'Sign first');
     });
 
     test('RegistrationRequiredException with context → Failure carries context', () async {

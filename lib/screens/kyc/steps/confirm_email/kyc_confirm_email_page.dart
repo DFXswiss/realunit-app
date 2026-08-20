@@ -38,6 +38,14 @@ class KycConfirmEmailView extends StatelessWidget {
             ),
           );
         }
+        if (state is KycConfirmEmailFailure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: RealUnitColors.status.red600,
+            ),
+          );
+        }
         if (state is KycConfirmEmailConfirmed) {
           // Confirmation flipped true (or the API reports no gate). Hand back to
           // the KYC flow, which re-fetches `getRegistrationInfo` and routes on

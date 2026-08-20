@@ -21,8 +21,19 @@ class KycConfirmEmailConfirmed extends KycConfirmEmailState {
   const KycConfirmEmailConfirmed();
 }
 
-/// The address is still not confirmed, or the re-check failed. The page shows a
-/// retry hint and keeps the user on the confirm step.
+/// The address is still not confirmed. The page shows a retry hint and keeps
+/// the user on the confirm step.
 class KycConfirmEmailNotConfirmed extends KycConfirmEmailState {
   const KycConfirmEmailNotConfirmed();
+}
+
+/// The re-check itself failed (API / transport). The page shows the API text
+/// 1:1 and keeps the user on the confirm step so they can retry.
+class KycConfirmEmailFailure extends KycConfirmEmailState {
+  final String message;
+
+  const KycConfirmEmailFailure(this.message);
+
+  @override
+  List<Object?> get props => [message];
 }

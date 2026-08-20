@@ -166,8 +166,16 @@ void main() {
       expect(find.text(S.current.payQuoteUnavailable), findsOne);
     });
 
-    testWidgets('error state shows the generic failure message', (tester) async {
+    testWidgets('error state shows the API message 1:1', (tester) async {
       when(() => quoteCubit.state).thenReturn(const PayQuoteError('boom'));
+      await tester.pumpApp(buildSubject());
+
+      expect(find.text('boom'), findsOne);
+      expect(find.text(S.current.payFailureGeneric), findsNothing);
+    });
+
+    testWidgets('error state without API text falls back to the generic copy', (tester) async {
+      when(() => quoteCubit.state).thenReturn(const PayQuoteError(''));
       await tester.pumpApp(buildSubject());
 
       expect(find.text(S.current.payFailureGeneric), findsOne);

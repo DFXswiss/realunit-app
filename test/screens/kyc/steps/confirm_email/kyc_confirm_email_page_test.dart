@@ -8,6 +8,7 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_serv
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/confirm_email/cubits/kyc_confirm_email_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/confirm_email/kyc_confirm_email_page.dart';
+import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
 import '../../../../helper/pump_app.dart';
 
@@ -84,8 +85,8 @@ void main() {
 
       await tester.pumpApp(buildSubject(const KycConfirmEmailView()));
 
-      final button = tester.widget<FilledButton>(find.byType(FilledButton));
-      expect(button.onPressed, isNull);
+      final button = tester.widget<AppFilledButton>(find.byType(AppFilledButton));
+      expect(button.state, FilledButtonState.loading);
     });
   });
 
@@ -103,6 +104,22 @@ void main() {
       await tester.pump();
 
       expect(find.byType(SnackBar), findsOne);
+      verifyNever(() => kycCubit.checkKyc());
+    });
+
+    testWidgets('shows the API message 1:1 when the re-check fails', (
+      tester,
+    ) async {
+      whenListen(
+        confirmCubit,
+        Stream.fromIterable([const KycConfirmEmailFailure('Price source is temporarily unavailable')]),
+        initialState: const KycConfirmEmailInitial(),
+      );
+
+      await tester.pumpApp(buildSubject(const KycConfirmEmailView()));
+      await tester.pump();
+
+      expect(find.text('Price source is temporarily unavailable'), findsOne);
       verifyNever(() => kycCubit.checkKyc());
     });
 

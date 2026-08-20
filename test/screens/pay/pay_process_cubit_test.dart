@@ -567,7 +567,7 @@ void main() {
     final state = await retry as PayProcessPayRetry;
 
     expect(state.reason, PayRetryReason.unsignedTxMismatch);
-    expect(state.message, contains('amountWei is not a valid integer'));
+    expect(state.message, isNull);
     verifyNever(() => payService.submitPay(any()));
     await cubit.close();
   });
@@ -585,7 +585,7 @@ void main() {
       final state = await retry as PayProcessPayRetry;
 
       expect(state.reason, PayRetryReason.unsignedTxMismatch);
-      expect(state.message, contains('tokenAddress is not a valid 20-byte address'));
+      expect(state.message, isNull);
       verifyNever(() => payService.submitPay(any()));
       await cubit.close();
     },
@@ -669,7 +669,7 @@ void main() {
 
       final state = cubit.state as PayProcessPayRetry;
       expect(state.reason, PayRetryReason.transient);
-      expect(state.message, 'status polling exceeded max attempts');
+      expect(state.message, isNull);
       expect(pollCalls, 40);
 
       // Polling has genuinely stopped — elapsing further must not trigger another call.
@@ -704,7 +704,7 @@ void main() {
 
       final state = cubit.state as PayProcessPayRetry;
       expect(state.reason, PayRetryReason.transient);
-      expect(state.message, 'status polling exceeded max attempts');
+      expect(state.message, isNull);
       expect(pollCalls, 40);
 
       cubit.close();
@@ -823,7 +823,7 @@ void main() {
       final state = cubit.state as PayProcessFailure;
       expect(state.reason, PayProcessFailureReason.insufficientEth);
       expect(cubit.debugSwapInFlight, isFalse);
-      expect(state.message, 'eth balance polling exceeded max attempts');
+      expect(state.message, isNull);
       expect(balanceCalls, 24);
 
       // Polling has genuinely stopped — elapsing further must not trigger another call.
@@ -904,7 +904,7 @@ void main() {
 
       final state = cubit.state as PayProcessFailure;
       expect(state.reason, PayProcessFailureReason.insufficientEth);
-      expect(state.message, 'eth balance polling exceeded max attempts');
+      expect(state.message, isNull);
       expect(balanceCalls, 24);
 
       cubit.close();

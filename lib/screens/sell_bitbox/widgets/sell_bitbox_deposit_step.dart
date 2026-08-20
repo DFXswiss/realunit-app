@@ -94,7 +94,9 @@ class SellBitboxDepositStep extends StatelessWidget {
                 textAlign: .center,
               ),
               Text(
-                confirmOnly
+                state.errorMessage.isNotEmpty
+                    ? state.errorMessage
+                    : confirmOnly
                     ? S.of(context).sellBitboxConfirmRetryDescription
                     : S.of(context).sellBitboxDepositRetryDescription,
                 style: Theme.of(

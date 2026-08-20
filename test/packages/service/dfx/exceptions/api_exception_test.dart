@@ -109,5 +109,31 @@ void main() {
         expect(reg.context, 'RealunitSell');
       });
     });
+
+    group('userFacingMessage', () {
+      test('returns ApiException.message 1:1', () {
+        const error = ApiException(
+          statusCode: 503,
+          code: 'AKTIONARIAT_UNAVAILABLE',
+          message: 'Price source is temporarily unavailable',
+        );
+
+        expect(
+          ApiException.userFacingMessage(error),
+          'Price source is temporarily unavailable',
+        );
+        expect(
+          ApiException.userFacingMessage(error),
+          isNot(contains('RealUnitApiException')),
+        );
+      });
+
+      test('returns Object.toString for non-API errors', () {
+        expect(
+          ApiException.userFacingMessage(Exception('socket closed')),
+          'Exception: socket closed',
+        );
+      });
+    });
   });
 }

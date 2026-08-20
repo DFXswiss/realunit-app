@@ -72,7 +72,7 @@ class SellPaymentInfoCubit extends Cubit<SellPaymentInfoState> {
       emit(
         SellPaymentInfoFailure(
           PaymentInfoError.kycRequired,
-          message: e.toString(),
+          message: e.message,
           requiredLevel: e.requiredLevel,
           context: e.context,
         ),
@@ -82,7 +82,7 @@ class SellPaymentInfoCubit extends Cubit<SellPaymentInfoState> {
       emit(
         SellPaymentInfoFailure(
           PaymentInfoError.registrationRequired,
-          message: e.toString(),
+          message: e.message,
           context: e.context,
         ),
       );

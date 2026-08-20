@@ -5,6 +5,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/io/documents_directory_port.dart';
 import 'package:realunit_wallet/packages/io/path_provider_adapter.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/styles/language.dart';
@@ -42,7 +43,7 @@ class TransactionHistoryReceiptCubit extends Cubit<TransactionHistoryReceiptStat
       emit(TransactionHistoryReceiptSuccess(file.path));
     } catch (e) {
       if (isClosed) return;
-      emit(TransactionHistoryReceiptFailure(e.toString()));
+      emit(TransactionHistoryReceiptFailure(ApiException.userFacingMessage(e)));
     }
   }
 

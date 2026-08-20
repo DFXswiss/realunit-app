@@ -96,7 +96,8 @@ class PayProcessSuccess extends PayProcessState {
 class PayProcessPayRetry extends PayProcessState {
   final PayRetryReason reason;
 
-  /// Diagnostic detail for logs — not the user-facing copy.
+  /// API `message` when the failure came from the DFX API; otherwise null so
+  /// the view can fall back to local copy for process-local reasons.
   final String? message;
 
   const PayProcessPayRetry(this.reason, {this.message});
@@ -108,7 +109,8 @@ class PayProcessPayRetry extends PayProcessState {
 class PayProcessFailure extends PayProcessState {
   final PayProcessFailureReason reason;
 
-  /// Diagnostic detail for logs — not the user-facing copy.
+  /// API `message` when the failure came from the DFX API; otherwise null so
+  /// the view can fall back to local copy for hardware / process-local reasons.
   final String? message;
 
   const PayProcessFailure(this.reason, {this.message});

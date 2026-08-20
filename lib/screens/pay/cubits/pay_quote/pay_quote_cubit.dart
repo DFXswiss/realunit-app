@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/pay/dto/lnurlp_payment_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/pay/dto/real_unit_swap_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pay_service.dart';
@@ -62,7 +63,7 @@ class PayQuoteCubit extends Cubit<PayQuoteState> {
       );
     } catch (e) {
       if (isClosed) return;
-      emit(PayQuoteError(e.toString()));
+      emit(PayQuoteError(ApiException.userFacingMessage(e)));
     }
   }
 

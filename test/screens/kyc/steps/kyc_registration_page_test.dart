@@ -468,8 +468,7 @@ void main() {
           registrationSubmitCubit,
           Stream.fromIterable([
             const KycRegistrationSubmitFailure(
-              'RealUnitApiException: Unauthorized '
-              '(code: UNKNOWN, statusCode: 401)',
+              'Unauthorized',
               cause: ApiException(
                 statusCode: 401,
                 code: 'UNKNOWN',
@@ -498,8 +497,7 @@ void main() {
           registrationSubmitCubit,
           Stream.fromIterable([
             const KycRegistrationSubmitFailure(
-              'RealUnitApiException: Internal server error '
-              '(code: UNKNOWN, statusCode: 500)',
+              'Internal server error',
               cause: ApiException(
                 statusCode: 500,
                 code: 'UNKNOWN',
