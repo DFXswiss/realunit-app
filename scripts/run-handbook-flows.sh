@@ -42,13 +42,17 @@
 #   for residual Apple-XCTest crashes (~10 % per the #3137 thread):
 #   each flow is retried up to MAESTRO_MAX_ATTEMPTS times (default 3)
 #   when the CLI tee-log or `--debug-output` maestro.log matches the
-#   driver hang/death class (`IOSDriverTimeoutException`, `Failed to
-#   connect to /127.0.0.1:7001`, `java.net.ConnectException`,
-#   `Connection refused`, `Connection reset`). Maestro often disguises
-#   XCUITest-driver death as a later assertion failure on stdout while
-#   the ConnectException lives only in the debug log. Assertion
-#   failures without those patterns are NEVER retried — those are real
-#   regressions and must surface as red CI checks.
+#   driver hang/death class. `IOSDriverTimeoutException` matches
+#   anywhere in the file. ConnectException / `Failed to connect to
+#   /127.0.0.1:7001` / `Connection refused` / `Connection reset` only
+#   count from the first `Running flow ` line onward (inclusive) —
+#   every iOS start logs those strings during the XCTest installer
+#   status-check *before* the flow. If `Running flow ` is absent the
+#   whole file is searched (driver never came up). Maestro often
+#   disguises XCUITest-driver death as a later assertion failure on
+#   stdout while the ConnectException lives only in the debug log.
+#   Assertion failures without those patterns are NEVER retried —
+#   those are real regressions and must surface as red CI checks.
 #
 # Usage:
 #   scripts/run-handbook-flows.sh                    # run ALL handbook flows
@@ -233,16 +237,36 @@ fmt_duration() {
 # hang/death class. Maestro often disguises driver death as a later
 # assertion failure on CLI stdout while the ConnectException lives
 # only in `--debug-output` maestro.log — callers must pass both.
+# ConnectException-class strings before `Running flow ` are installer
+# status-check noise, not driver death; slice them out. Do not pipe
+# awk into grep under pipefail (SIGPIPE would false-negative).
 is_driver_hang_or_death() {
   local log="$1"
   [ -f "$log" ] || return 1
+
+  if grep -qF 'IOSDriverTimeoutException' "$log"; then
+    return 0
+  fi
+
+  local haystack="$log"
+  local tmp=""
+  if grep -qF 'Running flow ' "$log"; then
+    tmp="$(mktemp)"
+    awk 'p || /Running flow / { p=1; print }' "$log" > "$tmp"
+    haystack="$tmp"
+  fi
+
   grep -qF \
-    -e 'IOSDriverTimeoutException' \
     -e 'Failed to connect to /127.0.0.1:7001' \
     -e 'java.net.ConnectException' \
     -e 'Connection refused' \
     -e 'Connection reset' \
-    "$log"
+    "$haystack"
+  local rc=$?
+  if [ -n "$tmp" ]; then
+    rm -f "$tmp"
+  fi
+  return "$rc"
 }
 
 suite_start=$(date +%s)
