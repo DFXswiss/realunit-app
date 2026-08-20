@@ -33,6 +33,40 @@ void main() {
       expect(out.selection, const TextSelection.collapsed(offset: 7));
     });
 
+    test('rewrites a one-step paste of 1.000,50 to 1000,50', () {
+      final out = update(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '1.000,50',
+          selection: TextSelection.collapsed(offset: 8),
+        ),
+      );
+      expect(out.text, '1000,50');
+    });
+
+    test('rewrites a one-step paste of 1,000.50 to 1000.50', () {
+      final out = update(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '1,000.50',
+          selection: TextSelection.collapsed(offset: 8),
+        ),
+      );
+      expect(out.text, '1000.50');
+    });
+
+    test('leaves a one-step paste of grouping-ambiguous 1.000,000 unchanged', () {
+      final out = update(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '1.000,000',
+          selection: TextSelection.collapsed(offset: 9),
+        ),
+      );
+      expect(out.text, '1.000,000');
+      expect(out.selection, const TextSelection.collapsed(offset: 9));
+    });
+
     test('keeps the caret at the end when a thousands group is completed at the end', () {
       final out = update(
         const TextEditingValue(

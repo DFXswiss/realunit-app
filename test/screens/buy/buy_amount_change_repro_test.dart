@@ -260,6 +260,240 @@ void main() {
     );
 
     testWidgets(
+      'pasting 1.000,50 is shown as 1000,50 and matches typing the same characters',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        await tester.enterText(_amountField, '1.000,50');
+        await tester.pump();
+
+        expect(
+          tester.widget<TextField>(_amountField).controller!.text,
+          '1000,50',
+          reason:
+              'Pasting 1.000,50 must be rewritten to 1000,50 in one step, '
+              'matching character-by-character typing. ${_snapshot(tester)}',
+        );
+
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '1000,50',
+          reasonPrefix:
+              'Pasting 1.000,50 must appear as 1000,50 and keep a valid quote.',
+        );
+      },
+    );
+
+    testWidgets(
+      'typing 1.000,50 character by character ends as 1000,50 with a valid quote',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+        await tester.enterText(_amountField, '');
+        await tester.pump();
+
+        for (final value in ['1', '1.', '1.0', '1.00']) {
+          await tester.enterText(_amountField, value);
+          await tester.pump();
+          expect(
+            tester.widget<TextField>(_amountField).controller!.text,
+            value,
+            reason:
+                'Intermediate "$value" must stay as typed. ${_snapshot(tester)}',
+          );
+        }
+
+        await tester.enterText(_amountField, '1.000');
+        await tester.pump();
+        expect(
+          tester.widget<TextField>(_amountField).controller!.text,
+          '1000',
+          reason:
+              'The last character of 1.000 must rewrite the field to 1000. '
+              '${_snapshot(tester)}',
+        );
+
+        for (final value in ['1000,', '1000,5', '1000,50']) {
+          await tester.enterText(_amountField, value);
+          await tester.pump();
+          expect(
+            tester.widget<TextField>(_amountField).controller!.text,
+            value,
+            reason:
+                'Continuation "$value" must stay as typed. ${_snapshot(tester)}',
+          );
+        }
+
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '1000,50',
+          reasonPrefix:
+              'Typing 1.000,50 must appear as 1000,50 and keep a valid quote, '
+              'matching a one-step paste of the same characters.',
+        );
+      },
+    );
+
+    testWidgets(
+      'pasting 1,000.50 is shown as 1000.50 and matches typing the same characters',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        await tester.enterText(_amountField, '1,000.50');
+        await tester.pump();
+
+        expect(
+          tester.widget<TextField>(_amountField).controller!.text,
+          '1000.50',
+          reason:
+              'Pasting 1,000.50 must be rewritten to 1000.50 in one step, '
+              'matching character-by-character typing. ${_snapshot(tester)}',
+        );
+
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '1000.50',
+          reasonPrefix:
+              'Pasting 1,000.50 must appear as 1000.50 and keep a valid quote.',
+        );
+      },
+    );
+
+    testWidgets(
+      'typing 1,000.50 character by character ends as 1000.50 with a valid quote',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+        await tester.enterText(_amountField, '');
+        await tester.pump();
+
+        for (final value in ['1', '1,', '1,0', '1,00']) {
+          await tester.enterText(_amountField, value);
+          await tester.pump();
+          expect(
+            tester.widget<TextField>(_amountField).controller!.text,
+            value,
+            reason:
+                'Intermediate "$value" must stay as typed. ${_snapshot(tester)}',
+          );
+        }
+
+        await tester.enterText(_amountField, '1,000');
+        await tester.pump();
+        expect(
+          tester.widget<TextField>(_amountField).controller!.text,
+          '1000',
+          reason:
+              'The last character of 1,000 must rewrite the field to 1000. '
+              '${_snapshot(tester)}',
+        );
+
+        for (final value in ['1000.', '1000.5', '1000.50']) {
+          await tester.enterText(_amountField, value);
+          await tester.pump();
+          expect(
+            tester.widget<TextField>(_amountField).controller!.text,
+            value,
+            reason:
+                'Continuation "$value" must stay as typed. ${_snapshot(tester)}',
+          );
+        }
+
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '1000.50',
+          reasonPrefix:
+              'Typing 1,000.50 must appear as 1000.50 and keep a valid quote, '
+              'matching a one-step paste of the same characters.',
+        );
+      },
+    );
+
+    testWidgets(
+      'pasting grouping-ambiguous 1.000,000 is rejected',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        await tester.enterText(_amountField, '1.000,000');
+        await tester.pump();
+
+        expect(
+          tester.widget<TextField>(_amountField).controller!.text,
+          '1.000,000',
+          reason:
+              'Pasting 1.000,000 must stay as typed; mixed 3-digit tails are '
+              'grouping-ambiguous. ${_snapshot(tester)}',
+        );
+
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        final snapshot = _snapshot(tester);
+        expect(
+          find.text(S.current.invalidAmountFormatTitle),
+          findsOneWidget,
+          reason:
+              'Pasting 1.000,000 must surface the unreadable-amount hint. '
+              '$snapshot',
+        );
+        expect(
+          find.byType(BuyConfirmButton),
+          findsNothing,
+          reason:
+              'A grouping-ambiguous paste must not leave a confirmable quote. '
+              '$snapshot',
+        );
+      },
+    );
+
+    testWidgets(
+      'pasting 1.000.50 (same separator as thousands and decimal) is rejected',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        await tester.enterText(_amountField, '1.000.50');
+        await tester.pump();
+
+        expect(
+          tester.widget<TextField>(_amountField).controller!.text,
+          '1.000.50',
+          reason:
+              'Pasting 1.000.50 must stay as typed; the same separator cannot '
+              'be both thousands grouping and a decimal. ${_snapshot(tester)}',
+        );
+
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        final snapshot = _snapshot(tester);
+        expect(
+          find.text(S.current.invalidAmountFormatTitle),
+          findsOneWidget,
+          reason:
+              'Pasting 1.000.50 must surface the unreadable-amount hint. '
+              '$snapshot',
+        );
+        expect(
+          find.byType(BuyConfirmButton),
+          findsNothing,
+          reason:
+              'An ambiguous same-separator paste must not leave a confirmable '
+              'quote. $snapshot',
+        );
+      },
+    );
+
+    testWidgets(
       'a failed shares-to-fiat conversion drops the leftover quote so it cannot be confirmed',
       (tester) async {
         await _pumpLoadedBuyPage(tester);
@@ -352,6 +586,7 @@ void main() {
         _expectHealthyQuote(
           tester,
           expectedAmount: '300',
+          expectedCurrency: Currency.eur,
           reasonPrefix: 'After switching to EUR at 300 the quote must stay valid.',
         );
         expect(
@@ -401,6 +636,7 @@ void main() {
         _expectHealthyQuote(
           tester,
           expectedAmount: '100',
+          expectedCurrency: Currency.eur,
           reasonPrefix:
               'After switching to EUR and replacing 300 with 100 the quote '
               'must stay valid.',
@@ -655,6 +891,7 @@ void _expectHealthyQuote(
   WidgetTester tester, {
   required String expectedAmount,
   required String reasonPrefix,
+  Currency expectedCurrency = Currency.chf,
 }) {
   final snapshot = _snapshot(tester);
   final amount = tester.widget<TextField>(_amountField);
@@ -678,6 +915,45 @@ void _expectHealthyQuote(
     amount.controller!.text,
     expectedAmount,
     reason: '$reasonPrefix Amount field is not "$expectedAmount". $snapshot',
+  );
+
+  final paymentState =
+      tester.element(find.byType(BuyView)).read<BuyPaymentInfoCubit>().state;
+  expect(
+    paymentState,
+    isA<BuyPaymentInfoSuccess>(),
+    reason: '$reasonPrefix Payment info is not a landed quote. $snapshot',
+  );
+  final success = paymentState as BuyPaymentInfoSuccess;
+  expect(
+    success.buyPaymentInfo.amount,
+    chargedFiatAmount(expectedAmount).toDouble(),
+    reason:
+        '$reasonPrefix Quote amount is ${success.buyPaymentInfo.amount}, not '
+        '${chargedFiatAmount(expectedAmount)}. $snapshot',
+  );
+  expect(
+    success.buyPaymentInfo.currency,
+    expectedCurrency,
+    reason:
+        '$reasonPrefix Quote currency is ${success.buyPaymentInfo.currency.code}, '
+        'not ${expectedCurrency.code}. $snapshot',
+  );
+  expect(
+    find.byType(BuyConfirmButton),
+    findsOneWidget,
+    reason: '$reasonPrefix Binding-buy button is missing. $snapshot',
+  );
+  final filled = tester.widget<AppFilledButton>(
+    find.descendant(
+      of: find.byType(BuyConfirmButton),
+      matching: find.byType(AppFilledButton),
+    ),
+  );
+  expect(
+    filled.onPressed,
+    isNotNull,
+    reason: '$reasonPrefix Binding-buy button is not pressable. $snapshot',
   );
 }
 

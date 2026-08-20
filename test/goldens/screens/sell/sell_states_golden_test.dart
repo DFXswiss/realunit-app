@@ -14,6 +14,7 @@ import 'package:realunit_wallet/packages/service/dfx/dfx_brokerbot_service.dart'
 import 'package:realunit_wallet/packages/service/dfx/dfx_price_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/bank_account/bank_account.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/bank_account/dto/bank_account_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/payment/payment_info_error.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/dto/eip7702/eip7702_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/dto/real_unit_sell_payment_info_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/sell_payment_info.dart';
@@ -238,6 +239,32 @@ void main() {
       fileName: 'sell_bank_account_selected',
       constraints: phoneConstraints,
       builder: () => wrapForGolden(buildSubject()),
+    );
+
+    // SellButton's BlocConsumer shows the invalidAmountFormat SnackBar on the
+    // transition into that failure (sell_button.dart). Seed Initial and emit
+    // the failure so the listener fires; do not stub `state` to the final
+    // value — that would erase the transition. The single `pump` delivers the
+    // emission and `pumpAndSettle` runs the SnackBar entrance (the 4s
+    // auto-dismiss is a Timer, not a frame, so it stays visible).
+    goldenTest(
+      'invalid amount format SnackBar',
+      fileName: 'sell_invalid_amount_format_snackbar',
+      constraints: phoneConstraints,
+      pumpBeforeTest: (tester) async {
+        await tester.pump();
+        await tester.pumpAndSettle();
+      },
+      builder: () {
+        whenListen(
+          paymentInfoCubit,
+          Stream<SellPaymentInfoState>.value(
+            const SellPaymentInfoFailure(PaymentInfoError.invalidAmountFormat),
+          ),
+          initialState: const SellPaymentInfoInitial(),
+        );
+        return wrapForGolden(buildSubject());
+      },
     );
   });
 

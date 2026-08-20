@@ -13,13 +13,20 @@ double? tryParseFiatAmount(String input) {
 /// three digits cannot be a decimal. Consecutive groups with the same
 /// separator are unambiguous thousands grouping, so a paste of `1.000.000`
 /// matches what typing the same characters one by one already produced.
-/// Mixed separators (`1.300,75`) and real decimals (`300,75`) are returned
-/// unchanged, as are partials (`1.`, `1.0`, `1.00`).
+/// Mixed thousands + 1–2 decimal digits of the other separator (`1.000,50` /
+/// `1,000.50`) drop the thousands separator and keep the decimal, so paste
+/// matches typing. Real decimals (`300,75`) and partials (`1.`, `1.0`,
+/// `1.00`) are returned unchanged, as is mixed input that is not uniquely
+/// thousands-then-decimal (`1.000,000`, `3,5,7`).
 String normalizeFiatInput(String input) {
-  if (!RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)$').hasMatch(input)) {
-    return input;
+  if (RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)$').hasMatch(input)) {
+    return input.replaceAll('.', '').replaceAll(',', '');
   }
-  return input.replaceAll('.', '').replaceAll(',', '');
+  final mixed = RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)([.,])(\d{1,2})$').firstMatch(input);
+  if (mixed != null && mixed[2] != mixed[4]) {
+    return input.replaceAll(mixed[2]!, '');
+  }
+  return input;
 }
 
 /// The whole-currency integer the backend charges for the raw [input] the user

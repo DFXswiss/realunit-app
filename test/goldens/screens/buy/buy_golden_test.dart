@@ -280,9 +280,12 @@ void main() {
         );
         when(() => converterCubit.state).thenReturn(
           const BuyConverterState(
-            // Mixed grouping+decimal. The field formatter only rewrites a
-            // lone thousands group (`1.000` → `1000`); this value reaches
-            // chargedFiatAmount, which throws FormatException.
+            // This golden stubs the failure panel and does not run the
+            // formatter. Same-separator thousands groups (`1.000`,
+            // `1.000.000`) and mixed thousands + 1–2 decimal digits of the
+            // other separator (`1.000,50`, `1.300,75`) are stripped before
+            // the parser; a 3-digit mixed tail (`1.000,000`) still reaches
+            // chargedFiatAmount and throws FormatException.
             fiatText: '1.300,75',
             sharesText: '',
             currency: Currency.chf,

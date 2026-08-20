@@ -241,10 +241,5 @@ void main() {
         return wrapForGolden(buildSubject());
       },
     );
-
-    // No golden for PaymentInfoError.invalidAmountFormat: the error is a
-    // SnackBar from SellButton's BlocConsumer listener. A state-stubbed
-    // golden never fires the listener, so the image would be identical to
-    // another failure state's. Covered by sell_button_call_site_test.dart.
   });
 }

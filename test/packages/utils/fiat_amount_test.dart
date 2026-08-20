@@ -79,12 +79,24 @@ void main() {
       expect(normalizeFiatInput('1000.000.000'), '1000000000');
     });
 
+    test('strips mixed thousands grouping plus a decimal of the other separator', () {
+      expect(normalizeFiatInput('1.000,50'), '1000,50');
+      expect(normalizeFiatInput('1,000.50'), '1000.50');
+      expect(normalizeFiatInput('1.000,5'), '1000,5');
+      expect(normalizeFiatInput('1,000.5'), '1000.5');
+      expect(normalizeFiatInput('1.300,75'), '1300,75');
+      expect(normalizeFiatInput('1.000.000,50'), '1000000,50');
+      expect(normalizeFiatInput('1,000,000.50'), '1000000.50');
+    });
+
     test('leaves every other input unchanged', () {
       expect(normalizeFiatInput('300'), '300');
       expect(normalizeFiatInput('300,75'), '300,75');
       expect(normalizeFiatInput('0,5'), '0,5');
-      expect(normalizeFiatInput('1.300,75'), '1.300,75');
       expect(normalizeFiatInput('1.000,000'), '1.000,000');
+      expect(normalizeFiatInput('1,000.000'), '1,000.000');
+      expect(normalizeFiatInput('1.000.50'), '1.000.50');
+      expect(normalizeFiatInput('1,000,50'), '1,000,50');
       expect(normalizeFiatInput('3,5,7'), '3,5,7');
     });
 
