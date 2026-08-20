@@ -7,13 +7,18 @@ double? tryParseFiatAmount(String input) {
   return double.tryParse(input.replaceAll(',', '.'));
 }
 
-/// Strips a lone thousands group (`1.000` / `1,000` → `1000`).
+/// Strips thousands grouping (`1.000` / `1,000` / `1.000.000` → integer).
 ///
 /// EUR and CHF have two decimal places, so a separator followed by exactly
-/// three digits cannot be a decimal. Every other input is returned unchanged,
-/// including partials (`1.`, `1.0`, `1.00`) and real decimals (`300,75`).
+/// three digits cannot be a decimal. Consecutive groups with the same
+/// separator are unambiguous thousands grouping, so a paste of `1.000.000`
+/// matches what typing the same characters one by one already produced.
+/// Mixed separators (`1.300,75`) and real decimals (`300,75`) are returned
+/// unchanged, as are partials (`1.`, `1.0`, `1.00`).
 String normalizeFiatInput(String input) {
-  if (!RegExp(r'^\d+[.,]\d{3}$').hasMatch(input)) return input;
+  if (!RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)$').hasMatch(input)) {
+    return input;
+  }
   return input.replaceAll('.', '').replaceAll(',', '');
 }
 

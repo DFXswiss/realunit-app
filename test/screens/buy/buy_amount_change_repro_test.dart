@@ -225,6 +225,82 @@ void main() {
     );
 
     testWidgets(
+      'pasting 1.000.000 in one step is shown as 1000000 and does not show an error',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        await tester.enterText(_amountField, '1.000.000');
+        await tester.pump();
+
+        expect(
+          tester.widget<TextField>(_amountField).controller!.text,
+          '1000000',
+          reason:
+              'Pasting 1.000.000 must be rewritten to 1000000 in one step, '
+              'matching character-by-character typing. ${_snapshot(tester)}',
+        );
+
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        expect(
+          find.text(S.current.invalidAmountFormatTitle),
+          findsNothing,
+          reason:
+              'Pasting 1.000.000 must not surface the unreadable-amount hint. '
+              '${_snapshot(tester)}',
+        );
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '1000000',
+          reasonPrefix:
+              'Pasting 1.000.000 must appear as 1000000 and keep a valid quote.',
+        );
+      },
+    );
+
+    testWidgets(
+      'a failed shares-to-fiat conversion drops the leftover quote so it cannot be confirmed',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        expect(
+          find.byType(BuyConfirmButton),
+          findsOneWidget,
+          reason:
+              'Default 300 must already show the binding-buy button. '
+              '${_snapshot(tester)}',
+        );
+
+        when(() => brokerbotService.getBuyPrice(any(), any())).thenAnswer(
+          (_) async => throw Exception('BuyPrice request failed: conversion failed'),
+        );
+
+        await tester.enterText(find.byType(TextField).last, '10');
+        await tester.pump(_afterDebounce);
+        await tester.pump();
+
+        expect(
+          find.byType(BuyConfirmButton),
+          findsNothing,
+          reason:
+              'After getBuyPrice fails the leftover 300 quote must not stay '
+              'confirmable. ${_snapshot(tester)}',
+        );
+        expect(
+          tester.element(find.byType(BuyView)).read<BuyPaymentInfoCubit>().state,
+          isA<BuyPaymentInfoInitial>(),
+          reason:
+              'The payment-info cubit must drop the landed quote when the '
+              'fiat counterpart is cleared. ${_snapshot(tester)}',
+        );
+        verifyNever(
+          () => paymentInfoService.getPaymentInfo(0, currency: any(named: 'currency')),
+        );
+      },
+    );
+
+    testWidgets(
       'buying after replacing 300 with 100 confirms the 100 quote, not the leftover 300',
       (tester) async {
         await _pumpLoadedBuyPage(tester);

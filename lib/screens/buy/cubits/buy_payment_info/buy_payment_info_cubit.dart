@@ -58,10 +58,26 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
     emit(newState);
   }
 
+  /// Drops a landed quote so it cannot be confirmed after the amount it
+  /// belonged to has disappeared. Cancels an in-flight fetch to keep a
+  /// later completion from restoring the old Success.
+  void clearQuote() {
+    _completer?.cancel();
+    if (isClosed) return;
+    emit(const BuyPaymentInfoInitial());
+  }
+
   Future<BuyPaymentInfoState> _runGetPaymentInfo(String amount, Currency currency) async {
+    final int charged;
+    try {
+      charged = chargedFiatAmount(amount);
+    } on FormatException {
+      return const BuyPaymentInfoFailure(PaymentInfoError.invalidAmountFormat);
+    }
+
     try {
       final paymentInfo = await _buyPaymentInfoService.getPaymentInfo(
-        chargedFiatAmount(amount),
+        charged,
         currency: currency,
       );
 
@@ -113,8 +129,6 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       }
       developer.log(e.toString());
       return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.message);
-    } on FormatException {
-      return const BuyPaymentInfoFailure(PaymentInfoError.invalidAmountFormat);
     } catch (e) {
       developer.log(e.toString());
       return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.toString());

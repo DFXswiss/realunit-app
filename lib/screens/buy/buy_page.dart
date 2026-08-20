@@ -58,7 +58,15 @@ class _BuyViewState extends State<BuyView> {
         listener: (context, state) {
           _syncController(_amountController, state.fiatText);
           _syncController(_resultController, state.sharesText);
-          context.read<BuyPaymentInfoCubit>().getPaymentInfo(
+          final paymentInfo = context.read<BuyPaymentInfoCubit>();
+          // An empty field is not an amount to quote. Fetching it would
+          // charge 0 and, while that request is in flight, leave a previous
+          // Success (and its confirm button) on screen.
+          if (_amountController.text.isEmpty) {
+            paymentInfo.clearQuote();
+            return;
+          }
+          paymentInfo.getPaymentInfo(
             amount: _amountController.text,
             currency: state.currency,
           );

@@ -241,5 +241,36 @@ void main() {
         return wrapForGolden(buildSubject());
       },
     );
+
+    goldenTest(
+      'invalid amount format failure',
+      fileName: 'sell_invalid_amount_format',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => balanceCubit.state).thenReturn(
+          Balance(
+            chainId: 1,
+            contractAddress: '0x0',
+            walletAddress: '0x0',
+            balance: BigInt.from(1000000000000000000),
+            asset: realUnitAsset,
+          ),
+        );
+        when(() => paymentInfoCubit.state).thenReturn(
+          const SellPaymentInfoFailure(PaymentInfoError.invalidAmountFormat),
+        );
+        when(() => converterCubit.state).thenReturn(
+          const SellConverterState(
+            // Mixed grouping+decimal. The field formatter only rewrites
+            // thousands groups with the same separator; this value reaches
+            // chargedFiatAmount, which throws FormatException.
+            fiatText: '1.300,75',
+            sharesText: '',
+            currency: Currency.chf,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
   });
 }

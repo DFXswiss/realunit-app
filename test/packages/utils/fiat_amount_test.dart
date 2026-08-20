@@ -47,6 +47,10 @@ void main() {
 
     test('returns null on multi-separator input', () {
       expect(tryParseFiatAmount('1.300,75'), isNull);
+      // Consecutive thousands groups are stripped by [normalizeFiatInput]
+      // before the parser sees them. The parser itself still rejects the
+      // raw grouped form.
+      expect(tryParseFiatAmount('1.000.000'), isNull);
     });
 
     test('returns null on grouping-ambiguous input (separator + 3 digits)', () {
@@ -68,11 +72,19 @@ void main() {
       expect(normalizeFiatInput('10,000'), '10000');
     });
 
+    test('strips consecutive thousands groups with the same separator', () {
+      expect(normalizeFiatInput('1.000.000'), '1000000');
+      expect(normalizeFiatInput('1,000,000'), '1000000');
+      expect(normalizeFiatInput('10.000.000'), '10000000');
+      expect(normalizeFiatInput('1000.000.000'), '1000000000');
+    });
+
     test('leaves every other input unchanged', () {
       expect(normalizeFiatInput('300'), '300');
       expect(normalizeFiatInput('300,75'), '300,75');
       expect(normalizeFiatInput('0,5'), '0,5');
       expect(normalizeFiatInput('1.300,75'), '1.300,75');
+      expect(normalizeFiatInput('1.000,000'), '1.000,000');
       expect(normalizeFiatInput('3,5,7'), '3,5,7');
     });
 

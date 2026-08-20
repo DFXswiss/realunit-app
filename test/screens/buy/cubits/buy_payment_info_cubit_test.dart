@@ -191,6 +191,21 @@ void main() {
       verifyNever(() => service.getPaymentInfo(any(), currency: any(named: 'currency')));
     });
 
+    test('FormatException from the service is unknown, not invalidAmountFormat', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => throw const FormatException('Unexpected character'));
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect(
+        (cubit.state as BuyPaymentInfoFailure).error,
+        PaymentInfoError.unknown,
+      );
+      verify(() => service.getPaymentInfo(300, currency: Currency.chf)).called(1);
+    });
+
     test('KycLevelRequiredException → Failure(kycRequired, requiredLevel)', () async {
       when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
           .thenAnswer(
@@ -339,6 +354,18 @@ void main() {
 
       expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.unknown);
       expect((cubit.state as BuyPaymentInfoFailure).message, 'bad');
+    });
+
+    test('clearQuote drops a landed Success back to Initial', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info());
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+      expect(cubit.state, isA<BuyPaymentInfoSuccess>());
+
+      cubit.clearQuote();
+      expect(cubit.state, isA<BuyPaymentInfoInitial>());
     });
 
     test('does not emit after close', () async {

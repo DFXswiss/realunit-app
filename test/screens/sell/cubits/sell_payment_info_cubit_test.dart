@@ -361,6 +361,22 @@ void main() {
       verifyNever(() => service.getPaymentInfo(any(), any(), currency: any(named: 'currency')));
     });
 
+    test('FormatException from the service is unknown, not invalidAmountFormat', () async {
+      when(
+        () => service.getPaymentInfo(any(), any(), currency: any(named: 'currency')),
+      ).thenAnswer((_) async => throw const FormatException('Unexpected character'));
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '100', iban: 'CH56');
+
+      expect(cubit.state, isA<SellPaymentInfoFailure>());
+      expect(
+        (cubit.state as SellPaymentInfoFailure).error,
+        PaymentInfoError.unknown,
+      );
+      verify(() => service.getPaymentInfo(100, 'CH56', currency: Currency.chf)).called(1);
+    });
+
     test('does not emit after close', () async {
       final completer = Completer<SellPaymentInfo>();
       when(

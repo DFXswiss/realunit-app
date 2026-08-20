@@ -1,8 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:realunit_wallet/packages/utils/fiat_amount.dart';
 
-/// Digits and separators only. A completed thousands group (`1.000` / `1,000`)
-/// is rewritten to the integer; partials (`1.`, `1.0`, `1.00`) stay as typed.
+/// Digits and separators only. A completed thousands group (`1.000` /
+/// `1,000` / `1.000.000`) is rewritten to the integer; partials (`1.`,
+/// `1.0`, `1.00`) stay as typed.
 class FiatInputFormatter extends TextInputFormatter {
   const FiatInputFormatter();
 
@@ -13,9 +14,14 @@ class FiatInputFormatter extends TextInputFormatter {
     final allowed = _allowedChars.formatEditUpdate(oldValue, newValue);
     final normalized = normalizeFiatInput(allowed.text);
     if (normalized == allowed.text) return allowed;
+    final cursor = allowed.selection.baseOffset.clamp(0, allowed.text.length);
+    final separatorsBeforeCursor =
+        RegExp('[.,]').allMatches(allowed.text.substring(0, cursor)).length;
     return TextEditingValue(
       text: normalized,
-      selection: TextSelection.collapsed(offset: normalized.length),
+      selection: TextSelection.collapsed(
+        offset: (cursor - separatorsBeforeCursor).clamp(0, normalized.length),
+      ),
     );
   }
 }
