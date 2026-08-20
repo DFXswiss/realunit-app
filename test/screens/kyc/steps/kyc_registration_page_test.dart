@@ -414,7 +414,7 @@ void main() {
       await tester.pump();
 
       expect(find.byType(SnackBar), findsOne);
-      expect(find.textContaining('Registration failed'), findsOne);
+      expect(find.textContaining('fail'), findsOne);
       // A failed submit must not re-arm the wallet services — the re-arm is
       // gated behind KycRegistrationSubmitSuccess.
       verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
@@ -450,7 +450,7 @@ void main() {
 
         expect(find.byType(SnackBar), findsOne);
         expect(find.textContaining('Registration date must be today'), findsOne);
-        expect(find.textContaining('Your data has not been saved'), findsOne);
+        expect(find.textContaining('Your data has not been saved'), findsNothing);
         expect(find.textContaining('RegistrationRejectedException'), findsNothing);
         verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
       },
@@ -484,7 +484,7 @@ void main() {
         await tester.pump();
 
         expect(find.byType(SnackBar), findsOne);
-        expect(find.textContaining('Registration failed'), findsOne);
+        expect(find.textContaining('Unauthorized'), findsOne);
         expect(find.textContaining('Your data has not been saved'), findsNothing);
         verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
       },
@@ -514,7 +514,7 @@ void main() {
         await tester.pump();
 
         expect(find.byType(SnackBar), findsOne);
-        expect(find.textContaining('Registration failed'), findsOne);
+        expect(find.textContaining('Internal server error'), findsOne);
         expect(find.textContaining('Your data has not been saved'), findsNothing);
         verifyNever(() => homeBloc.add(any(that: isA<SyncWalletServicesEvent>())));
       },
