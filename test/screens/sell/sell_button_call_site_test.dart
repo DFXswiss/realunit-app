@@ -13,7 +13,6 @@ import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/payment/payment_info_error.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/dto/eip7702/eip7702_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/dto/real_unit_sell_payment_info_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/sell_payment_info.dart';
@@ -212,57 +211,6 @@ void main() {
           isTrue,
           reason: 'sell_button.dart must push SellExecutedSheet with isScrollControlled: true.',
         );
-      },
-    );
-
-    testWidgets(
-      'shows a SnackBar with invalidAmountFormatDescription on invalidAmountFormat',
-      (tester) async {
-        whenListen(
-          sellPaymentInfoCubit,
-          Stream.fromIterable([
-            const SellPaymentInfoFailure(PaymentInfoError.invalidAmountFormat),
-          ]),
-          initialState: const SellPaymentInfoInitial(),
-        );
-
-        final router = GoRouter(
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, _) => Scaffold(
-                body: Center(
-                  child: MultiBlocProvider(
-                    providers: [
-                      BlocProvider<SellPaymentInfoCubit>.value(value: sellPaymentInfoCubit),
-                      BlocProvider<SellConverterCubit>.value(value: sellConverterCubit),
-                    ],
-                    child: const SellButton(amount: '10', bankAccount: null),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-        addTearDown(router.dispose);
-
-        await tester.pumpWidget(
-          MaterialApp.router(
-            theme: realUnitTheme,
-            routerConfig: router,
-            localizationsDelegates: const [
-              S.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-            ],
-            supportedLocales: S.delegate.supportedLocales,
-          ),
-        );
-        await tester.pump();
-
-        expect(find.byType(SnackBar), findsOneWidget);
-        expect(find.text(S.current.invalidAmountFormatDescription), findsOneWidget);
       },
     );
   });

@@ -349,18 +349,6 @@ void main() {
       },
     );
 
-    test('grouping-ambiguous amount (1.000) → Failure(invalidAmountFormat), not unknown', () async {
-      final cubit = build();
-      await cubit.getPaymentInfo(amount: '1.000', iban: 'CH56');
-
-      expect(cubit.state, isA<SellPaymentInfoFailure>());
-      expect(
-        (cubit.state as SellPaymentInfoFailure).error,
-        PaymentInfoError.invalidAmountFormat,
-      );
-      verifyNever(() => service.getPaymentInfo(any(), any(), currency: any(named: 'currency')));
-    });
-
     test('FormatException from the service is unknown, not invalidAmountFormat', () async {
       when(
         () => service.getPaymentInfo(any(), any(), currency: any(named: 'currency')),

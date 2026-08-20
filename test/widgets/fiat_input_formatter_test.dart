@@ -42,6 +42,7 @@ void main() {
         ),
       );
       expect(out.text, '1000,50');
+      expect(out.selection, const TextSelection.collapsed(offset: 7));
     });
 
     test('rewrites a one-step paste of 1,000.50 to 1000.50', () {
@@ -53,6 +54,29 @@ void main() {
         ),
       );
       expect(out.text, '1000.50');
+      expect(out.selection, const TextSelection.collapsed(offset: 7));
+    });
+
+    test('a digit typed after a mixed thousands-and-decimal paste lands at the end', () {
+      final pasted = update(
+        TextEditingValue.empty,
+        const TextEditingValue(
+          text: '1.000,5',
+          selection: TextSelection.collapsed(offset: 7),
+        ),
+      );
+      expect(pasted.text, '1000,5');
+      expect(pasted.selection, const TextSelection.collapsed(offset: 6));
+
+      final typed = update(
+        pasted,
+        TextEditingValue(
+          text: '${pasted.text}9',
+          selection: TextSelection.collapsed(offset: pasted.selection.baseOffset + 1),
+        ),
+      );
+      expect(typed.text, '1000,59');
+      expect(typed.selection, const TextSelection.collapsed(offset: 7));
     });
 
     test('leaves a one-step paste of grouping-ambiguous 1.000,000 unchanged', () {

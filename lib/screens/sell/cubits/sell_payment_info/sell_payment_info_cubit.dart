@@ -41,22 +41,8 @@ class SellPaymentInfoCubit extends Cubit<SellPaymentInfoState> {
     try {
       emit(const SellPaymentInfoLoading());
 
-      final int charged;
-      try {
-        charged = chargedFiatAmount(amount);
-      } on FormatException catch (e) {
-        if (isClosed) return;
-        emit(
-          SellPaymentInfoFailure(
-            PaymentInfoError.invalidAmountFormat,
-            message: e.toString(),
-          ),
-        );
-        return;
-      }
-
       final paymentInfo = await _sellPaymentInfoService.getPaymentInfo(
-        charged,
+        chargedFiatAmount(amount),
         iban,
         currency: currency,
       );

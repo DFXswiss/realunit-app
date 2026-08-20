@@ -16,12 +16,14 @@ class FiatInputFormatter extends TextInputFormatter {
     final normalized = normalizeFiatInput(allowed.text);
     if (normalized == allowed.text) return allowed;
     final cursor = allowed.selection.baseOffset.clamp(0, allowed.text.length);
-    final separatorsBeforeCursor =
-        RegExp('[.,]').allMatches(allowed.text.substring(0, cursor)).length;
+    // Mixed thousands + decimal (`1.000,50` → `1000,50`) drops only the
+    // thousands separator. Counting every [.,] before the cursor subtracted
+    // the kept decimal too and placed the caret one place too early.
+    final removed = allowed.text.length - normalized.length;
     return TextEditingValue(
       text: normalized,
       selection: TextSelection.collapsed(
-        offset: (cursor - separatorsBeforeCursor).clamp(0, normalized.length),
+        offset: (cursor - removed).clamp(0, normalized.length),
       ),
     );
   }

@@ -281,12 +281,12 @@ void main() {
         when(() => converterCubit.state).thenReturn(
           const BuyConverterState(
             // This golden stubs the failure panel and does not run the
-            // formatter. Same-separator thousands groups (`1.000`,
-            // `1.000.000`) and mixed thousands + 1–2 decimal digits of the
-            // other separator (`1.000,50`, `1.300,75`) are stripped before
-            // the parser; a 3-digit mixed tail (`1.000,000`) still reaches
-            // chargedFiatAmount and throws FormatException.
-            fiatText: '1.300,75',
+            // formatter. Same-separator thousands groups and mixed
+            // thousands + 1–2 decimal digits of the other separator are
+            // stripped before the parser; a 3-digit mixed tail is not a
+            // unique thousands-then-decimal, so `1.000,000` is left as
+            // typed, reaches chargedFiatAmount, and throws FormatException.
+            fiatText: '1.000,000',
             sharesText: '',
             currency: Currency.chf,
           ),
