@@ -256,13 +256,13 @@ is_driver_hang_or_death() {
     haystack="$tmp"
   fi
 
+  local rc=0
   grep -qF \
     -e 'Failed to connect to /127.0.0.1:7001' \
     -e 'java.net.ConnectException' \
     -e 'Connection refused' \
     -e 'Connection reset' \
-    "$haystack"
-  local rc=$?
+    "$haystack" || rc=$?
   if [ -n "$tmp" ]; then
     rm -f "$tmp"
   fi
