@@ -183,10 +183,11 @@ class RealUnitTransferService extends DFXAuthService {
     if (response.statusCode != 200 && response.statusCode != 201) {
       final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 503) {
-        throw TransferGasFundingUnavailableException(
-          (errorJson['message'] ?? 'gas funding for transfers is temporarily unavailable')
-              .toString(),
-        );
+        final apiMessage = errorJson['message'];
+        if (apiMessage == null) {
+          throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+        }
+        throw TransferGasFundingUnavailableException(apiMessage.toString());
       }
       final error = ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
       // 409 "already confirmed": an earlier confirm for this id landed but its
