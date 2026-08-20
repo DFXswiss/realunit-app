@@ -122,13 +122,13 @@ class PaymentActionButton extends StatelessWidget {
           if (paymentState.error == PaymentInfoError.primaryEmailNotConfirmed) {
             // The buyer has a primary email on record but has not yet confirmed it.
             // The KYC page auto-routes to its confirm-email step in this case, so
-            // route there (no `extra`) instead of to email capture, then re-fetch
+            // route there instead of to email capture, then re-fetch
             // the quote so a now-confirmed email surfaces the binding-buy CTA.
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: AppFilledButton(
                 onPressed: () async {
-                  await context.pushNamed(AppRoutes.kyc);
+                  await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
                   if (context.mounted) {
                     context.read<BuyPaymentInfoCubit>().getPaymentInfo(
                       amount: amountController.text,

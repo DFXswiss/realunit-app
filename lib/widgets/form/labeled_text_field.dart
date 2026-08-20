@@ -7,6 +7,7 @@ class LabeledTextField extends StatelessWidget {
   final String? initialValue;
   final TextEditingController? controller;
   final String? hintText;
+  final String? prefixText;
   final TextInputType? keyboardType;
   final void Function(String)? onChanged;
   final String? Function(String?)? validator;
@@ -21,6 +22,7 @@ class LabeledTextField extends StatelessWidget {
     this.initialValue,
     this.controller,
     this.hintText,
+    this.prefixText,
     this.keyboardType,
     this.onChanged,
     this.validator,
@@ -57,6 +59,7 @@ class LabeledTextField extends StatelessWidget {
           textCapitalization: textCapitalization,
           decoration: InputDecoration(
             hintText: hintText,
+            prefixText: prefixText,
             enabledBorder: const OutlineInputBorder(
               borderRadius: .all(.circular(8.0)),
               borderSide: BorderSide(color: RealUnitColors.neutral300),

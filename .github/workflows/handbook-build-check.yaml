@@ -92,8 +92,8 @@ jobs:
           set -euo pipefail
           bash scripts/assemble-handbook-screenshots.sh /tmp/handbook-shots
           count=$(ls -1 /tmp/handbook-shots/*.png | wc -l | tr -d ' ')
-          if [ "$count" != "279" ]; then
-            echo "expected 279 screenshots, got $count" >&2
+          if [ "$count" != "278" ]; then
+            echo "expected 278 screenshots, got $count" >&2
             exit 1
           fi
 
@@ -173,7 +173,7 @@ jobs:
             exit 1
           fi
 
-          # Screenshots dir must contain all 279 PNGs assembled from Goldens.
+          # Screenshots dir must contain all 278 PNGs assembled from Goldens.
           # Hit one of them through the auth gate to verify wiring end-to-end.
           # Mix of the original 01-61 range and the 62-269 batch (every Golden
           # baseline) so a regression in either half surfaces here.

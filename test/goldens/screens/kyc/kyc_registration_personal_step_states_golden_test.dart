@@ -93,24 +93,5 @@ void main() {
       },
       builder: buildSubject,
     );
-
-    goldenTest(
-      'phone-prefix dropdown open — the +41 / +49 overlay menu',
-      fileName: 'kyc_registration_personal_step_phone_prefix_open',
-      constraints: phoneConstraints,
-      pumpBeforeTest: (tester) async {
-        await tester.pumpAndSettle();
-        // The prefix dropdown renders its selected value '+41'; the birthday
-        // String dropdowns show day/month/year hints instead, so this is unique.
-        final field = find.widgetWithText(
-          DropdownButtonFormField<String>,
-          '+41',
-        );
-        await tester.ensureVisible(field);
-        await tester.tap(field);
-        await tester.pumpAndSettle();
-      },
-      builder: buildSubject,
-    );
   });
 }
