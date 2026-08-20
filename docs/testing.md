@@ -389,7 +389,9 @@ Silicon + iOS 26.x — both driver-hang and silent tap-loss — tracked
 upstream as [mobile-dev-inc/maestro#3137](https://github.com/mobile-dev-inc/maestro/issues/3137).
 The pinned version is the workaround the upstream issue closed with.
 `scripts/run-handbook-flows.sh` retries the residual driver-hang
-class up to three times per flow as a safety net, and Tier 3 is
+and driver-death class (ConnectException on `:7001`) up to three
+times per flow as a safety net, matching both the CLI tee-log and
+`--debug-output` `maestro.log`, and Tier 3 is
 opt-in via the `tier3:full` label rather than a required status
 check on `develop` (unlike `Analyze & Test`, `Visual Regression`,
 and `Coverage Floor Gate`, which are required — see ruleset `PRs`

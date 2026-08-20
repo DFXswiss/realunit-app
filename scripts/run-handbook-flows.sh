@@ -41,9 +41,14 @@
 #   targets a known-good release. The retry remains as a safety net
 #   for residual Apple-XCTest crashes (~10 % per the #3137 thread):
 #   each flow is retried up to MAESTRO_MAX_ATTEMPTS times (default 3)
-#   when the failure log contains `IOSDriverTimeoutException`.
-#   Assertion failures are NEVER retried — those are real regressions
-#   and must surface as red CI checks.
+#   when the CLI tee-log or `--debug-output` maestro.log matches the
+#   driver hang/death class (`IOSDriverTimeoutException`, `Failed to
+#   connect to /127.0.0.1:7001`, `java.net.ConnectException`,
+#   `Connection refused`, `Connection reset`). Maestro often disguises
+#   XCUITest-driver death as a later assertion failure on stdout while
+#   the ConnectException lives only in the debug log. Assertion
+#   failures without those patterns are NEVER retried — those are real
+#   regressions and must surface as red CI checks.
 #
 # Usage:
 #   scripts/run-handbook-flows.sh                    # run ALL handbook flows
@@ -210,7 +215,7 @@ mkdir -p "$MAESTRO_DEBUG_ROOT"
 # reinstall, no rebuild. The first run on a freshly `simctl erase`-d
 # device has nothing to uninstall, so passing the flag there is harmless.
 #
-# Exception: the IOSDriverTimeoutException retry path below reboots the
+# Exception: the driver hang/death retry path below reboots the
 # simulator, which kills the running runner. After a reboot the next
 # attempt MUST do a full reinstall (a clean driver is exactly the recovery
 # the retry exists for), so `reinstall_driver` is flipped back to `true`
@@ -222,6 +227,22 @@ reinstall_driver=false
 # finding which flows to speed up.
 fmt_duration() {
   printf '%dm %02ds' $(( $1 / 60 )) $(( $1 % 60 ))
+}
+
+# True when $1 is a readable file that matches the XCUITest-driver
+# hang/death class. Maestro often disguises driver death as a later
+# assertion failure on CLI stdout while the ConnectException lives
+# only in `--debug-output` maestro.log — callers must pass both.
+is_driver_hang_or_death() {
+  local log="$1"
+  [ -f "$log" ] || return 1
+  grep -qF \
+    -e 'IOSDriverTimeoutException' \
+    -e 'Failed to connect to /127.0.0.1:7001' \
+    -e 'java.net.ConnectException' \
+    -e 'Connection refused' \
+    -e 'Connection reset' \
+    "$log"
 }
 
 suite_start=$(date +%s)
@@ -249,11 +270,16 @@ for flow in "${flows[@]}"; do
       reinstall_driver=false
       break
     fi
-    # Only retry the upstream driver-hang class. Assertion failures
-    # are real regressions and must surface red — never retry them.
-    if grep -q 'IOSDriverTimeoutException' "$flow_log" && \
+    # Only retry the XCUITest-driver hang/death class. Check the CLI
+    # tee-log AND `--debug-output` maestro.log: driver death is often
+    # reported on stdout as a later assertion failure (`Assert that
+    # "Start" is visible`) while ConnectException lives only in the
+    # debug log. Assertion failures without these patterns are real
+    # regressions and must surface red — never retry them.
+    if { is_driver_hang_or_death "$flow_log" || \
+         is_driver_hang_or_death "$debug_dir/maestro.log"; } && \
        [ "$attempt" -lt "$MAESTRO_MAX_ATTEMPTS" ]; then
-      echo "  driver hang on attempt $attempt of $MAESTRO_MAX_ATTEMPTS after $(fmt_duration $(( $(date +%s) - attempt_start ))); restarting simulator and retrying"
+      echo "  driver hang/death on attempt $attempt of $MAESTRO_MAX_ATTEMPTS after $(fmt_duration $(( $(date +%s) - attempt_start ))); restarting simulator and retrying"
       xcrun simctl shutdown "$UDID" || true
       xcrun simctl boot "$UDID"
       xcrun simctl bootstatus "$UDID" -b >/dev/null
