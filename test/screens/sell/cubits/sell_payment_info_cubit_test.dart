@@ -155,7 +155,7 @@ void main() {
       expect(s.currency, Currency.eur);
     });
 
-    test('API isValid=false with unrelated error → Failure(unknown) carrying the error', () async {
+    test('API isValid=false with unrelated error code → Failure(unknown) without using the code as copy', () async {
       when(
         () => service.getPaymentInfo(any(), any(), currency: any(named: 'currency')),
       ).thenAnswer((_) async => _info(isValid: false, error: 'KycRequired'));
@@ -165,7 +165,7 @@ void main() {
 
       final f = cubit.state as SellPaymentInfoFailure;
       expect(f.error, PaymentInfoError.unknown);
-      expect(f.message, 'KycRequired');
+      expect(f.message, isEmpty);
     });
 
     test('KycLevelRequiredException → Failure(kycRequired, requiredLevel)', () async {
