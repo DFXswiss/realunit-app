@@ -20,8 +20,10 @@ import 'package:realunit_wallet/packages/utils/fiat_amount.dart';
 import 'package:realunit_wallet/screens/buy/buy_page.dart';
 import 'package:realunit_wallet/screens/buy/cubits/buy_converter/buy_converter_cubit.dart';
 import 'package:realunit_wallet/screens/buy/cubits/buy_payment_info/buy_payment_info_cubit.dart';
+import 'package:realunit_wallet/screens/buy/widgets/buy_confirm_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_action_required.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
 import '../../helper/helper.dart';
 
@@ -221,6 +223,135 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'buying after replacing 300 with 100 confirms the 100 quote, not the leftover 300',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '300',
+          reasonPrefix: 'Default 300 must be a valid quote before the amount change.',
+        );
+        expect(
+          find.byType(BuyConfirmButton),
+          findsOneWidget,
+          reason:
+              'Default 300 must already show the binding-buy button. '
+              '${_snapshot(tester)}',
+        );
+
+        await _enterAmount(tester, '');
+        await _enterAmount(tester, '100');
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '100',
+          reasonPrefix:
+              'After replacing 300 with 100 the screen must keep a valid quote.',
+        );
+
+        await _tapConfirmAndVerifyQuote(
+          tester,
+          paymentInfoService,
+          amount: 100,
+          currency: Currency.chf,
+          leftoverQuoteIds: [_quoteId(300, Currency.chf)],
+          reasonPrefix:
+              'A buy after changing 300 to 100 must confirm the 100 quote, '
+              'never the leftover default 300.',
+        );
+      },
+    );
+
+    testWidgets(
+      'buying after CHF to EUR then replacing 300 with 100 confirms the 100 EUR quote, '
+      'not a leftover 300',
+      (tester) async {
+        await _pumpLoadedBuyPage(tester);
+
+        await _selectBuyCurrency(tester, Currency.eur);
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '300',
+          reasonPrefix: 'After switching to EUR at 300 the quote must stay valid.',
+        );
+        expect(
+          tester.element(find.byType(BuyView)).read<BuyConverterCubit>().state.currency,
+          Currency.eur,
+          reason:
+              'Currency picker must have flipped the converter to EUR. '
+              '${_snapshot(tester)}',
+        );
+        final eurQuote = tester
+            .element(find.byType(BuyView))
+            .read<BuyPaymentInfoCubit>()
+            .state;
+        expect(
+          eurQuote,
+          isA<BuyPaymentInfoSuccess>(),
+          reason:
+              '300 EUR must have landed as a valid quote before the amount '
+              'change. ${_snapshot(tester)}',
+        );
+        final eurSuccess = eurQuote as BuyPaymentInfoSuccess;
+        expect(
+          eurSuccess.buyPaymentInfo.currency,
+          Currency.eur,
+          reason:
+              'The landed quote must be EUR, not a leftover CHF quote. '
+              '${_snapshot(tester)}',
+        );
+        expect(
+          eurSuccess.buyPaymentInfo.amount,
+          300.0,
+          reason:
+              'The EUR quote before the amount change must still be 300. '
+              '${_snapshot(tester)}',
+        );
+        expect(
+          find.byType(BuyConfirmButton),
+          findsOneWidget,
+          reason:
+              '300 EUR must show the binding-buy button before the amount '
+              'change. ${_snapshot(tester)}',
+        );
+
+        await _enterAmount(tester, '');
+        await _enterAmount(tester, '100');
+
+        _expectHealthyQuote(
+          tester,
+          expectedAmount: '100',
+          reasonPrefix:
+              'After switching to EUR and replacing 300 with 100 the quote '
+              'must stay valid.',
+        );
+        expect(
+          tester.element(find.byType(BuyView)).read<BuyConverterCubit>().state.currency,
+          Currency.eur,
+          reason:
+              'Currency must stay EUR after the amount change. '
+              '${_snapshot(tester)}',
+        );
+
+        await _tapConfirmAndVerifyQuote(
+          tester,
+          paymentInfoService,
+          amount: 100,
+          currency: Currency.eur,
+          leftoverQuoteIds: [
+            _quoteId(300, Currency.chf),
+            _quoteId(300, Currency.eur),
+          ],
+          reasonPrefix:
+              'A buy after CHF to EUR and 300 to 100 must confirm the 100 EUR '
+              'quote, never a leftover 300 CHF or 300 EUR quote.',
+        );
+      },
+    );
   });
 }
 
@@ -284,7 +415,7 @@ BuyPaymentInfo _quote({
   double? minVolume,
 }) {
   return BuyPaymentInfo(
-    id: 1,
+    id: _quoteId(amount, currency),
     iban: 'CH56 0483 5012 3456 78',
     bic: 'CRESCHZZ80A',
     name: 'DFX AG',
@@ -299,6 +430,15 @@ BuyPaymentInfo _quote({
     error: error,
     minVolume: minVolume,
   );
+}
+
+/// Distinct per (amount, currency) so a leftover default quote cannot
+/// masquerade as the edited one when [confirmPayment] is verified by id.
+int _quoteId(int amount, Currency currency) {
+  return switch (currency) {
+    Currency.chf => amount,
+    Currency.eur => 1000000 + amount,
+  };
 }
 
 Finder get _amountField => find.byType(TextField).first;
@@ -329,6 +469,110 @@ Future<void> _enterAmount(WidgetTester tester, String value) async {
   await tester.enterText(_amountField, value);
   await tester.pump(_afterDebounce);
   await tester.pump();
+}
+
+Future<void> _selectBuyCurrency(WidgetTester tester, Currency currency) async {
+  await tester.tap(find.byKey(const Key('buy-currency-picker')));
+  await tester.pumpAndSettle();
+
+  await tester.tap(
+    find.byWidgetPredicate(
+      (widget) => widget is PopupMenuItem<Currency> && widget.value == currency,
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// Taps the binding-buy CTA and asserts the confirm call carries the current
+/// quote, not a leftover one. Confirm is stubbed to throw so the page does
+/// not try to `pushNamed` (this file hosts [BuyPage] via [pumpApp], not a
+/// GoRouter). The call itself is what the production path charges.
+Future<void> _tapConfirmAndVerifyQuote(
+  WidgetTester tester,
+  MockRealUnitBuyPaymentInfoService paymentInfo, {
+  required int amount,
+  required Currency currency,
+  required List<int> leftoverQuoteIds,
+  required String reasonPrefix,
+}) async {
+  final snapshot = _snapshot(tester);
+  final currentId = _quoteId(amount, currency);
+
+  expect(
+    find.byType(BuyConfirmButton),
+    findsOneWidget,
+    reason: '$reasonPrefix Binding-buy button is missing. $snapshot',
+  );
+
+  final confirm = tester.widget<BuyConfirmButton>(find.byType(BuyConfirmButton));
+  expect(
+    confirm.buyPaymentInfo.amount,
+    amount.toDouble(),
+    reason:
+        '$reasonPrefix Confirm button still holds amount '
+        '${confirm.buyPaymentInfo.amount}, not $amount. $snapshot',
+  );
+  expect(
+    confirm.buyPaymentInfo.currency,
+    currency,
+    reason:
+        '$reasonPrefix Confirm button still holds currency '
+        '${confirm.buyPaymentInfo.currency.code}, not ${currency.code}. $snapshot',
+  );
+  expect(
+    confirm.buyPaymentInfo.id,
+    currentId,
+    reason:
+        '$reasonPrefix Confirm button still holds quote id '
+        '${confirm.buyPaymentInfo.id}, not the current quote $currentId. $snapshot',
+  );
+  expect(
+    leftoverQuoteIds.contains(confirm.buyPaymentInfo.id),
+    isFalse,
+    reason:
+        '$reasonPrefix Confirm button still holds a leftover quote id '
+        '${confirm.buyPaymentInfo.id}. $snapshot',
+  );
+
+  final filled = tester.widget<AppFilledButton>(
+    find.descendant(
+      of: find.byType(BuyConfirmButton),
+      matching: find.byType(AppFilledButton),
+    ),
+  );
+  expect(
+    filled.onPressed,
+    isNotNull,
+    reason: '$reasonPrefix Binding-buy button is not pressable. $snapshot',
+  );
+
+  when(() => paymentInfo.confirmPayment(any())).thenAnswer(
+    (_) async => throw Exception('confirm outcome is not under test'),
+  );
+
+  await tester.tap(find.text(S.current.buyPaymentConfirm));
+  await tester.pump();
+  await tester.pump();
+
+  final confirmedIds =
+      verify(() => paymentInfo.confirmPayment(captureAny())).captured.cast<int>();
+  expect(
+    confirmedIds,
+    [currentId],
+    reason:
+        '$reasonPrefix Confirm must be called with the current quote id '
+        '$currentId (amount $amount ${currency.code}), not a leftover '
+        'quote. Got $confirmedIds. ${_snapshot(tester)}',
+  );
+  for (final leftoverId in leftoverQuoteIds) {
+    expect(
+      confirmedIds,
+      isNot(contains(leftoverId)),
+      reason:
+          '$reasonPrefix Confirm carried leftover quote id $leftoverId. '
+          'Got $confirmedIds. ${_snapshot(tester)}',
+    );
+  }
 }
 
 void _expectHealthyQuote(
@@ -379,7 +623,9 @@ String _snapshot(WidgetTester tester) {
 
 String _describePayment(BuyPaymentInfoState state) {
   if (state is BuyPaymentInfoSuccess) {
-    return 'Success(amount=${state.buyPaymentInfo.amount}, '
+    return 'Success(id=${state.buyPaymentInfo.id}, '
+        'amount=${state.buyPaymentInfo.amount}, '
+        'currency=${state.buyPaymentInfo.currency.code}, '
         'isValid=${state.buyPaymentInfo.isValid})';
   }
   if (state is BuyPaymentInfoMinAmountNotMetFailure) {
