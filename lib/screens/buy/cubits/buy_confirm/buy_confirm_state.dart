@@ -34,7 +34,8 @@ class BuyConfirmSuccess extends BuyConfirmState {
 }
 
 class BuyConfirmFailure extends BuyConfirmState {
-  /// User-facing text from the API error body. The app does not substitute copy.
+  /// User-facing text from the API error body, or `Exception.toString()` when
+  /// there is no API body. The app does not substitute copy.
   final String message;
 
   const BuyConfirmFailure(this.message);
