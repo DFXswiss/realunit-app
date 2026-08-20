@@ -121,5 +121,38 @@ void main() {
       expect(out.text, '1000');
       expect(out.selection, const TextSelection.collapsed(offset: 1));
     });
+
+    test('places the caret after a digit typed at the start of .000,50', () {
+      // `.000,50` is a fixpoint (both regexes require a leading `\d+`). Typing
+      // `1` at offset 0 yields `1.000,50` → `1000,50`. The stripped `.` sits
+      // behind the caret, so a global length delta would move it to 0.
+      final out = update(
+        const TextEditingValue(
+          text: '.000,50',
+          selection: TextSelection.collapsed(offset: 0),
+        ),
+        const TextEditingValue(
+          text: '1.000,50',
+          selection: TextSelection.collapsed(offset: 1),
+        ),
+      );
+      expect(out.text, '1000,50');
+      expect(out.selection, const TextSelection.collapsed(offset: 1));
+    });
+
+    test('places the caret after a digit typed at the start of .000.000', () {
+      final out = update(
+        const TextEditingValue(
+          text: '.000.000',
+          selection: TextSelection.collapsed(offset: 0),
+        ),
+        const TextEditingValue(
+          text: '1.000.000',
+          selection: TextSelection.collapsed(offset: 1),
+        ),
+      );
+      expect(out.text, '1000000');
+      expect(out.selection, const TextSelection.collapsed(offset: 1));
+    });
   });
 }

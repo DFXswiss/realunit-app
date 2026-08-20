@@ -13,17 +13,23 @@ class FiatInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final allowed = _allowedChars.formatEditUpdate(oldValue, newValue);
+    final separator = strippedFiatGroupingSeparator(allowed.text);
     final normalized = normalizeFiatInput(allowed.text);
     if (normalized == allowed.text) return allowed;
     final cursor = allowed.selection.baseOffset.clamp(0, allowed.text.length);
-    // Mixed thousands + decimal (`1.000,50` → `1000,50`) drops only the
-    // thousands separator. Counting every [.,] before the cursor subtracted
-    // the kept decimal too and placed the caret one place too early.
-    final removed = allowed.text.length - normalized.length;
+    // Only separators actually dropped that sit before the caret. A global
+    // length delta also subtracts separators behind it (typing `1` into
+    // `.000,50` would move the caret to 0 instead of 1).
+    var removedBefore = 0;
+    if (separator != null) {
+      for (var i = 0; i < cursor; i++) {
+        if (allowed.text[i] == separator) removedBefore++;
+      }
+    }
     return TextEditingValue(
       text: normalized,
       selection: TextSelection.collapsed(
-        offset: (cursor - removed).clamp(0, normalized.length),
+        offset: (cursor - removedBefore).clamp(0, normalized.length),
       ),
     );
   }

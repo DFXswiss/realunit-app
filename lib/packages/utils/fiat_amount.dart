@@ -7,6 +7,12 @@ double? tryParseFiatAmount(String input) {
   return double.tryParse(input.replaceAll(',', '.'));
 }
 
+/// Consecutive groups of three digits with the same separator.
+final _sameGrouping = RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)$');
+
+/// Thousands groups plus 1–2 digits of the other separator.
+final _mixedGrouping = RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)([.,])(\d{1,2})$');
+
 /// Strips thousands grouping (`1.000` / `1,000` / `1.000.000` → integer).
 ///
 /// EUR and CHF have two decimal places, so a separator followed by exactly
@@ -19,14 +25,24 @@ double? tryParseFiatAmount(String input) {
 /// `1.00`) are returned unchanged, as is mixed input that is not uniquely
 /// thousands-then-decimal (`1.000,000`, `3,5,7`).
 String normalizeFiatInput(String input) {
-  if (RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)$').hasMatch(input)) {
+  if (_sameGrouping.hasMatch(input)) {
     return input.replaceAll('.', '').replaceAll(',', '');
   }
-  final mixed = RegExp(r'^(\d+)([.,])(\d{3}(?:\2\d{3})*)([.,])(\d{1,2})$').firstMatch(input);
+  final mixed = _mixedGrouping.firstMatch(input);
   if (mixed != null && mixed[2] != mixed[4]) {
     return input.replaceAll(mixed[2]!, '');
   }
   return input;
+}
+
+/// The grouping separator [normalizeFiatInput] strips from [input], or null
+/// if [input] is left unchanged.
+String? strippedFiatGroupingSeparator(String input) {
+  final same = _sameGrouping.firstMatch(input);
+  if (same != null) return same[2]!;
+  final mixed = _mixedGrouping.firstMatch(input);
+  if (mixed != null && mixed[2] != mixed[4]) return mixed[2]!;
+  return null;
 }
 
 /// The whole-currency integer the backend charges for the raw [input] the user
