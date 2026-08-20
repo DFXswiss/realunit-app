@@ -328,13 +328,13 @@ jobs:
       - name: Stage web e2e baselines from web repo
         env:
           WEB_DIR: _web-checkout
-          # RealUnitCH/web commits 22 Playwright visual baselines under
+          # RealUnitCH/web commits 36 Playwright visual baselines under
           # tests/__screenshots__/{desktop-chromium,tablet-chromium,mobile-safari}/.
           # `-ne` below fails the build on ANY drift (add OR remove) so a change
           # to the committed set upstream requires an explicit bump here AND a
           # matching card edit in docs/handbook/de/index.html (#spec-web) in the
           # SAME change — same guard rationale as the api steps above.
-          EXPECTED_WEB_BASELINE_COUNT: 22
+          EXPECTED_WEB_BASELINE_COUNT: 36
         run: |
           set -euo pipefail
 
