@@ -84,7 +84,10 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
             context: 'RealunitBuy',
           );
         }
-        return const BuyPaymentInfoFailure(PaymentInfoError.unknown);
+        return BuyPaymentInfoFailure(
+          PaymentInfoError.unknown,
+          message: paymentInfo.error ?? '',
+        );
       }
       return BuyPaymentInfoSuccess(paymentInfo);
     } on KycLevelRequiredException catch (e) {
@@ -106,13 +109,16 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       // explicitly instead of a generic failure. Must stay below the
       // KYC/Registration clauses (those are ApiException subclasses).
       if (e.statusCode == 503 || e.code == 'PRICE_SOURCE_UNAVAILABLE') {
-        return const BuyPaymentInfoFailure(PaymentInfoError.priceSourceUnavailable);
+        return BuyPaymentInfoFailure(
+          PaymentInfoError.priceSourceUnavailable,
+          message: e.message,
+        );
       }
       developer.log(e.toString());
-      return const BuyPaymentInfoFailure(PaymentInfoError.unknown);
+      return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.message);
     } catch (e) {
       developer.log(e.toString());
-      return const BuyPaymentInfoFailure(PaymentInfoError.unknown);
+      return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.toString());
     }
   }
 

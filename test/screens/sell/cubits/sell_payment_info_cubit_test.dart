@@ -304,6 +304,10 @@ void main() {
       await cubit.getPaymentInfo(amount: '100', iban: 'CH56');
 
       expect((cubit.state as SellPaymentInfoFailure).error, PaymentInfoError.priceSourceUnavailable);
+      expect(
+        (cubit.state as SellPaymentInfoFailure).message,
+        'RealUnit price source (Aktionariat) is currently unavailable',
+      );
     });
 
     test('other ApiException (e.g. 400) → Failure(unknown)', () async {
@@ -315,6 +319,7 @@ void main() {
       await cubit.getPaymentInfo(amount: '100', iban: 'CH56');
 
       expect((cubit.state as SellPaymentInfoFailure).error, PaymentInfoError.unknown);
+      expect((cubit.state as SellPaymentInfoFailure).message, 'bad');
     });
 
     test(

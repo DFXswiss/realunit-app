@@ -56,9 +56,7 @@ void main() {
   }
 
   group('$KycEmailView', () {
-    // error == emailDoesNotMatch → the listener shows the localized
-    // `registerEmailDoesNotMatch` copy (kyc_email_page.dart:61-63), not
-    // `state.message`.
+    // Snackbar renders the API `message` as-is.
     goldenTest(
       'emailDoesNotMatch failure — red error SnackBar',
       fileName: 'kyc_email_page_error_snackbar_does_not_match',
@@ -70,7 +68,7 @@ void main() {
           Stream<KycEmailStepState>.value(
             const KycEmailStepFailure(
               KycEmailStepError.emailDoesNotMatch,
-              'unused — the listener renders registerEmailDoesNotMatch',
+              'Provided email does not match verified email',
             ),
           ),
           initialState: const KycEmailStepInitial(),

@@ -37,15 +37,11 @@ class PaymentInformation extends StatelessWidget {
               title: S.of(context).bitboxDisconnectedTitle,
               description: S.of(context).bitboxDisconnectedDescription,
             );
-          } else if (error == PaymentInfoError.priceSourceUnavailable) {
+          } else if (error == PaymentInfoError.priceSourceUnavailable ||
+              error == PaymentInfoError.unknown) {
             return PaymentActionRequired(
-              title: S.of(context).priceProviderUnavailableTitle,
-              description: S.of(context).priceProviderUnavailableDescription,
-            );
-          } else if (error == PaymentInfoError.unknown) {
-            return PaymentActionRequired(
-              title: S.of(context).paymentInformationFailed,
-              description: S.of(context).paymentInformationFailedDescription,
+              title: paymentInfoState.message,
+              description: '',
             );
           }
         }

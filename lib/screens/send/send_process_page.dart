@@ -93,16 +93,22 @@ class SendProcessView extends StatelessWidget {
     SendProcessFailure() => S.of(context).sendFailureTitle,
   };
 
-  String _failureMessage(BuildContext context, SendProcessFailure state) => switch (state.reason) {
-    SendProcessFailureReason.signatureUnsupported => S.of(context).sendFailureSignatureUnsupported,
-    SendProcessFailureReason.signatureCancelled => S.of(context).sendFailureSignatureCancelled,
-    SendProcessFailureReason.gasFundingUnavailable => S.of(context).sendFailureGasUnavailable,
-    SendProcessFailureReason.invalidRequest => S.of(context).sendFailureInvalidRequest,
-    SendProcessFailureReason.registrationOrKycRequired =>
-      S.of(context).sendFailureRegistrationOrKycRequired,
-    SendProcessFailureReason.confirmMismatch => S.of(context).sendFailureConfirmMismatch,
-    SendProcessFailureReason.generic => S.of(context).sendFailureGeneric,
-  };
+  String _failureMessage(BuildContext context, SendProcessFailure state) {
+    final apiText = state.message;
+    if (apiText != null && apiText.isNotEmpty) {
+      return apiText;
+    }
+    return switch (state.reason) {
+      SendProcessFailureReason.signatureUnsupported => S.of(context).sendFailureSignatureUnsupported,
+      SendProcessFailureReason.signatureCancelled => S.of(context).sendFailureSignatureCancelled,
+      SendProcessFailureReason.gasFundingUnavailable => S.of(context).sendFailureGasUnavailable,
+      SendProcessFailureReason.invalidRequest => S.of(context).sendFailureInvalidRequest,
+      SendProcessFailureReason.registrationOrKycRequired =>
+        S.of(context).sendFailureRegistrationOrKycRequired,
+      SendProcessFailureReason.confirmMismatch => S.of(context).sendFailureConfirmMismatch,
+      SendProcessFailureReason.generic => S.of(context).sendFailureGeneric,
+    };
+  }
 
   /// Shows the terminal result sheet. Returns after the sheet is dismissed.
   ///

@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 
@@ -48,6 +49,8 @@ class KycPersonalDataCubit extends Cubit<KycPersonalDataState> {
         ).toJson(),
       );
       emit(const KycPersonalDataSuccess());
+    } on ApiException catch (e) {
+      emit(KycPersonalDataFailure(e.message));
     } catch (e) {
       emit(KycPersonalDataFailure(e.toString()));
     }

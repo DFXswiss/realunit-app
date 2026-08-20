@@ -57,9 +57,7 @@ class KycIdentView extends StatelessWidget {
               } else if (state.status == FailureStatus.error) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      '${S.of(context).identityCheckFailed} ${state.errorMessage}.',
-                    ),
+                    content: Text(state.errorMessage ?? (throw StateError('ident error without message'))),
                     backgroundColor: RealUnitColors.status.red600,
                   ),
                 );

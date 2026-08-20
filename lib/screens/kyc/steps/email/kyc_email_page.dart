@@ -58,12 +58,9 @@ class _KycEmailFormState extends State<KycEmailForm> {
     return BlocListener<KycEmailStepCubit, KycEmailStepState>(
       listener: (context, state) async {
         if (state is KycEmailStepFailure) {
-          final message = state.error == .emailDoesNotMatch
-              ? S.of(context).registerEmailDoesNotMatch
-              : state.message;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(message),
+              content: Text(state.message),
               backgroundColor: RealUnitColors.status.red600,
             ),
           );

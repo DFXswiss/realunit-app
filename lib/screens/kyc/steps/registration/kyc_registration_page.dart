@@ -238,9 +238,9 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
               // pre-submit failures (getUser, register/date) stay on the
               // generic message: "check your entries" would be the wrong
               // instruction there.
-              message = S.of(context).registrationRejected(cause.message);
+              message = cause.message;
             } else {
-              message = S.of(context).registrationFailed(state.message);
+              message = state.message;
             }
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
