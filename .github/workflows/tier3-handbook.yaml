@@ -63,9 +63,12 @@ name: Tier 3 — Handbook flows
 #   which per the #3137 thread runs ~20 sequential flows reliably
 #   with ~10 % residual Apple-XCTest crash on screen transitions.
 #   The retry loop in `scripts/run-handbook-flows.sh` stays in place
-#   as a safety net for that residual crash class, retrying only on
-#   `IOSDriverTimeoutException` — assertion failures are never
-#   retried. The post-mortem block (lsof / ps / simctl log + Maestro
+#   as a safety net for that residual crash class, retrying the
+#   driver hang/death class against both the CLI tee-log and
+#   `--debug-output` maestro.log (`IOSDriverTimeoutException`,
+#   ConnectException on :7001, Connection refused/reset) —
+#   assertion failures without those patterns are never retried.
+#   The post-mortem block (lsof / ps / simctl log + Maestro
 #   `--debug-output`) captures failure state so future regressions
 #   can be diagnosed forensically. The CI-hardening track that landed
 #   this guard was RealUnitCH/app#487 (now closed).

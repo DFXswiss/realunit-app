@@ -2,6 +2,21 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // flutter_idensic_mobile_sdk_plugin registers maven-releases/
+        // before maven-public/. maven-releases now returns HTTP 401
+        // (Basic artifact-keeper); Gradle aborts instead of falling
+        // through. Pin the SNS group to Sumsub's documented public
+        // repo (docs 2026-08-17 + idensic-mobile-sdk-sample-android).
+        exclusiveContent {
+            forRepository {
+                maven {
+                    url "https://maven.sumsub.com/repository/maven-public/"
+                }
+            }
+            filter {
+                includeGroup "com.sumsub.sns"
+            }
+        }
     }
 }
 
