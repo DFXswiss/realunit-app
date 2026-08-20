@@ -84,10 +84,7 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
             context: 'RealunitBuy',
           );
         }
-        return BuyPaymentInfoFailure(
-          PaymentInfoError.unknown,
-          message: paymentInfo.error ?? '',
-        );
+        return const BuyPaymentInfoFailure(PaymentInfoError.unknown);
       }
       return BuyPaymentInfoSuccess(paymentInfo);
     } on KycLevelRequiredException catch (e) {

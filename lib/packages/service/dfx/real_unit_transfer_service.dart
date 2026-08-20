@@ -52,9 +52,11 @@ class RealUnitTransferService extends DFXAuthService {
 
     final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode == 503) {
-      throw TransferGasFundingUnavailableException(
-        (errorJson['message'] ?? 'gas funding for transfers is temporarily unavailable').toString(),
-      );
+      final apiMessage = errorJson['message'];
+      if (apiMessage == null) {
+        throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+      }
+      throw TransferGasFundingUnavailableException(apiMessage.toString());
     }
     throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
   }

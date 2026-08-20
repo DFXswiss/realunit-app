@@ -61,12 +61,7 @@ class SellPaymentInfoCubit extends Cubit<SellPaymentInfoState> {
           );
           return;
         }
-        emit(
-          SellPaymentInfoFailure(
-            PaymentInfoError.unknown,
-            message: paymentInfo.error ?? '',
-          ),
-        );
+        emit(const SellPaymentInfoFailure(PaymentInfoError.unknown));
         return;
       }
 

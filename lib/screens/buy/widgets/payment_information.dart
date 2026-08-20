@@ -39,6 +39,9 @@ class PaymentInformation extends StatelessWidget {
             );
           } else if (error == PaymentInfoError.priceSourceUnavailable ||
               error == PaymentInfoError.unknown) {
+            if (paymentInfoState.message.isEmpty) {
+              return const SizedBox.shrink();
+            }
             return PaymentActionRequired(
               title: paymentInfoState.message,
               description: '',

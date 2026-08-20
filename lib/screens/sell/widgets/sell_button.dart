@@ -44,7 +44,7 @@ class SellButton extends StatelessWidget {
             }
             return;
           }
-          if (context.mounted) {
+          if (context.mounted && state.message.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
