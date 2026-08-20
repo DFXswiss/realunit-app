@@ -66,7 +66,7 @@ class _Kyc2FaViewState extends State<Kyc2FaView> {
               if (state is Kyc2FaVerifyFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${S.of(context).twoFaWrongCode}: ${state.errorMessage}'),
+                    content: Text(state.errorMessage),
                     backgroundColor: RealUnitColors.status.red600,
                   ),
                 );
@@ -78,9 +78,7 @@ class _Kyc2FaViewState extends State<Kyc2FaView> {
               if (state is Kyc2FaFailure) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      '${S.of(context).twoFaSendCodeFailed}: ${state.errorMessage}',
-                    ),
+                    content: Text(state.errorMessage),
                     backgroundColor: RealUnitColors.status.red600,
                   ),
                 );

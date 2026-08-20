@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/sell_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/dto/eip7702/eip7702_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/dto/real_unit_sell_payment_info_dto.dart';
@@ -102,6 +103,25 @@ void main() {
       expect(
         (cubit.state as SellConfirmFailure).error,
         contains('signing cancelled'),
+      );
+    });
+
+    test('confirmPayment emits the API message 1:1 on ApiException', () async {
+      when(() => service.confirmPayment(any())).thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 503,
+          code: 'AKTIONARIAT_UNAVAILABLE',
+          message: 'Price source is temporarily unavailable',
+        ),
+      );
+      final cubit = SellConfirmCubit(service);
+
+      await cubit.confirmPayment(_stubPaymentInfo());
+
+      expect(cubit.state, isA<SellConfirmFailure>());
+      expect(
+        (cubit.state as SellConfirmFailure).error,
+        'Price source is temporarily unavailable',
       );
     });
 

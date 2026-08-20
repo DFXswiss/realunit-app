@@ -126,20 +126,24 @@ void main() {
       },
     );
 
-    // Emitting `BuyConfirmFailure` drives the BlocConsumer listener
-    // (`buy_confirm_button.dart:64-73`) to show the failure SnackBar. Each
-    // error code's user-facing text is captured (aktionariat and
-    // primaryEmailRequired intentionally share the same copy).
-    // The `.state` getter follows the emission (BuyConfirmFailure) — the builder
-    // still renders the idle button, which is the real post-failure UI.
-    for (final (error, name) in const [
-      (BuyConfirmError.aktionariat, 'buy_confirm_failed_aktionariat'),
-      (BuyConfirmError.amountTooLow, 'buy_confirm_failed_amount_too_low'),
-      (BuyConfirmError.primaryEmailRequired, 'buy_confirm_failed_primary_email_required'),
-      (BuyConfirmError.unknown, 'buy_confirm_failed_unknown'),
+    // Emitting `BuyConfirmFailure` drives the BlocConsumer listener to show
+    // the API `message` in a SnackBar. The app does not substitute local copy.
+    for (final (message, name) in const [
+      (
+        'The purchase could not be confirmed. Please try again later.',
+        'buy_confirm_failed_aktionariat',
+      ),
+      (
+        'Purchases by bank transfer require a minimum of 100 nominal in base currency',
+        'buy_confirm_failed_amount_too_low',
+      ),
+      (
+        'User must have a primary email',
+        'buy_confirm_failed_primary_email_required',
+      ),
     ]) {
       goldenTest(
-        'confirm failed SnackBar — ${error.name}',
+        'confirm failed SnackBar — $name',
         fileName: name,
         constraints: phoneConstraints,
         pumpBeforeTest: (tester) async {
@@ -149,7 +153,7 @@ void main() {
         builder: () {
           whenListen(
             confirmCubit,
-            Stream<BuyConfirmState>.value(BuyConfirmFailure(error)),
+            Stream<BuyConfirmState>.value(BuyConfirmFailure(message)),
             initialState: const BuyConfirmInitial(),
           );
           return buildCta();

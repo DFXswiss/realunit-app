@@ -29,10 +29,20 @@ class BuyPaymentInfoFailure extends BuyPaymentInfoState {
   final int? requiredLevel;
   final String? context;
 
-  const BuyPaymentInfoFailure(this.error, {this.requiredLevel, this.context});
+  /// User-facing API error text when this failure came from an API body.
+  /// Empty for local hardware gates (BitBox) and for quote-code routing
+  /// that has its own structured UI (KYC / registration / min amount).
+  final String message;
+
+  const BuyPaymentInfoFailure(
+    this.error, {
+    this.requiredLevel,
+    this.context,
+    this.message = '',
+  });
 
   @override
-  List<Object?> get props => [error, requiredLevel, context];
+  List<Object?> get props => [error, requiredLevel, context, message];
 }
 
 class BuyPaymentInfoMinAmountNotMetFailure extends BuyPaymentInfoFailure {

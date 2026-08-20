@@ -157,7 +157,8 @@ class PaymentActionButton extends StatelessWidget {
               ),
             );
           }
-          if (paymentState.error == PaymentInfoError.unknown) {
+          if (paymentState.error == PaymentInfoError.unknown ||
+              paymentState.error == PaymentInfoError.priceSourceUnavailable) {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: AppFilledButton(

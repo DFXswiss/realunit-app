@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_support_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue_reason.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue_type.dart';
 import 'package:realunit_wallet/packages/utils/xfile_extension.dart';
@@ -70,7 +71,7 @@ class SupportCreateTicketCubit extends Cubit<SupportCreateTicketState> {
     } catch (e) {
       developer.log('Could not create ticket: $e', name: '$SupportCreateTicketCubit');
       if (isClosed) return;
-      emit(state.copyWith(isSubmitting: false, error: e.toString()));
+      emit(state.copyWith(isSubmitting: false, error: ApiException.userFacingMessage(e)));
     }
   }
 

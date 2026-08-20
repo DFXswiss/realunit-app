@@ -2,6 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/screens/kyc/steps/personal_data/cubit/kyc_personal_data/kyc_personal_data_cubit.dart';
@@ -81,6 +82,23 @@ void main() {
       expect: () => [
         const KycPersonalDataLoading(),
         isA<KycPersonalDataFailure>().having((s) => s.message, 'message', contains('boom')),
+      ],
+    );
+
+    blocTest<KycPersonalDataCubit, KycPersonalDataState>(
+      'ApiException → Failure with API message as-is',
+      setUp: () => when(() => service.setData(any(), any())).thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 400,
+          code: 'X',
+          message: 'Invalid address',
+        ),
+      ),
+      build: build,
+      act: submit,
+      expect: () => [
+        const KycPersonalDataLoading(),
+        const KycPersonalDataFailure('Invalid address'),
       ],
     );
   });

@@ -94,8 +94,7 @@ void main() {
       },
     );
 
-    // KycNationalityFailure → red `setNationalityFailed` SnackBar (page:51-58)
-    // over the loaded, idle body.
+    // KycNationalityFailure → red SnackBar with the API message as-is.
     goldenTest(
       'submit failure — red snackbar',
       fileName: 'kyc_nationality_page_submit_failure',

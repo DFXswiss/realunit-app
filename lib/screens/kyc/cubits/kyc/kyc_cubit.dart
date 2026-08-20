@@ -70,7 +70,7 @@ class KycCubit extends Cubit<KycState> {
       emit(const KycFailure('KYC backend did not respond in time'));
     } catch (e) {
       if (isClosed || generation != _runGeneration) return;
-      emit(KycFailure(e.toString()));
+      emit(KycFailure(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -277,7 +277,7 @@ class KycCubit extends Cubit<KycState> {
       }
     } catch (e) {
       if (isClosed || generation != _runGeneration) return;
-      emit(KycFailure(e.toString()));
+      emit(KycFailure(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -299,12 +299,12 @@ class KycCubit extends Cubit<KycState> {
     } on ApiException catch (e) {
       if (isClosed) return;
       if (e.statusCode != 404) {
-        emit(KycFailure(e.toString()));
+        emit(KycFailure(ApiException.userFacingMessage(e)));
         return;
       }
     } catch (e) {
       if (isClosed) return;
-      emit(KycFailure(e.toString()));
+      emit(KycFailure(ApiException.userFacingMessage(e)));
       return;
     }
     await checkKyc();

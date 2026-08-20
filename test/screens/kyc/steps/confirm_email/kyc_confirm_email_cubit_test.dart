@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_info_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_registration_state.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/screens/kyc/steps/confirm_email/cubits/kyc_confirm_email_cubit.dart';
 
@@ -80,7 +81,7 @@ void main() {
     );
 
     blocTest<KycConfirmEmailCubit, KycConfirmEmailState>(
-      'getRegistrationInfo throws → NotConfirmed (fail closed, retryable)',
+      'getRegistrationInfo throws → Failure with the error text (not "email unconfirmed")',
       setUp: () {
         when(() => registrationService.getRegistrationInfo()).thenThrow(
           Exception('network error'),
@@ -90,7 +91,32 @@ void main() {
       act: (c) => c.recheck(),
       expect: () => [
         isA<KycConfirmEmailLoading>(),
-        isA<KycConfirmEmailNotConfirmed>(),
+        isA<KycConfirmEmailFailure>(),
+      ],
+      verify: (c) {
+        expect(
+          (c.state as KycConfirmEmailFailure).message,
+          contains('network error'),
+        );
+      },
+    );
+
+    blocTest<KycConfirmEmailCubit, KycConfirmEmailState>(
+      'ApiException → Failure with the API message 1:1',
+      setUp: () {
+        when(() => registrationService.getRegistrationInfo()).thenThrow(
+          const ApiException(
+            statusCode: 503,
+            code: 'AKTIONARIAT_UNAVAILABLE',
+            message: 'Price source is temporarily unavailable',
+          ),
+        );
+      },
+      build: build,
+      act: (c) => c.recheck(),
+      expect: () => [
+        isA<KycConfirmEmailLoading>(),
+        const KycConfirmEmailFailure('Price source is temporarily unavailable'),
       ],
     );
 
@@ -123,7 +149,7 @@ void main() {
     // budget without a wallclock sleep. Mirrors the `KycCubit` outer-timeout
     // test.
     test(
-      'stalled getRegistrationInfo -> NotConfirmed after the timeout (not stuck loading)',
+      'stalled getRegistrationInfo -> Failure after the timeout (not stuck loading)',
       () {
         fakeAsync((async) {
           when(() => registrationService.getRegistrationInfo()).thenAnswer(
@@ -137,10 +163,9 @@ void main() {
           unawaited(cubit.recheck());
           async.elapse(const Duration(seconds: 31));
 
-          expect(states, const [
-            KycConfirmEmailLoading(),
-            KycConfirmEmailNotConfirmed(),
-          ]);
+          expect(states, hasLength(2));
+          expect(states.first, const KycConfirmEmailLoading());
+          expect(states.last, isA<KycConfirmEmailFailure>());
 
           sub.cancel();
           cubit.close();

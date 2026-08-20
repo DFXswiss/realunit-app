@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 
 part 'settings_edit_name_state.dart';
@@ -31,7 +32,7 @@ class SettingsEditNameCubit extends Cubit<SettingsEditNameState> {
       }
       emit(SettingsEditNameReady(url));
     } catch (e) {
-      emit(SettingsEditNameFailure(e.toString()));
+      emit(SettingsEditNameFailure(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -57,7 +58,7 @@ class SettingsEditNameCubit extends Cubit<SettingsEditNameState> {
       });
       emit(const SettingsEditNameSuccess());
     } catch (e) {
-      emit(SettingsEditNameFailure(e.toString()));
+      emit(SettingsEditNameFailure(ApiException.userFacingMessage(e)));
     }
   }
 }

@@ -109,5 +109,53 @@ void main() {
         expect(reg.context, 'RealunitSell');
       });
     });
+
+    group('userFacingMessage', () {
+      test('returns ApiException.message 1:1', () {
+        const error = ApiException(
+          statusCode: 503,
+          code: 'AKTIONARIAT_UNAVAILABLE',
+          message: 'Price source is temporarily unavailable',
+        );
+
+        expect(
+          ApiException.userFacingMessage(error),
+          'Price source is temporarily unavailable',
+        );
+        expect(
+          ApiException.userFacingMessage(error),
+          isNot(contains('RealUnitApiException')),
+        );
+      });
+
+      test('returns Object.toString for non-API errors', () {
+        expect(
+          ApiException.userFacingMessage(Exception('socket closed')),
+          'Exception: socket closed',
+        );
+      });
+    });
+
+    group('userFacingMessageFromJson', () {
+      test('returns null when the API sent no message', () {
+        expect(ApiException.userFacingMessageFromJson(null), isNull);
+        expect(ApiException.userFacingMessageFromJson(''), isNull);
+        expect(ApiException.userFacingMessageFromJson(<Object>[]), isNull);
+      });
+
+      test('joins a list message the same way fromJson does', () {
+        expect(
+          ApiException.userFacingMessageFromJson(['error1', 'error2']),
+          'error1, error2',
+        );
+      });
+
+      test('returns a string message 1:1', () {
+        expect(
+          ApiException.userFacingMessageFromJson('Price source is temporarily unavailable'),
+          'Price source is temporarily unavailable',
+        );
+      });
+    });
   });
 }

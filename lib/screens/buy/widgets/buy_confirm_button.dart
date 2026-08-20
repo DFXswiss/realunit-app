@@ -13,7 +13,8 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 /// Primary buy CTA shown once the API has returned a valid quote. Tapping it
 /// confirms the purchase (binding) via [BuyConfirmCubit]; on success it opens
 /// the `Zahlungsdetails` page with the bank-transfer instructions, on failure
-/// it surfaces the typed error as a snackbar.
+/// it surfaces the API error `message` (or `toString()` without an API body)
+/// as a snackbar.
 class BuyConfirmButton extends StatelessWidget {
   final BuyPaymentInfo buyPaymentInfo;
 
@@ -62,14 +63,8 @@ class BuyConfirmButtonView extends StatelessWidget {
           );
         }
         if (state is BuyConfirmFailure) {
-          final text = switch (state.error) {
-            BuyConfirmError.aktionariat => S.of(context).buyPaymentConfirmFailedAktionariat,
-            BuyConfirmError.amountTooLow => S.of(context).buyPaymentConfirmFailedAmountTooLow,
-            BuyConfirmError.primaryEmailRequired => S.of(context).buyPaymentConfirmFailedAktionariat,
-            BuyConfirmError.unknown => S.of(context).buyPaymentConfirmFailed,
-          };
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(text)),
+            SnackBar(content: Text(state.message)),
           );
         }
       },

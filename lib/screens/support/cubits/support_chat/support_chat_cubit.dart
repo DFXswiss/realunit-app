@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_support_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/support/support_issue.dart';
 import 'package:realunit_wallet/packages/utils/xfile_extension.dart';
 import 'package:realunit_wallet/screens/support/cubits/support_chat/support_chat_state.dart';
@@ -29,7 +30,7 @@ class SupportChatCubit extends Cubit<SupportChatState> {
     } catch (e) {
       developer.log('Could not load ticket: $e', name: '$SupportChatCubit');
       if (isClosed) return;
-      emit(SupportChatError(e.toString()));
+      emit(SupportChatError(ApiException.userFacingMessage(e)));
     }
   }
 

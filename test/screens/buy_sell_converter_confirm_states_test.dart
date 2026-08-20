@@ -65,22 +65,12 @@ void main() {
       expect(a, isNot(c));
     });
 
-    test('Failure carries the BuyConfirmError', () {
-      const a = BuyConfirmFailure(BuyConfirmError.aktionariat);
-      const b = BuyConfirmFailure(BuyConfirmError.aktionariat);
-      const c = BuyConfirmFailure(BuyConfirmError.unknown);
+    test('Failure carries the API message', () {
+      const a = BuyConfirmFailure('The purchase could not be confirmed. Please try again later.');
+      const b = BuyConfirmFailure('The purchase could not be confirmed. Please try again later.');
+      const c = BuyConfirmFailure('User must have a primary email');
       expect(a, b);
       expect(a, isNot(c));
-    });
-
-    test('BuyConfirmError enum has exactly aktionariat + amountTooLow + primaryEmailRequired + unknown', () {
-      // Pin the variants — the listener in BuyButton switches on these.
-      expect(BuyConfirmError.values.toSet(), {
-        BuyConfirmError.aktionariat,
-        BuyConfirmError.amountTooLow,
-        BuyConfirmError.primaryEmailRequired,
-        BuyConfirmError.unknown,
-      });
     });
 
     test('Initial and Loading are distinct singletons (by value)', () {

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/real_unit_user_data_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
@@ -26,6 +27,8 @@ class KycLinkWalletCubit extends Cubit<KycLinkWalletState> {
       emit(const KycLinkWalletSuccess());
     } on BitboxNotConnectedException {
       emit(KycLinkWalletBitboxRequired(userData));
+    } on ApiException catch (e) {
+      emit(KycLinkWalletFailure(e.message, cause: e));
     } catch (e) {
       emit(KycLinkWalletFailure(e.toString(), cause: e));
     }

@@ -59,13 +59,13 @@ class PayProcessView extends StatelessWidget {
         } else if (state is PayProcessPayRetry) {
           // The swap already succeeded — offer to retry the PAY leg only. The
           // ZCHF stays in the wallet; this never re-swaps.
-          await _showRetrySheet(context, state.reason);
+          await _showRetrySheet(context, state);
         } else if (state is PayProcessFailure) {
           await _showResultSheet(
             context,
             icon: Icons.error_rounded,
             title: S.of(context).payFailureTitle,
-            description: _failureMessage(context, state.reason),
+            description: _failureMessage(context, state),
           );
         }
       },
@@ -105,20 +105,32 @@ class PayProcessView extends StatelessWidget {
     PayProcessFailure() => S.of(context).payFailureTitle,
   };
 
-  String _failureMessage(BuildContext context, PayProcessFailureReason reason) => switch (reason) {
-    PayProcessFailureReason.insufficientZchf => S.of(context).payFailureInsufficientZchf,
-    PayProcessFailureReason.insufficientEth => S.of(context).payFailureInsufficientEth,
-    PayProcessFailureReason.signatureUnsupported => S.of(context).payFailureSignatureUnsupported,
-    PayProcessFailureReason.bitboxRequired => S.of(context).payFailureBitboxRequired,
-    PayProcessFailureReason.generic => S.of(context).payFailureGeneric,
-  };
+  String _failureMessage(BuildContext context, PayProcessFailure state) {
+    final apiText = state.message;
+    if (apiText != null && apiText.isNotEmpty) {
+      return apiText;
+    }
+    return switch (state.reason) {
+      PayProcessFailureReason.insufficientZchf => S.of(context).payFailureInsufficientZchf,
+      PayProcessFailureReason.insufficientEth => S.of(context).payFailureInsufficientEth,
+      PayProcessFailureReason.signatureUnsupported => S.of(context).payFailureSignatureUnsupported,
+      PayProcessFailureReason.bitboxRequired => S.of(context).payFailureBitboxRequired,
+      PayProcessFailureReason.generic => S.of(context).payFailureGeneric,
+    };
+  }
 
-  String _retryMessage(BuildContext context, PayRetryReason reason) => switch (reason) {
-    PayRetryReason.quoteExpired => S.of(context).payRetryQuoteExpired,
-    PayRetryReason.transient => S.of(context).payRetryTransient,
-    PayRetryReason.insufficientZchf => S.of(context).payRetryInsufficientZchf,
-    PayRetryReason.unsignedTxMismatch => S.of(context).payRetryUnsignedTxMismatch,
-  };
+  String _retryMessage(BuildContext context, PayProcessPayRetry state) {
+    final apiText = state.message;
+    if (apiText != null && apiText.isNotEmpty) {
+      return apiText;
+    }
+    return switch (state.reason) {
+      PayRetryReason.quoteExpired => S.of(context).payRetryQuoteExpired,
+      PayRetryReason.transient => S.of(context).payRetryTransient,
+      PayRetryReason.insufficientZchf => S.of(context).payRetryInsufficientZchf,
+      PayRetryReason.unsignedTxMismatch => S.of(context).payRetryUnsignedTxMismatch,
+    };
+  }
 
   Future<void> _showResultSheet(
     BuildContext context, {
@@ -161,7 +173,7 @@ class PayProcessView extends StatelessWidget {
   /// primary action retries the PAY leg only ([PayProcessCubit.retryPay]) — the
   /// swap is never redone, so the ZCHF already held is reused. Dismissing leaves
   /// that ZCHF safely in the wallet.
-  Future<void> _showRetrySheet(BuildContext context, PayRetryReason reason) async {
+  Future<void> _showRetrySheet(BuildContext context, PayProcessPayRetry state) async {
     final cubit = context.read<PayProcessCubit>();
     // The sheet returns true when the user retries (keep the page) and false
     // when they close (leave the flow); a barrier dismissal yields null.
@@ -181,7 +193,7 @@ class PayProcessView extends StatelessWidget {
                 style: Theme.of(sheetContext).textTheme.headlineMedium,
               ),
               Text(
-                _retryMessage(sheetContext, reason),
+                _retryMessage(sheetContext, state),
                 textAlign: TextAlign.center,
                 style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(
                   color: RealUnitColors.neutral500,

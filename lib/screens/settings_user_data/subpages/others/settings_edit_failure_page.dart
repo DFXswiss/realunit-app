@@ -34,7 +34,7 @@ class SettingsEditFailurePage extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 Text(
-                  S.of(context).kycFailureDescription(message),
+                  message,
                   textAlign: .center,
                   style: Theme.of(
                     context,

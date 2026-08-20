@@ -159,7 +159,7 @@ class _KycPersonalDataViewState extends State<KycPersonalDataView> {
           if (state is KycPersonalDataFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(S.of(context).kycPersonalDataFailed(state.message)),
+                content: Text(state.message),
                 backgroundColor: RealUnitColors.status.red600,
               ),
             );

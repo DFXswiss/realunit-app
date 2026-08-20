@@ -155,7 +155,7 @@ void main() {
       expect(s.currency, Currency.eur);
     });
 
-    test('API isValid=false with unrelated error → Failure(unknown) carrying the error', () async {
+    test('API isValid=false with unrelated error code → Failure(unknown) without using the code as copy', () async {
       when(
         () => service.getPaymentInfo(any(), any(), currency: any(named: 'currency')),
       ).thenAnswer((_) async => _info(isValid: false, error: 'KycRequired'));
@@ -165,7 +165,7 @@ void main() {
 
       final f = cubit.state as SellPaymentInfoFailure;
       expect(f.error, PaymentInfoError.unknown);
-      expect(f.message, 'KycRequired');
+      expect(f.message, isEmpty);
     });
 
     test('KycLevelRequiredException → Failure(kycRequired, requiredLevel)', () async {
@@ -185,6 +185,7 @@ void main() {
       final f = cubit.state as SellPaymentInfoFailure;
       expect(f.error, PaymentInfoError.kycRequired);
       expect(f.requiredLevel, 30);
+      expect(f.message, 'KYC required');
     });
 
     test('KycLevelRequiredException with context → Failure carries context', () async {
@@ -258,6 +259,7 @@ void main() {
         (cubit.state as SellPaymentInfoFailure).error,
         PaymentInfoError.registrationRequired,
       );
+      expect((cubit.state as SellPaymentInfoFailure).message, 'Sign first');
     });
 
     test('RegistrationRequiredException with context → Failure carries context', () async {
@@ -304,6 +306,10 @@ void main() {
       await cubit.getPaymentInfo(amount: '100', iban: 'CH56');
 
       expect((cubit.state as SellPaymentInfoFailure).error, PaymentInfoError.priceSourceUnavailable);
+      expect(
+        (cubit.state as SellPaymentInfoFailure).message,
+        'RealUnit price source (Aktionariat) is currently unavailable',
+      );
     });
 
     test('other ApiException (e.g. 400) → Failure(unknown)', () async {
@@ -315,6 +321,7 @@ void main() {
       await cubit.getPaymentInfo(amount: '100', iban: 'CH56');
 
       expect((cubit.state as SellPaymentInfoFailure).error, PaymentInfoError.unknown);
+      expect((cubit.state as SellPaymentInfoFailure).message, 'bad');
     });
 
     test(

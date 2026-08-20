@@ -41,15 +41,15 @@ class TransferSignatureUnsupportedException implements Exception {
 /// threshold). Surfaced from the API's `ServiceUnavailable` (503) as a friendly
 /// "temporarily unavailable" state — the user's REALU is untouched.
 class TransferGasFundingUnavailableException implements Exception {
-  /// Diagnostic detail (e.g. the API message), for logs.
-  final String detail;
+  /// API `message` when the 503 body carried one; null when the API sent no
+  /// user-facing text (the view then uses local copy for this reason).
+  final String? detail;
 
-  const TransferGasFundingUnavailableException([
-    this.detail = 'gas funding for transfers is temporarily unavailable',
-  ]);
+  const TransferGasFundingUnavailableException([this.detail]);
 
   @override
-  String toString() => 'TransferGasFundingUnavailableException: $detail';
+  String toString() =>
+      'TransferGasFundingUnavailableException: ${detail ?? 'gas funding for transfers is temporarily unavailable'}';
 }
 
 /// The prepare response's recipient/amount does not match what the user
