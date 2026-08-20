@@ -47,6 +47,8 @@ on:
         required: true
       DEPLOY_HOST:
         required: true
+      HANDBOOK_API_CHECKOUT_SSH_KEY:
+        required: true
 
 # Reusable workflows do NOT inherit `permissions` from the caller — GITHUB_TOKEN
 # scopes are resolved per-workflow. Mirror the `contents: read` floor that both
@@ -84,19 +86,26 @@ jobs:
       # changes in the api repo only flow in after such a push/dispatch in
       # this repo. There is NO auto-dispatch from the api repo. The api ref
       # stays `develop` regardless of the handbook's own deploy branch.
+      - name: Require mail-preview source checkout key
+        env:
+          HANDBOOK_API_CHECKOUT_SSH_KEY: ${{ secrets.HANDBOOK_API_CHECKOUT_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HANDBOOK_API_CHECKOUT_SSH_KEY}" ]; then
+            echo "::error::HANDBOOK_API_CHECKOUT_SSH_KEY is empty — set the repo secret (read-only deploy key for the mail-preview source)."
+            exit 1
+          fi
+
       - name: Check out DFXswiss/api at develop into _api-checkout/
         uses: actions/checkout@v4
         with:
-          # DFXswiss/api is a PUBLIC repo, so the runner's default GITHUB_TOKEN
-          # is sufficient to clone it — no cross-repo PAT setup needed. If the
-          # api repo is ever flipped to private, this step will start failing
-          # with HTTP 404 on checkout; the fix is then to add a PAT secret on
-          # the realunit-app repo and pass it through as `token:` here (and
-          # through the secrets: block of this reusable workflow + the
-          # handbook-deploy.yaml caller).
+          # Cross-org clone: the default GITHUB_TOKEN cannot read DFXswiss/api.
+          # HANDBOOK_API_CHECKOUT_SSH_KEY is a read-only deploy key on that repo.
           repository: DFXswiss/api
           ref: develop
           path: _api-checkout
+          ssh-key: ${{ secrets.HANDBOOK_API_CHECKOUT_SSH_KEY }}
+          persist-credentials: false
 
       - name: Set up Node.js for mail-preview generator
         uses: actions/setup-node@v4
