@@ -42,4 +42,18 @@ class ApiException implements Exception {
     }
     return error.toString();
   }
+
+  /// Normalizes the JSON `message` field. Null/empty means the API sent no
+  /// user-facing text — callers must not invent a substitute.
+  static String? userFacingMessageFromJson(Object? message) {
+    if (message == null) {
+      return null;
+    }
+    if (message is List) {
+      final joined = message.map((item) => item.toString()).join(', ');
+      return joined.isEmpty ? null : joined;
+    }
+    final text = message.toString();
+    return text.isEmpty ? null : text;
+  }
 }

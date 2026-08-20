@@ -135,5 +135,27 @@ void main() {
         );
       });
     });
+
+    group('userFacingMessageFromJson', () {
+      test('returns null when the API sent no message', () {
+        expect(ApiException.userFacingMessageFromJson(null), isNull);
+        expect(ApiException.userFacingMessageFromJson(''), isNull);
+        expect(ApiException.userFacingMessageFromJson(<Object>[]), isNull);
+      });
+
+      test('joins a list message the same way fromJson does', () {
+        expect(
+          ApiException.userFacingMessageFromJson(['error1', 'error2']),
+          'error1, error2',
+        );
+      });
+
+      test('returns a string message 1:1', () {
+        expect(
+          ApiException.userFacingMessageFromJson('Price source is temporarily unavailable'),
+          'Price source is temporarily unavailable',
+        );
+      });
+    });
   });
 }

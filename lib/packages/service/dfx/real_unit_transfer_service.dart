@@ -52,11 +52,9 @@ class RealUnitTransferService extends DFXAuthService {
 
     final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
     if (response.statusCode == 503) {
-      final apiMessage = errorJson['message'];
-      if (apiMessage == null) {
-        throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
-      }
-      throw TransferGasFundingUnavailableException(apiMessage.toString());
+      throw TransferGasFundingUnavailableException(
+        ApiException.userFacingMessageFromJson(errorJson['message']),
+      );
     }
     throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
   }
@@ -183,11 +181,9 @@ class RealUnitTransferService extends DFXAuthService {
     if (response.statusCode != 200 && response.statusCode != 201) {
       final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
       if (response.statusCode == 503) {
-        final apiMessage = errorJson['message'];
-        if (apiMessage == null) {
-          throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
-        }
-        throw TransferGasFundingUnavailableException(apiMessage.toString());
+        throw TransferGasFundingUnavailableException(
+          ApiException.userFacingMessageFromJson(errorJson['message']),
+        );
       }
       final error = ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
       // 409 "already confirmed": an earlier confirm for this id landed but its

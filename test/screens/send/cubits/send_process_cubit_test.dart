@@ -197,10 +197,7 @@ void main() {
       (cubit.state as SendProcessFailure).reason,
       SendProcessFailureReason.gasFundingUnavailable,
     );
-    expect(
-      (cubit.state as SendProcessFailure).message,
-      'gas funding for transfers is temporarily unavailable',
-    );
+    expect((cubit.state as SendProcessFailure).message, isNull);
     await cubit.close();
   });
 
