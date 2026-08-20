@@ -150,6 +150,9 @@ void main() {
       );
     },
     act: (cubit) => cubit.load(),
-    expect: () => [isA<PayQuoteLoading>(), isA<PayQuoteError>()],
+    expect: () => [
+      isA<PayQuoteLoading>(),
+      const PayQuoteError('boom'),
+    ],
   );
 }

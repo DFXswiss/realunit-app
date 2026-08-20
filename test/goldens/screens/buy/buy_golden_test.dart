@@ -254,7 +254,10 @@ void main() {
       constraints: const BoxConstraints.tightFor(width: 390, height: 844),
       builder: () {
         when(() => paymentInfoCubit.state).thenReturn(
-          const BuyPaymentInfoFailure(PaymentInfoError.unknown),
+          const BuyPaymentInfoFailure(
+            PaymentInfoError.unknown,
+            message: 'The purchase could not be quoted. Please try again later.',
+          ),
         );
         when(() => converterCubit.state).thenReturn(
           const BuyConverterState(
@@ -268,12 +271,15 @@ void main() {
     );
 
     goldenTest(
-      'price source (Aktionariat) unavailable failure',
+      'price source unavailable failure shows API message',
       fileName: 'buy_price_source_unavailable',
       constraints: const BoxConstraints.tightFor(width: 390, height: 844),
       builder: () {
         when(() => paymentInfoCubit.state).thenReturn(
-          const BuyPaymentInfoFailure(PaymentInfoError.priceSourceUnavailable),
+          const BuyPaymentInfoFailure(
+            PaymentInfoError.priceSourceUnavailable,
+            message: 'RealUnit price source (Aktionariat) is currently unavailable',
+          ),
         );
         when(() => converterCubit.state).thenReturn(
           const BuyConverterState(

@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_bank_account_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/bank_account/bank_account.dart';
 
 part 'sell_bank_accounts_state.dart';
@@ -27,7 +28,7 @@ class SellBankAccountsCubit extends Cubit<SellBankAccountsState> {
     } catch (e) {
       developer.log(e.toString());
       if (isClosed) return;
-      emit(SellBankAccountsAddFailure(state.accounts, e.toString()));
+      emit(SellBankAccountsAddFailure(state.accounts, ApiException.userFacingMessage(e)));
     }
   }
 

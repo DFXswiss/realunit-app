@@ -203,6 +203,19 @@ void main() {
       expect(find.text(S.current.sendFailureGasUnavailable), findsOne);
     });
 
+    testWidgets('gas-unavailable with API message shows the API text', (tester) async {
+      await pumpWithState(
+        tester,
+        const SendProcessFailure(
+          SendProcessFailureReason.gasFundingUnavailable,
+          message: 'Transfers are currently unavailable',
+        ),
+      );
+
+      expect(find.text('Transfers are currently unavailable'), findsOne);
+      expect(find.text(S.current.sendFailureGasUnavailable), findsNothing);
+    });
+
     testWidgets('invalid-request failure message', (tester) async {
       await pumpWithState(
         tester,
@@ -213,7 +226,7 @@ void main() {
     });
 
     testWidgets(
-      'registration/KYC failure always shows localized copy, never raw API message',
+      'registration/KYC failure shows the API message as-is',
       (tester) async {
         await pumpWithState(
           tester,
@@ -223,8 +236,8 @@ void main() {
           ),
         );
 
-        expect(find.text(S.current.sendFailureRegistrationOrKycRequired), findsOne);
-        expect(find.text('Please complete KYC'), findsNothing);
+        expect(find.text('Please complete KYC'), findsOne);
+        expect(find.text(S.current.sendFailureRegistrationOrKycRequired), findsNothing);
       },
     );
 

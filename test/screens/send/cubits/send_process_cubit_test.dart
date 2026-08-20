@@ -197,6 +197,7 @@ void main() {
       (cubit.state as SendProcessFailure).reason,
       SendProcessFailureReason.gasFundingUnavailable,
     );
+    expect((cubit.state as SendProcessFailure).message, isNull);
     await cubit.close();
   });
 

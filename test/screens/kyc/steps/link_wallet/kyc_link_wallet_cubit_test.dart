@@ -1,6 +1,7 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/kyc/kyc_personal_data.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/registration_status.dart';
@@ -98,6 +99,23 @@ void main() {
       build: build,
       act: (c) => c.submit(_userData),
       expect: () => [const KycLinkWalletSubmitting(_userData), isA<KycLinkWalletFailure>()],
+    );
+
+    blocTest<KycLinkWalletCubit, KycLinkWalletState>(
+      'registerWallet throws ApiException → Failure with API message as-is',
+      setUp: () {
+        when(
+          () => registrationService.registerWallet(any()),
+        ).thenThrow(
+          const ApiException(statusCode: 400, code: 'X', message: 'Wallet already linked'),
+        );
+      },
+      build: build,
+      act: (c) => c.submit(_userData),
+      expect: () => [
+        const KycLinkWalletSubmitting(_userData),
+        isA<KycLinkWalletFailure>().having((s) => s.message, 'message', 'Wallet already linked'),
+      ],
     );
   });
 

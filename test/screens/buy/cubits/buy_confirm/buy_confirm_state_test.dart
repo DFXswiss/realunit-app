@@ -71,27 +71,16 @@ void main() {
   });
 
   group('BuyConfirmFailure', () {
-    test('same error variant is equal and props match', () {
-      final a = BuyConfirmFailure(BuyConfirmError.aktionariat);
-      final b = BuyConfirmFailure(BuyConfirmError.aktionariat);
+    test('same message is equal and props match', () {
+      final a = BuyConfirmFailure('The purchase could not be confirmed. Please try again later.');
+      final b = BuyConfirmFailure('The purchase could not be confirmed. Please try again later.');
       expect(a, equals(b));
-      expect(a.props, [BuyConfirmError.aktionariat]);
+      expect(a.props, ['The purchase could not be confirmed. Please try again later.']);
     });
 
-    test('different error variant is unequal', () {
-      final a = BuyConfirmFailure(BuyConfirmError.aktionariat);
-      final b = BuyConfirmFailure(BuyConfirmError.unknown);
-      expect(a, isNot(equals(b)));
-    });
-
-    test('primaryEmailRequired props match', () {
-      final a = BuyConfirmFailure(BuyConfirmError.primaryEmailRequired);
-      expect(a.props, [BuyConfirmError.primaryEmailRequired]);
-    });
-
-    test('primaryEmailRequired is unequal to aktionariat', () {
-      final a = BuyConfirmFailure(BuyConfirmError.primaryEmailRequired);
-      final b = BuyConfirmFailure(BuyConfirmError.aktionariat);
+    test('different message is unequal', () {
+      final a = BuyConfirmFailure('The purchase could not be confirmed. Please try again later.');
+      final b = BuyConfirmFailure('User must have a primary email');
       expect(a, isNot(equals(b)));
     });
   });
@@ -103,7 +92,7 @@ void main() {
 
     test('Success vs Failure are unequal', () {
       final s = BuyConfirmSuccess(reference: 'ref');
-      final f = BuyConfirmFailure(BuyConfirmError.unknown);
+      final f = BuyConfirmFailure('oops');
       expect(s, isNot(equals(f)));
     });
   });

@@ -59,12 +59,12 @@ void main() {
       expect(success.paymentRequest, isNull);
     });
 
-    test('confirmPayment emits Failure(aktionariat) on ApiException 503', () async {
+    test('confirmPayment emits Failure with the API message on ApiException 503', () async {
       when(() => service.confirmPayment(any())).thenAnswer(
         (_) async => throw const ApiException(
           statusCode: 503,
-          code: 'SERVICE_UNAVAILABLE',
-          message: 'Aktionariat down',
+          code: 'AKTIONARIAT_UNAVAILABLE',
+          message: 'The purchase could not be confirmed. Please try again later.',
         ),
       );
 
@@ -73,12 +73,13 @@ void main() {
       await cubit.confirmPayment(7);
       await done;
 
-      expect(cubit.state, isA<BuyConfirmFailure>());
-      expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.aktionariat);
+      expect(
+        (cubit.state as BuyConfirmFailure).message,
+        'The purchase could not be confirmed. Please try again later.',
+      );
     });
 
-    test('confirmPayment emits Failure(amountTooLow) on ApiException 400 with '
-        'code AmountTooLow', () async {
+    test('confirmPayment emits Failure with the API message on AmountTooLow', () async {
       when(() => service.confirmPayment(any())).thenAnswer(
         (_) async => throw const ApiException(
           statusCode: 400,
@@ -92,37 +93,18 @@ void main() {
       await cubit.confirmPayment(7);
       await done;
 
-      expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.amountTooLow);
-    });
-
-    test('confirmPayment prefers aktionariat over amountTooLow when a 503 also '
-        'carries code AmountTooLow', () async {
-      // 503 keeps precedence over the AmountTooLow code — pins the branch order
-      // so a future refactor can't surface a min-purchase message for a genuine
-      // service outage.
-      when(() => service.confirmPayment(any())).thenAnswer(
-        (_) async => throw const ApiException(
-          statusCode: 503,
-          code: 'AmountTooLow',
-          message: 'Aktionariat down',
-        ),
+      expect(
+        (cubit.state as BuyConfirmFailure).message,
+        'Purchases by bank transfer require a minimum of 100 nominal in base currency',
       );
-
-      final cubit = BuyConfirmCubit(service);
-      final done = cubit.stream.firstWhere((s) => s is BuyConfirmFailure);
-      await cubit.confirmPayment(7);
-      await done;
-
-      expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.aktionariat);
     });
 
-    test('confirmPayment emits Failure(primaryEmailRequired) on ApiException 400 '
-        'with code PrimaryEmailRequired', () async {
+    test('confirmPayment emits Failure with the API message on PrimaryEmailRequired', () async {
       when(() => service.confirmPayment(any())).thenAnswer(
         (_) async => throw const ApiException(
           statusCode: 400,
           code: 'PrimaryEmailRequired',
-          message: 'Primary email is required',
+          message: 'User must have a primary email',
         ),
       );
 
@@ -131,34 +113,10 @@ void main() {
       await cubit.confirmPayment(7);
       await done;
 
-      expect(
-        (cubit.state as BuyConfirmFailure).error,
-        BuyConfirmError.primaryEmailRequired,
-      );
+      expect((cubit.state as BuyConfirmFailure).message, 'User must have a primary email');
     });
 
-    test('confirmPayment prefers aktionariat over primaryEmailRequired when a '
-        '503 also carries code PrimaryEmailRequired', () async {
-      // 503 keeps precedence over the PrimaryEmailRequired code — pins the
-      // branch order so a future refactor can't surface an email-required
-      // message for a genuine service outage.
-      when(() => service.confirmPayment(any())).thenAnswer(
-        (_) async => throw const ApiException(
-          statusCode: 503,
-          code: 'PrimaryEmailRequired',
-          message: 'Aktionariat down',
-        ),
-      );
-
-      final cubit = BuyConfirmCubit(service);
-      final done = cubit.stream.firstWhere((s) => s is BuyConfirmFailure);
-      await cubit.confirmPayment(7);
-      await done;
-
-      expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.aktionariat);
-    });
-
-    test('confirmPayment emits Failure(unknown) on other ApiException', () async {
+    test('confirmPayment emits Failure with the API message on other ApiException', () async {
       when(() => service.confirmPayment(any())).thenAnswer(
         (_) async => throw const ApiException(
           statusCode: 500,
@@ -172,10 +130,10 @@ void main() {
       await cubit.confirmPayment(7);
       await done;
 
-      expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.unknown);
+      expect((cubit.state as BuyConfirmFailure).message, 'oops');
     });
 
-    test('confirmPayment emits Failure(unknown) on generic exception', () async {
+    test('confirmPayment emits Failure with the exception text when there is no API body', () async {
       when(() => service.confirmPayment(any()))
           .thenAnswer((_) async => throw Exception('network'));
 
@@ -184,7 +142,7 @@ void main() {
       await cubit.confirmPayment(7);
       await done;
 
-      expect((cubit.state as BuyConfirmFailure).error, BuyConfirmError.unknown);
+      expect((cubit.state as BuyConfirmFailure).message, 'Exception: network');
     });
   });
 }

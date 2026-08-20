@@ -2,6 +2,7 @@ import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/screens/kyc/steps/2fa/cubits/kyc_2fa/kyc_2fa_cubit.dart';
 
 class _MockKycService extends Mock implements DfxKycService {}
@@ -45,6 +46,23 @@ void main() {
           'errorMessage',
           contains('rate limited'),
         ),
+      ],
+    );
+
+    blocTest<Kyc2FaCubit, Kyc2FaState>(
+      'ApiException → Failure with API message as-is',
+      setUp: () => when(() => service.request2FaCode()).thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 400,
+          code: 'X',
+          message: 'Too many requests',
+        ),
+      ),
+      build: build,
+      act: (c) => c.requestCode(),
+      expect: () => [
+        const Kyc2FaLoading(),
+        const Kyc2FaFailure(errorMessage: 'Too many requests'),
       ],
     );
   });

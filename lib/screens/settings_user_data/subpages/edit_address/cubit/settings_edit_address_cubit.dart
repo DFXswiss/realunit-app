@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 
 part 'settings_edit_address_state.dart';
@@ -31,7 +32,7 @@ class SettingsEditAddressCubit extends Cubit<SettingsEditAddressState> {
       }
       emit(SettingsEditAddressReady(url));
     } catch (e) {
-      emit(SettingsEditAddressFailure(e.toString()));
+      emit(SettingsEditAddressFailure(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -65,7 +66,7 @@ class SettingsEditAddressCubit extends Cubit<SettingsEditAddressState> {
       });
       emit(const SettingsEditAddressSuccess());
     } catch (e) {
-      emit(SettingsEditAddressFailure(e.toString()));
+      emit(SettingsEditAddressFailure(ApiException.userFacingMessage(e)));
     }
   }
 }

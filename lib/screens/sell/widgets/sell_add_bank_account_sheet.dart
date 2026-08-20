@@ -30,7 +30,7 @@ class _SellAddBankAccountSheetState extends State<SellAddBankAccountSheet> {
         if (state is SellBankAccountsAddFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error: ${state.message}'),
+              content: Text(state.message),
               backgroundColor: RealUnitColors.status.red600,
             ),
           );

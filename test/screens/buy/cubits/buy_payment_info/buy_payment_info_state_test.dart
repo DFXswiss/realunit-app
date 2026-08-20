@@ -62,7 +62,7 @@ void main() {
       final a = BuyPaymentInfoFailure(PaymentInfoError.kycRequired, requiredLevel: 30);
       final b = BuyPaymentInfoFailure(PaymentInfoError.kycRequired, requiredLevel: 30);
       expect(a, equals(b));
-      expect(a.props, [PaymentInfoError.kycRequired, 30, null]);
+      expect(a.props, [PaymentInfoError.kycRequired, 30, null, '']);
     });
 
     test('null requiredLevel is allowed and equal across instances', () {
@@ -90,7 +90,7 @@ void main() {
         context: 'RealunitBuy',
       );
       expect(a, equals(b));
-      expect(a.props, [PaymentInfoError.kycRequired, 30, 'RealunitBuy']);
+      expect(a.props, [PaymentInfoError.kycRequired, 30, 'RealunitBuy', '']);
     });
 
     test('different context is unequal', () {

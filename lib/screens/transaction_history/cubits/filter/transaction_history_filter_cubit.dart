@@ -58,12 +58,21 @@ class TransactionHistoryFilterCubit extends Cubit<TransactionHistoryFilterState>
     DateTime? startDate,
     DateTime? endDate,
   }) {
+    // The picker hands over the selected day at local midnight, so an inclusive end bound
+    // has to cover that entire day — compare against the next day's midnight exclusively.
+    final endBound = endDate == null ? null : _startOfNextLocalDay(endDate);
+
     return transactions.where((transaction) {
       final transactionDate = transaction.timestamp;
       final afterStart = startDate == null || !transactionDate.isBefore(startDate);
-      final beforeEnd = endDate == null || !transactionDate.isAfter(endDate);
+      final beforeEnd = endBound == null || transactionDate.isBefore(endBound);
       return afterStart && beforeEnd;
     }).toList();
+  }
+
+  DateTime _startOfNextLocalDay(DateTime date) {
+    final local = date.toLocal();
+    return DateTime(local.year, local.month, local.day + 1);
   }
 
   @override

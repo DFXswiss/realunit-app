@@ -7,16 +7,6 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_
 
 part 'buy_confirm_state.dart';
 
-// Backend error code for a confirm rejected by Aktionariat because the
-// purchase is below its minimum (HTTP 400). Dispatch on the code, not the
-// message text — the message is Aktionariat's and may change.
-const String _errorCodeAmountTooLow = 'AmountTooLow';
-
-// Backend error code for a confirm rejected upstream because the buyer's
-// primary email is missing or not yet confirmed at the share register
-// (HTTP 400). Dispatch on the code, not the message text.
-const String _errorCodePrimaryEmailRequired = 'PrimaryEmailRequired';
-
 class BuyConfirmCubit extends Cubit<BuyConfirmState> {
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
 
@@ -37,17 +27,10 @@ class BuyConfirmCubit extends Cubit<BuyConfirmState> {
       );
     } on ApiException catch (e) {
       developer.log(e.toString());
-      final error = e.statusCode == 503
-          ? BuyConfirmError.aktionariat
-          : e.code == _errorCodeAmountTooLow
-          ? BuyConfirmError.amountTooLow
-          : e.code == _errorCodePrimaryEmailRequired
-          ? BuyConfirmError.primaryEmailRequired
-          : BuyConfirmError.unknown;
-      emit(BuyConfirmFailure(error));
+      emit(BuyConfirmFailure(e.message));
     } catch (e) {
       developer.log(e.toString());
-      emit(const BuyConfirmFailure(BuyConfirmError.unknown));
+      emit(BuyConfirmFailure(e.toString()));
     }
   }
 }

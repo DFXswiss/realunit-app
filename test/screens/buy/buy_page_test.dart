@@ -230,7 +230,10 @@ void main() {
 
     testWidgets('retries payment info when unknown error is shown', (tester) async {
       when(() => buyPaymentInfoCubit.state).thenReturn(
-        const BuyPaymentInfoFailure(PaymentInfoError.unknown),
+        const BuyPaymentInfoFailure(
+          PaymentInfoError.unknown,
+          message: 'The purchase could not be quoted. Please try again later.',
+        ),
       );
       when(() => converterCubit.state).thenReturn(
         const BuyConverterState(currency: Currency.eur),
@@ -238,7 +241,10 @@ void main() {
 
       await tester.pumpApp(buildSubject(const BuyView()));
 
-      expect(find.text(S.current.paymentInformationFailed), findsOne);
+      expect(
+        find.text('The purchase could not be quoted. Please try again later.'),
+        findsOne,
+      );
       expect(find.text(S.current.retry), findsOne);
 
       await tester.tap(find.text(S.current.retry));

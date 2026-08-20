@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/sell_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/sell_payment_info.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_sell_payment_info_service.dart';
@@ -25,7 +26,7 @@ class SellConfirmCubit extends Cubit<SellConfirmState> {
       emit(SellConfirmSuccess());
     } catch (e) {
       if (isClosed) return;
-      emit(SellConfirmFailure(e.toString()));
+      emit(SellConfirmFailure(ApiException.userFacingMessage(e)));
     }
   }
 }

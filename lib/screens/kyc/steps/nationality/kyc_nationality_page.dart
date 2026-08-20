@@ -51,7 +51,7 @@ class _KycNationalityViewState extends State<KycNationalityView> {
           if (state is KycNationalityFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(S.of(context).setNationalityFailed(state.message)),
+                content: Text(state.message),
                 backgroundColor: RealUnitColors.status.red600,
               ),
             );

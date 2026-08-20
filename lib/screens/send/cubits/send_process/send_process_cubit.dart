@@ -81,8 +81,11 @@ class SendProcessCubit extends Cubit<SendProcessState> {
       _preparedInfo = info;
     } on TransferSignatureUnsupportedException {
       prepareFailure = const SendProcessFailure(SendProcessFailureReason.signatureUnsupported);
-    } on TransferGasFundingUnavailableException {
-      prepareFailure = const SendProcessFailure(SendProcessFailureReason.gasFundingUnavailable);
+    } on TransferGasFundingUnavailableException catch (e) {
+      prepareFailure = SendProcessFailure(
+        SendProcessFailureReason.gasFundingUnavailable,
+        message: e.detail,
+      );
     } on SigningCancelledException {
       prepareFailure = const SendProcessFailure(SendProcessFailureReason.signatureCancelled);
     } on BitboxNotConnectedException {
@@ -175,15 +178,15 @@ class SendProcessCubit extends Cubit<SendProcessState> {
       } else {
         nextState = const SendProcessSuccess('');
       }
-    } on TransferConfirmMismatchException catch (e) {
-      nextState = SendProcessFailure(
-        SendProcessFailureReason.confirmMismatch,
-        message: e.toString(),
-      );
+    } on TransferConfirmMismatchException {
+      nextState = const SendProcessFailure(SendProcessFailureReason.confirmMismatch);
     } on TransferSignatureUnsupportedException {
       nextState = const SendProcessFailure(SendProcessFailureReason.signatureUnsupported);
-    } on TransferGasFundingUnavailableException {
-      nextState = const SendProcessFailure(SendProcessFailureReason.gasFundingUnavailable);
+    } on TransferGasFundingUnavailableException catch (e) {
+      nextState = SendProcessFailure(
+        SendProcessFailureReason.gasFundingUnavailable,
+        message: e.detail,
+      );
     } on SigningCancelledException {
       nextState = const SendProcessFailure(SendProcessFailureReason.signatureCancelled);
     } on BitboxNotConnectedException {
