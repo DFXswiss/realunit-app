@@ -108,7 +108,7 @@ void main() {
     );
 
     blocTest<TransactionHistoryFilterCubit, TransactionHistoryFilterState>(
-      'changeFilter includes the boundaries (isBefore / isAfter, not isAtSameMoment)',
+      'changeFilter includes the boundary days',
       build: build,
       act: (cubit) async {
         stream.add([
@@ -125,6 +125,69 @@ void main() {
       verify: (cubit) {
         // Both endpoints are inclusive.
         expect(cubit.state.filtered, hasLength(2));
+      },
+    );
+
+    blocTest<TransactionHistoryFilterCubit, TransactionHistoryFilterState>(
+      'changeFilter keeps transactions timestamped later on the selected end day '
+      '(issue #779 regression)',
+      build: build,
+      act: (cubit) async {
+        stream.add([
+          _tx(DateTime(2026, 4, 1)),
+          _tx(DateTime(2026, 4, 1, 14)),
+          _tx(DateTime(2026, 4, 1, 23, 59, 59)),
+        ]);
+        await Future<void>.delayed(Duration.zero);
+
+        cubit.changeFilter(
+          startDate: DateTime(2026, 2, 1),
+          endDate: DateTime(2026, 4, 1),
+        );
+      },
+      verify: (cubit) {
+        // The end bound arrives as local midnight; the whole selected day belongs to it.
+        // Before the fix only the 00:00 transaction survived.
+        expect(cubit.state.filtered, hasLength(3));
+      },
+    );
+
+    blocTest<TransactionHistoryFilterCubit, TransactionHistoryFilterState>(
+      'changeFilter still excludes the day after the selected end date',
+      build: build,
+      act: (cubit) async {
+        stream.add([
+          _tx(DateTime(2026, 4, 1, 23, 59, 59)),
+          _tx(DateTime(2026, 4, 2)),
+        ]);
+        await Future<void>.delayed(Duration.zero);
+
+        cubit.changeFilter(
+          startDate: DateTime(2026, 2, 1),
+          endDate: DateTime(2026, 4, 1),
+        );
+      },
+      verify: (cubit) {
+        expect(cubit.state.filtered, hasLength(1));
+        expect(cubit.state.filtered.single.timestamp, DateTime(2026, 4, 1, 23, 59, 59));
+      },
+    );
+
+    blocTest<TransactionHistoryFilterCubit, TransactionHistoryFilterState>(
+      'changeFilter includes a UTC-flagged timestamp falling on the local end day',
+      build: build,
+      act: (cubit) async {
+        // Same instant as 14:00 local — the UTC flag must not shift it out of the window.
+        stream.add([_tx(DateTime(2026, 4, 1, 14).toUtc())]);
+        await Future<void>.delayed(Duration.zero);
+
+        cubit.changeFilter(
+          startDate: DateTime(2026, 2, 1),
+          endDate: DateTime(2026, 4, 1),
+        );
+      },
+      verify: (cubit) {
+        expect(cubit.state.filtered, hasLength(1));
       },
     );
 
