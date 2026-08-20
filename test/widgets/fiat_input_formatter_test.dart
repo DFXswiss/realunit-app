@@ -122,6 +122,38 @@ void main() {
       expect(out.selection, const TextSelection.collapsed(offset: 1));
     });
 
+    test('places the caret after a 0 typed into 1.00,50 before the decimal', () {
+      // `1.00|`,50 plus `0` → `1.000|,50`. One `.` and zero `,` sit before
+      // the caret; counting the decimal comma instead would leave it at 5.
+      final out = update(
+        const TextEditingValue(
+          text: '1.00,50',
+          selection: TextSelection.collapsed(offset: 4),
+        ),
+        const TextEditingValue(
+          text: '1.000,50',
+          selection: TextSelection.collapsed(offset: 5),
+        ),
+      );
+      expect(out.text, '1000,50');
+      expect(out.selection, const TextSelection.collapsed(offset: 4));
+    });
+
+    test('places the caret after a 0 typed into 1,00.50 before the decimal', () {
+      final out = update(
+        const TextEditingValue(
+          text: '1,00.50',
+          selection: TextSelection.collapsed(offset: 4),
+        ),
+        const TextEditingValue(
+          text: '1,000.50',
+          selection: TextSelection.collapsed(offset: 5),
+        ),
+      );
+      expect(out.text, '1000.50');
+      expect(out.selection, const TextSelection.collapsed(offset: 4));
+    });
+
     test('places the caret after a digit typed at the start of .000,50', () {
       // `.000,50` is a fixpoint (both regexes require a leading `\d+`). Typing
       // `1` at offset 0 yields `1.000,50` → `1000,50`. The stripped `.` sits

@@ -44,7 +44,8 @@ class MockSupportedFiatRepository extends Mock implements SupportedFiatRepositor
 /// timer body (brokerbot call → loading:false → payment-info fetch) can finish.
 const _afterDebounce = Duration(milliseconds: 150);
 
-/// Production-like floor used when the quote returns `AmountTooLow`.
+/// Production-like floor: quotes below this return `AmountTooLow`, and the
+/// error payload reports the same value as `minVolume`.
 const _minVolume = 100.0;
 
 void main() {
@@ -97,8 +98,8 @@ void main() {
           expectedAmount: '100',
           reasonPrefix:
               'After deleting 300 digit-by-digit and typing 100, the screen must '
-              'keep a valid quote. Intermediate 0–3 are AmountTooLow only; 100 '
-              'is a valid quote in production.',
+              'keep a valid quote. Intermediate amounts below the production '
+              'floor of 100 are AmountTooLow; 100 is a valid quote.',
         );
       },
     );
@@ -706,7 +707,7 @@ void _stubProductionLikeQuotes(
     final amount = invocation.positionalArguments[0] as int;
     final currency =
         invocation.namedArguments[#currency] as Currency? ?? Currency.chf;
-    if (amount >= 4) {
+    if (amount >= _minVolume) {
       return _quote(amount: amount, currency: currency, isValid: true);
     }
     return _quote(
