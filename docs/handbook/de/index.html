@@ -773,9 +773,8 @@
         word-break: break-all;
       }
 
-      /* Geo-filter section (#spec-geo-filter) — per-country attribute table
-         for the RealUnit share-token filter. No screenshots. 250 DFX country
-         rows plus a territorial addendum (Crimea, Donetsk, Luhansk). */
+      /* Geo-filter section (#spec-geo-filter) — live table from GET /v1/country.
+         No screenshots. Territorial addendum (Crimea, Donetsk, Luhansk) is not a DFX row. */
       #spec-geo-filter .geo-table-wrap {
         overflow-x: auto;
         background: var(--surface);
@@ -9437,7 +9436,7 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
               placeholder="Filtern nach id, ISO-2, ISO-3 oder Name"
               autocomplete="off"
             />
-            <span class="geo-filter-count" id="geo-filter-count">250 Zeilen</span>
+            <span class="geo-filter-count" id="geo-filter-count">Lädt …</span>
           </div>
 
           <div class="geo-table-wrap">
@@ -9472,7 +9471,6 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
                 <tr>
                   <td colspan="12" class="geo-open">Lädt country-Zeilen aus der DFX-API …</td>
                 </tr>
-              </tbody>
               </tbody>
             </table>
           </div>
@@ -9538,21 +9536,31 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
                 return { t: 'offen (Legal)', cls: 'geo-open' };
               }
               function residenceOnboard(ru) {
+                if (!ru || !ru.residence) return { t: 'offen (Legal)', cls: 'geo-open' };
                 if (ru.residence === 'allowed') return { t: 'ja', cls: 'geo-yes' };
                 if (ru.residence === 'sanction') return { t: 'nein · Sanktionssperre', cls: 'geo-no' };
                 if (ru.residence === 'restricted') return { t: 'nein · Eingeschränkte Jurisdiktion', cls: 'geo-no' };
-                return { t: 'nein · Wohnsitz-Set', cls: 'geo-no' };
+                if (ru.residence === 'other') return { t: 'nein · Wohnsitz-Set', cls: 'geo-no' };
+                return { t: 'offen (Legal)', cls: 'geo-open' };
               }
               function nationalityOnboard(ru) {
+                if (!ru || !ru.nationality) return { t: 'offen (Legal)', cls: 'geo-open' };
                 if (ru.nationality === 'blocked') return { t: 'nein · US-Nationalität', cls: 'geo-no' };
-                return { t: 'ja', cls: 'geo-yes' };
+                if (ru.nationality === 'exception') return { t: 'ja · Ausnahme', cls: 'geo-yes' };
+                if (ru.nationality === 'ok') return { t: 'ja', cls: 'geo-yes' };
+                return { t: 'offen (Legal)', cls: 'geo-open' };
               }
               function render(rows) {
+                if (!rows || !rows.length) throw new Error('leere country-Liste');
+                if (!rows.some(function (c) { return c && c.realunit; })) {
+                  throw new Error('country API ohne realunit-Felder — Migration noch nicht deployed');
+                }
                 rows = rows.slice().sort(function (a, b) { return a.id - b.id; });
                 tbody.textContent = '';
                 var nAllowed = 0, nSanction = 0, nRestricted = 0, nOther = 0, nEx = 0, nBlocked = 0;
                 rows.forEach(function (c) {
-                  var ru = c.realunit || {};
+                  var ru = c.realunit;
+                  if (!ru) return;
                   if (ru.residence === 'allowed') nAllowed += 1;
                   else if (ru.residence === 'sanction') nSanction += 1;
                   else if (ru.residence === 'restricted') nRestricted += 1;
@@ -9647,6 +9655,7 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
                     API;
                   tr.appendChild(td);
                   tbody.appendChild(tr);
+                  if (count) count.textContent = 'nicht geladen';
                 });
             })();
           </script>
