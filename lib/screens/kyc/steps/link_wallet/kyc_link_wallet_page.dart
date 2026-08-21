@@ -60,7 +60,7 @@ class KycLinkWalletView extends StatelessWidget {
           if (state is KycLinkWalletFailure) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(S.of(context).registrationFailed(state.message)),
+                content: Text(state.message),
                 backgroundColor: RealUnitColors.status.red600,
               ),
             );

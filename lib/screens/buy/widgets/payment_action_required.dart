@@ -35,10 +35,11 @@ class PaymentActionRequired extends StatelessWidget {
                       fontWeight: .w600,
                     ),
                   ),
-                  Text(
-                    description,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+                  if (description.isNotEmpty)
+                    Text(
+                      description,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                 ],
               ),
             ),

@@ -229,6 +229,19 @@ void main() {
 
       expect(find.text(S.current.payFailureGeneric), findsOne);
     });
+
+    testWidgets('generic failure with API message shows the API text 1:1', (tester) async {
+      await pumpWithState(
+        tester,
+        const PayProcessFailure(
+          PayProcessFailureReason.generic,
+          message: 'Price source is temporarily unavailable',
+        ),
+      );
+
+      expect(find.text('Price source is temporarily unavailable'), findsOne);
+      expect(find.text(S.current.payFailureGeneric), findsNothing);
+    });
   });
 
   group('$PayProcessView retry sheet', () {
@@ -269,6 +282,19 @@ void main() {
       await pumpWithState(tester, const PayProcessPayRetry(PayRetryReason.unsignedTxMismatch));
 
       expect(find.text(S.current.payRetryUnsignedTxMismatch), findsOne);
+    });
+
+    testWidgets('transient retry with API message shows the API text 1:1', (tester) async {
+      await pumpWithState(
+        tester,
+        const PayProcessPayRetry(
+          PayRetryReason.transient,
+          message: 'Quote is no longer valid',
+        ),
+      );
+
+      expect(find.text('Quote is no longer valid'), findsOne);
+      expect(find.text(S.current.payRetryTransient), findsNothing);
     });
   });
 }

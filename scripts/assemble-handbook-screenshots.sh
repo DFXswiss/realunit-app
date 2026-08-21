@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Assemble the 279 handbook screenshots from the visual-regression Golden
+# Assemble the 278 handbook screenshots from the visual-regression Golden
 # baselines. The flat `NN-name.png` output layout matches what
 # docs/handbook/de/index.html links to (`<img src="../screenshots/NN-name.png">`
 # — the relative path resolves to `docs/handbook/screenshots/NN-name.png`).
@@ -160,7 +160,7 @@ MAPPING=(
   "110-buy-confirm-loading=screens/buy/goldens/macos/buy_confirm_loading.png"
   "111-buy-confirm-failed-aktionariat=screens/buy/goldens/macos/buy_confirm_failed_aktionariat.png"
   "112-buy-confirm-failed-amount-too-low=screens/buy/goldens/macos/buy_confirm_failed_amount_too_low.png"
-  "113-buy-confirm-failed-unknown=screens/buy/goldens/macos/buy_confirm_failed_unknown.png"
+  "113-buy-confirm-failed-primary-email-required=screens/buy/goldens/macos/buy_confirm_failed_primary_email_required.png"
   "114-buy-payment-details-qr-details-tab=screens/buy/goldens/macos/buy_payment_details_qr_details_tab.png"
   "115-buy-payment-details-qr-code-tab=screens/buy/goldens/macos/buy_payment_details_qr_code_tab.png"
   "116-buy-payment-details-qr-code-tab-svg=screens/buy/goldens/macos/buy_payment_details_qr_code_tab_svg.png"
@@ -211,7 +211,6 @@ MAPPING=(
   "161-kyc-registration-page-default=screens/kyc/goldens/macos/kyc_registration_page_default.png"
   "162-kyc-registration-page-prefilled=screens/kyc/goldens/macos/kyc_registration_page_prefilled.png"
   "163-kyc-registration-personal-step-account-type-open=screens/kyc/goldens/macos/kyc_registration_personal_step_account_type_open.png"
-  "164-kyc-registration-personal-step-phone-prefix-open=screens/kyc/goldens/macos/kyc_registration_personal_step_phone_prefix_open.png"
   "165-kyc-registration-personal-step-validation-error=screens/kyc/goldens/macos/kyc_registration_personal_step_validation_error.png"
   "166-kyc-registration-page-address-step=screens/kyc/goldens/macos/kyc_registration_page_address_step.png"
   "167-kyc-registration-address-step-validation-error=screens/kyc/goldens/macos/kyc_registration_address_step_validation_error.png"

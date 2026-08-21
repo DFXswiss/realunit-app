@@ -66,7 +66,9 @@ class SendProcessSuccess extends SendProcessState {
 class SendProcessFailure extends SendProcessState {
   final SendProcessFailureReason reason;
 
-  /// Diagnostic detail for logs — not the user-facing copy.
+  /// User-facing text from the API error body when this failure came from
+  /// the API. Local hardware/signature failures leave this null; the view
+  /// then uses its own copy for those reasons only.
   final String? message;
 
   /// When true, the prepared transfer `id` is retained and the user may call

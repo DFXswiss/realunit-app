@@ -21,7 +21,7 @@ deployten Image (`handbook.realunit.app`).
 
 ## Screenshots regenerieren
 
-Es gibt keinen separaten Regeneration-Schritt: Die 279 Handbook-Screenshots
+Es gibt keinen separaten Regeneration-Schritt: Die 278 Handbook-Screenshots
 sind direkt die Golden-Baselines unter `test/goldens/` (gemappt in
 `scripts/assemble-handbook-screenshots.sh`). Eine UI-Änderung an einer der
 gemappten Pages produziert beim `flutter test test/goldens` einen Diff —
@@ -225,7 +225,7 @@ eigenen `EXPECTED_PDF_COUNT`-Guard des balance-Steps — dann die Zahl in
 
 Die Sektion **W — Web / realunit.app** (`#spec-web`) zeigt die
 Visual-Regression-Baselines der öffentlichen Website `realunit.app`
-(Landingpage + Aktionariat-Adressbestätigungs-Flow). Sie sind das Web-Pendant
+(Landingpage + Aktionariat-Adressbestätigungs-Flow + Adresse-hinzufügen-Flow unter `/account-merge/`). Sie sind das Web-Pendant
 zu den Golden-Screenshots der App: Jedes Bild ist eine **Playwright-Baseline**,
 die im `RealUnitCH/web`-Repo unter `tests/__screenshots__/` committet und von
 dessen Visual-Regression-CI abgesichert ist — driftet das Seitenrendering, wird

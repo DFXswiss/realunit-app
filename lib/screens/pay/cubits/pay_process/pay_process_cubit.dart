@@ -10,6 +10,7 @@ import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_blockchain_api_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_faucet_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/eip1559_unsigned_tx_decoder.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/pay_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/pay/dto/lnurlp_payment_dto.dart';
@@ -179,7 +180,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
       await _checkEthBalance(swap);
     } catch (e) {
       if (isClosed) return;
-      emit(PayProcessFailure(PayProcessFailureReason.generic, message: e.toString()));
+      emit(PayProcessFailure(PayProcessFailureReason.generic, message: ApiException.userFacingMessage(e)));
     }
   }
 
@@ -199,7 +200,12 @@ class PayProcessCubit extends Cubit<PayProcessState> {
       _startEthPolling(swap);
     } catch (e) {
       if (isClosed) return;
-      emit(PayProcessFailure(PayProcessFailureReason.insufficientEth, message: e.toString()));
+      emit(
+        PayProcessFailure(
+          PayProcessFailureReason.insufficientEth,
+          message: ApiException.userFacingMessage(e),
+        ),
+      );
     }
   }
 
@@ -220,12 +226,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
           await _executeSwap();
         } else if (_ethPollAttempts >= _ethPollMaxAttempts) {
           _ethPollingTimer?.cancel();
-          emit(
-            const PayProcessFailure(
-              PayProcessFailureReason.insufficientEth,
-              message: 'eth balance polling exceeded max attempts',
-            ),
-          );
+          emit(const PayProcessFailure(PayProcessFailureReason.insufficientEth));
         }
         // else: balance still short — falls through to `finally`, which releases
         // `_swapInFlight` so the next tick can retry.
@@ -233,12 +234,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
         if (isClosed) return;
         if (_ethPollAttempts >= _ethPollMaxAttempts) {
           _ethPollingTimer?.cancel();
-          emit(
-            const PayProcessFailure(
-              PayProcessFailureReason.insufficientEth,
-              message: 'eth balance polling exceeded max attempts',
-            ),
-          );
+          emit(const PayProcessFailure(PayProcessFailureReason.insufficientEth));
           return;
         }
         // keep polling on transient errors (including per-request timeout) — `finally` below
@@ -278,7 +274,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
       emit(const PayProcessFailure(PayProcessFailureReason.bitboxRequired));
     } catch (e) {
       if (isClosed) return;
-      emit(PayProcessFailure(PayProcessFailureReason.generic, message: e.toString()));
+      emit(PayProcessFailure(PayProcessFailureReason.generic, message: ApiException.userFacingMessage(e)));
     }
   }
 
@@ -307,7 +303,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
       // Transient/network error fetching the quote — NOT a genuine expiry.
       // Retry the pay leg; the swapped ZCHF stays in the wallet.
       if (isClosed) return;
-      emit(PayProcessPayRetry(PayRetryReason.transient, message: e.toString()));
+      emit(PayProcessPayRetry(PayRetryReason.transient, message: ApiException.userFacingMessage(e)));
       return;
     }
 
@@ -337,13 +333,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
     final freshZchf = _zchfTransferAmount(details);
     if (freshZchf != null &&
         _settlementExceedsAcquired(freshZchf.amount, freshZchf.raw, _acquiredZchf)) {
-      emit(
-        PayProcessPayRetry(
-          PayRetryReason.insufficientZchf,
-          message:
-              'fresh settlement ${freshZchf.amount} ZCHF exceeds acquired $_acquiredZchf ZCHF',
-        ),
-      );
+      emit(const PayProcessPayRetry(PayRetryReason.insufficientZchf));
       return;
     }
 
@@ -374,19 +364,19 @@ class PayProcessCubit extends Cubit<PayProcessState> {
       if (isClosed) return;
       emit(PayProcessAwaitingSettlement(txId));
       _startStatusPolling();
-    } on PayUnsignedTxMismatchException catch (e) {
+    } on PayUnsignedTxMismatchException {
       // The backend's own unsigned tx does not match its own metadata — never sign it. The swap
       // already happened; recovery retries the pay leg, which re-fetches AND re-validates a fresh
       // unsigned tx from scratch, so a bad tx can never slip through on retry.
       if (isClosed) return;
-      emit(PayProcessPayRetry(PayRetryReason.unsignedTxMismatch, message: e.toString()));
+      emit(const PayProcessPayRetry(PayRetryReason.unsignedTxMismatch));
     } catch (e) {
       // The swap already happened; the user holds ZCHF. Any pay-leg failure here (signing
       // dropped, BitBox disconnect, transient submit error, settlement rejected) is recoverable
       // by retrying the pay leg — never by re-swapping. Surface the retryable state rather than a
       // terminal failure.
       if (isClosed) return;
-      emit(PayProcessPayRetry(PayRetryReason.transient, message: e.toString()));
+      emit(PayProcessPayRetry(PayRetryReason.transient, message: ApiException.userFacingMessage(e)));
     }
   }
 
@@ -539,12 +529,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
         if (!status.status.isTerminal) {
           if (_statusPollAttempts >= _statusPollMaxAttempts) {
             _statusPollingTimer?.cancel();
-            emit(
-              const PayProcessPayRetry(
-                PayRetryReason.transient,
-                message: 'status polling exceeded max attempts',
-              ),
-            );
+            emit(const PayProcessPayRetry(PayRetryReason.transient));
             return;
           }
           _statusPollInFlight = false;
@@ -561,12 +546,7 @@ class PayProcessCubit extends Cubit<PayProcessState> {
         _statusPollAttempts++;
         if (_statusPollAttempts >= _statusPollMaxAttempts) {
           _statusPollingTimer?.cancel();
-          emit(
-            const PayProcessPayRetry(
-              PayRetryReason.transient,
-              message: 'status polling exceeded max attempts',
-            ),
-          );
+          emit(const PayProcessPayRetry(PayRetryReason.transient));
           return;
         }
         _statusPollInFlight = false;

@@ -112,12 +112,13 @@ void main() {
       expect(find.byType(CupertinoActivityIndicator), findsOneWidget);
     });
 
-    testWidgets('shows a snackbar with the generic error on failure',
-        (tester) async {
+    testWidgets('shows a snackbar with the API error message', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
-          const BuyConfirmFailure(BuyConfirmError.unknown),
+          const BuyConfirmFailure(
+            'The purchase could not be confirmed. Please try again later.',
+          ),
         ]),
         initialState: const BuyConfirmInitial(),
       );
@@ -125,15 +126,18 @@ void main() {
       await tester.pumpWidget(host());
       await tester.pump();
 
-      expect(find.text(S.current.buyPaymentConfirmFailed), findsOneWidget);
+      expect(
+        find.text('The purchase could not be confirmed. Please try again later.'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('shows the aktionariat-specific error on a 503 failure',
+    testWidgets('shows a different API message without substituting local copy',
         (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
-          const BuyConfirmFailure(BuyConfirmError.aktionariat),
+          const BuyConfirmFailure('User must have a primary email'),
         ]),
         initialState: const BuyConfirmInitial(),
       );
@@ -141,40 +145,7 @@ void main() {
       await tester.pumpWidget(host());
       await tester.pump();
 
-      expect(find.text(S.current.buyPaymentConfirmFailedAktionariat), findsOneWidget);
-    });
-
-    testWidgets('shows the minimum-purchase error on an amount-too-low failure',
-        (tester) async {
-      whenListen(
-        cubit,
-        Stream.fromIterable([
-          const BuyConfirmFailure(BuyConfirmError.amountTooLow),
-        ]),
-        initialState: const BuyConfirmInitial(),
-      );
-
-      await tester.pumpWidget(host());
-      await tester.pump();
-
-      expect(find.text(S.current.buyPaymentConfirmFailedAmountTooLow), findsOneWidget);
-    });
-
-    testWidgets(
-        'shows the aktionariat-specific error on a primary-email-required failure',
-        (tester) async {
-      whenListen(
-        cubit,
-        Stream.fromIterable([
-          const BuyConfirmFailure(BuyConfirmError.primaryEmailRequired),
-        ]),
-        initialState: const BuyConfirmInitial(),
-      );
-
-      await tester.pumpWidget(host());
-      await tester.pump();
-
-      expect(find.text(S.current.buyPaymentConfirmFailedAktionariat), findsOneWidget);
+      expect(find.text('User must have a primary email'), findsOneWidget);
     });
 
     GoRouter detailsRouter({BuyPaymentInfo info = _info}) => GoRouter(

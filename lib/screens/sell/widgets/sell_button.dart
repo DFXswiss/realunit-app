@@ -44,18 +44,7 @@ class SellButton extends StatelessWidget {
             }
             return;
           }
-          if (state.error == .priceSourceUnavailable) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(S.of(context).priceProviderUnavailableTitle),
-                  backgroundColor: RealUnitColors.status.red600,
-                ),
-              );
-            }
-            return;
-          }
-          if (context.mounted) {
+          if (context.mounted && state.message.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),

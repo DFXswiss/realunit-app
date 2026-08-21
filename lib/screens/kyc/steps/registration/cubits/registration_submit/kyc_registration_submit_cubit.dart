@@ -3,6 +3,7 @@ import 'dart:developer' as developer;
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/country/country.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/registration/dto/real_unit_registration_request_dto.dart';
@@ -66,6 +67,10 @@ class KycRegistrationSubmitCubit extends Cubit<KycRegistrationSubmitState> {
       } else {
         emit(const KycRegistrationSubmitFailure('Mail could not be fetched'));
       }
+    } on ApiException catch (e) {
+      developer.log(e.toString());
+      emit(KycRegistrationSubmitFailure(e.message, cause: e));
+      return;
     } catch (e) {
       developer.log(e.toString());
       emit(KycRegistrationSubmitFailure(e.toString(), cause: e));
@@ -86,6 +91,9 @@ class KycRegistrationSubmitCubit extends Cubit<KycRegistrationSubmitState> {
       emit(
         KycRegistrationSubmitBitboxRequired(registration: registration),
       );
+    } on ApiException catch (e) {
+      developer.log(e.toString());
+      emit(KycRegistrationSubmitFailure(e.message, cause: e));
     } catch (e) {
       developer.log(e.toString());
       emit(KycRegistrationSubmitFailure(e.toString(), cause: e));

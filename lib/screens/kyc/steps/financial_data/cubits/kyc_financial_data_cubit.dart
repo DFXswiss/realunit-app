@@ -34,7 +34,7 @@ class KycFinancialDataCubit extends Cubit<KycFinancialDataState> {
         ),
       );
     } catch (e) {
-      emit(KycFinancialDataFailure(e.toString()));
+      emit(KycFinancialDataFailure(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -96,7 +96,7 @@ class KycFinancialDataCubit extends Cubit<KycFinancialDataState> {
       }
       // Keep the answers and stay on the questions UI so the user can retry,
       // instead of dropping them onto a dead-end failure page.
-      emit(KycFinancialDataSubmitFailure.from(current, e.toString()));
+      emit(KycFinancialDataSubmitFailure.from(current, ApiException.userFacingMessage(e)));
     }
   }
 

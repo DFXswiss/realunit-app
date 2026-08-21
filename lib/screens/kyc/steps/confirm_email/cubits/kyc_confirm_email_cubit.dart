@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 
 part 'kyc_confirm_email_state.dart';
@@ -48,13 +49,12 @@ class KycConfirmEmailCubit extends Cubit<KycConfirmEmailState> {
         return;
       }
       emit(const KycConfirmEmailConfirmed());
-    } catch (_) {
+    } catch (e) {
       if (isClosed || generation != _runGeneration) return;
-      // A failed re-check (network / backend) must not wedge the button in its
-      // loading state, and must not let the user through — fail closed. Surface
-      // the same retry affordance as a still-unconfirmed address so the user
-      // can tap again once connectivity returns.
-      emit(const KycConfirmEmailNotConfirmed());
+      // A failed re-check must not wedge the button, and must not let the user
+      // through — fail closed. Do not invent "email not confirmed" for an API
+      // or transport error: show the API text 1:1 so the user can retry.
+      emit(KycConfirmEmailFailure(ApiException.userFacingMessage(e)));
     }
   }
 }

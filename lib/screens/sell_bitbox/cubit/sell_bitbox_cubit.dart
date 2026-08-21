@@ -8,6 +8,7 @@ import 'package:realunit_wallet/packages/hardware_wallet/bitbox_credentials.dart
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_blockchain_api_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_faucet_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/bitbox_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/sell_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/dto/broadcast_transaction_request_dto.dart';
@@ -55,7 +56,7 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
         await _requestFaucet();
       }
     } catch (e) {
-      emit(SellBitboxError(e.toString()));
+      emit(SellBitboxError(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -68,7 +69,7 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
       emit(SellBitboxWaitingForEth());
       _startEthPolling();
     } catch (e) {
-      emit(SellBitboxError(e.toString()));
+      emit(SellBitboxError(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -95,7 +96,7 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
       final transactions = await _sellService.createUnsignedTransactions(_paymentInfo.id);
       emit(SellBitboxAwaitingSwapConfirm(transactions.swap, transactions.deposit));
     } catch (e) {
-      emit(SellBitboxError(e.toString()));
+      emit(SellBitboxError(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -116,7 +117,7 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
     } on BitboxNotConnectedException {
       emit(SellBitboxBitboxRequired());
     } catch (e) {
-      emit(SellBitboxError(e.toString()));
+      emit(SellBitboxError(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -141,7 +142,7 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
     } on BitboxNotConnectedException {
       emit(SellBitboxBitboxRequired());
     } catch (e) {
-      emit(SellBitboxError(e.toString()));
+      emit(SellBitboxError(ApiException.userFacingMessage(e)));
     }
   }
 
@@ -170,7 +171,7 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
         txHash = await _sellService.broadcastTransaction(_paymentInfo.id, signedDeposit);
       } catch (e) {
         // The tx may or may not be on-chain; retry re-sends the same signed bytes — never re-sign.
-        emit(SellBitboxDepositRetry(signedSwap, signedDeposit, e.toString()));
+        emit(SellBitboxDepositRetry(signedSwap, signedDeposit, ApiException.userFacingMessage(e)));
         return;
       }
     }
@@ -181,7 +182,12 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
       emit(SellBitboxSuccess());
     } catch (e) {
       emit(
-        SellBitboxDepositRetry(signedSwap, signedDeposit, e.toString(), broadcastTxHash: txHash),
+        SellBitboxDepositRetry(
+          signedSwap,
+          signedDeposit,
+          ApiException.userFacingMessage(e),
+          broadcastTxHash: txHash,
+        ),
       );
     }
   }

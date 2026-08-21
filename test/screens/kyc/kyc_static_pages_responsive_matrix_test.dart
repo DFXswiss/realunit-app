@@ -14,9 +14,8 @@ import 'package:realunit_wallet/styles/themes.dart';
 
 import '../../helper/helper.dart';
 
-/// Long DE failure detail interpolated into the already-long
-/// `kycFailureDescription` template — long enough to force scrolling on small
-/// phones at high text scale.
+/// Long DE failure detail rendered 1:1 — long enough to force scrolling on
+/// small phones at high text scale.
 const _longFailureMessage =
     'Die Verbindung zum Server wurde unerwartet unterbrochen, während Ihre '
     'Dokumente zur Identitätsprüfung hochgeladen wurden. Möglicherweise liegt '

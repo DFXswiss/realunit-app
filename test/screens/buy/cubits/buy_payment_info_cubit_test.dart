@@ -132,6 +132,20 @@ void main() {
       );
     });
 
+    test('API isValid=false with error=PrimaryEmailNotConfirmed → '
+        'Failure carries context', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(isValid: false, error: 'PrimaryEmailNotConfirmed'),
+          );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect((cubit.state as BuyPaymentInfoFailure).context, 'RealunitBuy');
+    });
+
     test('API isValid=false with unknown error → generic Failure', () async {
       when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
           .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooHigh', minVolume: 100));
@@ -279,6 +293,10 @@ void main() {
       await cubit.getPaymentInfo(amount: '300');
 
       expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.priceSourceUnavailable);
+      expect(
+        (cubit.state as BuyPaymentInfoFailure).message,
+        'RealUnit price source (Aktionariat) is currently unavailable',
+      );
     });
 
     test('ApiException with code PRICE_SOURCE_UNAVAILABLE (non-503) → priceSourceUnavailable', () async {
@@ -295,6 +313,7 @@ void main() {
       await cubit.getPaymentInfo(amount: '300');
 
       expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.priceSourceUnavailable);
+      expect((cubit.state as BuyPaymentInfoFailure).message, 'unavailable');
     });
 
     test('other ApiException (e.g. 400) → Failure(unknown)', () async {
@@ -307,6 +326,7 @@ void main() {
       await cubit.getPaymentInfo(amount: '300');
 
       expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.unknown);
+      expect((cubit.state as BuyPaymentInfoFailure).message, 'bad');
     });
 
     test('does not emit after close', () async {
