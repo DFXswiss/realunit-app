@@ -9584,7 +9584,7 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
                   var tr = document.createElement('tr');
                   tr.setAttribute('data-iso2', c.symbol || '');
                   tr.setAttribute('data-id', String(c.id));
-                  tr.setAttribute('data-res-class', ru.residence || 'Other');
+                  tr.setAttribute('data-res-class', String(ru.residence || 'Other').toLowerCase());
                   if (ru.nationality === 'Exception') tr.setAttribute('data-nat-exception', 'true');
                   var id = document.createElement('td');
                   id.className = 'geo-id';
