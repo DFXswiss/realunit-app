@@ -9537,23 +9537,37 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
               }
               function residenceOnboard(ru) {
                 if (!ru || !ru.residence) return { t: 'offen (Legal)', cls: 'geo-open' };
-                if (ru.residence === 'allowed') return { t: 'ja', cls: 'geo-yes' };
-                if (ru.residence === 'sanction') return { t: 'nein · Sanktionssperre', cls: 'geo-no' };
-                if (ru.residence === 'restricted') return { t: 'nein · Eingeschränkte Jurisdiktion', cls: 'geo-no' };
-                if (ru.residence === 'other') return { t: 'nein · Wohnsitz-Set', cls: 'geo-no' };
+                if (ru.residence === 'Allowed') return { t: 'ja', cls: 'geo-yes' };
+                if (ru.residence === 'Sanction') return { t: 'nein · Sanktionssperre', cls: 'geo-no' };
+                if (ru.residence === 'Restricted') return { t: 'nein · Eingeschränkte Jurisdiktion', cls: 'geo-no' };
+                if (ru.residence === 'Other') return { t: 'nein · Wohnsitz-Set', cls: 'geo-no' };
                 return { t: 'offen (Legal)', cls: 'geo-open' };
               }
               function nationalityOnboard(ru) {
                 if (!ru || !ru.nationality) return { t: 'offen (Legal)', cls: 'geo-open' };
-                if (ru.nationality === 'blocked') return { t: 'nein · US-Nationalität', cls: 'geo-no' };
-                if (ru.nationality === 'exception') return { t: 'ja · Ausnahme', cls: 'geo-yes' };
-                if (ru.nationality === 'ok') return { t: 'ja', cls: 'geo-yes' };
+                if (ru.nationality === 'Blocked') return { t: 'nein · US-Nationalität', cls: 'geo-no' };
+                if (ru.nationality === 'Exception') return { t: 'ja · Ausnahme', cls: 'geo-yes' };
+                if (ru.nationality === 'Ok') return { t: 'ja', cls: 'geo-yes' };
                 return { t: 'offen (Legal)', cls: 'geo-open' };
               }
               function render(rows) {
                 if (!rows || !rows.length) throw new Error('leere country-Liste');
-                if (!rows.some(function (c) { return c && c.realunit; })) {
-                  throw new Error('country API ohne realunit-Felder — Migration noch nicht deployed');
+                if (
+                  !rows.every(function (c) {
+                    var ru = c && c.realunit;
+                    return (
+                      ru &&
+                      (ru.residence === 'Allowed' ||
+                        ru.residence === 'Sanction' ||
+                        ru.residence === 'Restricted' ||
+                        ru.residence === 'Other') &&
+                      (ru.nationality === 'Ok' ||
+                        ru.nationality === 'Blocked' ||
+                        ru.nationality === 'Exception')
+                    );
+                  })
+                ) {
+                  throw new Error('country API ohne vollständige realunit-Felder — Migration noch nicht deployed');
                 }
                 rows = rows.slice().sort(function (a, b) { return a.id - b.id; });
                 tbody.textContent = '';
@@ -9561,17 +9575,17 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
                 rows.forEach(function (c) {
                   var ru = c.realunit;
                   if (!ru) return;
-                  if (ru.residence === 'allowed') nAllowed += 1;
-                  else if (ru.residence === 'sanction') nSanction += 1;
-                  else if (ru.residence === 'restricted') nRestricted += 1;
+                  if (ru.residence === 'Allowed') nAllowed += 1;
+                  else if (ru.residence === 'Sanction') nSanction += 1;
+                  else if (ru.residence === 'Restricted') nRestricted += 1;
                   else nOther += 1;
-                  if (ru.nationality === 'exception') nEx += 1;
-                  if (ru.nationality === 'blocked') nBlocked += 1;
+                  if (ru.nationality === 'Exception') nEx += 1;
+                  if (ru.nationality === 'Blocked') nBlocked += 1;
                   var tr = document.createElement('tr');
                   tr.setAttribute('data-iso2', c.symbol || '');
                   tr.setAttribute('data-id', String(c.id));
-                  tr.setAttribute('data-res-class', ru.residence || 'other');
-                  if (ru.nationality === 'exception') tr.setAttribute('data-nat-exception', 'true');
+                  tr.setAttribute('data-res-class', ru.residence || 'Other');
+                  if (ru.nationality === 'Exception') tr.setAttribute('data-nat-exception', 'true');
                   var id = document.createElement('td');
                   id.className = 'geo-id';
                   id.textContent = c.id;
