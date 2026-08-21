@@ -45,10 +45,27 @@ void main() {
       // Past the 100ms debounce.
       await Future<void>.delayed(const Duration(milliseconds: 250));
 
-      expect(cubit.state.fiatText, '100');
+      expect(cubit.state.fiatText, '87.50');
       expect(cubit.state.sharesText, '7');
       expect(cubit.state.loading, isFalse);
       verify(() => service.getBuyShares('100', Currency.chf)).called(1);
+    });
+
+    test('onFiatChanged snaps CHF to shares × list in Rappen (10000 → 7299 × 1.37 = 9999.63)', () async {
+      when(() => service.getBuyShares(any(), any())).thenAnswer(
+        (_) async => BrokerbotBuySharesDto(
+          shares: 7299,
+          pricePerShare: 1.37,
+          availableShares: 50000,
+        ),
+      );
+
+      final cubit = BuyConverterCubit(service);
+      await cubit.onFiatChanged('10000');
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+
+      expect(cubit.state.sharesText, '7299');
+      expect(cubit.state.fiatText, '9999.63');
     });
 
     test('onFiatChanged debounces — only the latest value reaches the service', () async {

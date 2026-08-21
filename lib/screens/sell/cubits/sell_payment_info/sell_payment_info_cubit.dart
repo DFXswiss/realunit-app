@@ -42,7 +42,7 @@ class SellPaymentInfoCubit extends Cubit<SellPaymentInfoState> {
       emit(const SellPaymentInfoLoading());
 
       final paymentInfo = await _sellPaymentInfoService.getPaymentInfo(
-        chargedFiatAmount(amount),
+        chargedFiatAmount(amount).round(),
         iban,
         currency: currency,
       );

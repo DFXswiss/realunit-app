@@ -18,7 +18,7 @@ class BuyPaymentInfo extends Equatable {
   // authority on whether the quote is valid for trading and what the
   // current min/max limits are for the user+currency combination.
   final bool isValid;
-  // The whole-currency amount this quote charges, echoed by the API — the
+  // The amount this quote charges (Rappen-exact), echoed by the API — the
   // Details page must render this, never re-derive it from keystrokes.
   final double amount;
   final double? minVolume;
