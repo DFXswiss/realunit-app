@@ -3,14 +3,13 @@ import 'package:realunit_wallet/packages/utils/fiat_amount.dart';
 
 void main() {
   group('chargedFiatAmount', () {
-    // The quote is always requested with this rounded integer, so the SEPA
-    // transfer / QR the API builds encodes it.
-    test('rounds a dot decimal to the charged integer (300.75 → 301)', () {
-      expect(chargedFiatAmount('300.75'), 301);
+    // Quote requests snap to Rappen, never to whole francs.
+    test('keeps a dot decimal at Rappen precision (300.75 → 300.75)', () {
+      expect(chargedFiatAmount('300.75'), 300.75);
     });
 
-    test('normalises a comma decimal (300,75 → 301)', () {
-      expect(chargedFiatAmount('300,75'), 301);
+    test('normalises a comma decimal (300,75 → 300.75)', () {
+      expect(chargedFiatAmount('300,75'), 300.75);
     });
 
     test('leaves a whole amount unchanged (300 → 300)', () {
@@ -21,9 +20,13 @@ void main() {
       expect(chargedFiatAmount(''), 0);
     });
 
-    test('rounds half away from zero and down below the half (0.5 → 1, 1.49 → 1)', () {
-      expect(chargedFiatAmount('0.5'), 1);
-      expect(chargedFiatAmount('1.49'), 1);
+    test('keeps half-franc and sub-franc amounts (0.5 → 0.5, 1.49 → 1.49)', () {
+      expect(chargedFiatAmount('0.5'), 0.5);
+      expect(chargedFiatAmount('1.49'), 1.49);
+    });
+
+    test('does not round leftover Rappen up to the next franc (9999.63 → 9999.63)', () {
+      expect(chargedFiatAmount('9999.63'), 9999.63);
     });
 
     test('throws on structurally invalid input instead of guessing', () {

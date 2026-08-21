@@ -39,9 +39,12 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
       try {
         final result = await _brokerbotService.getBuyShares(value, state.currency);
         if (isClosed || mySeq != _seq) return;
+        final priceMinor = (result.pricePerShare * 100).round();
+        final payable = result.shares * priceMinor / 100;
         emit(
           state.copyWith(
             sharesText: result.shares.toString(),
+            fiatText: payable.toStringAsFixed(2),
             loading: false,
           ),
         );
@@ -90,9 +93,12 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
     try {
       final result = await _brokerbotService.getBuyShares(state.fiatText, currency);
       if (isClosed || mySeq != _seq) return;
+      final priceMinor = (result.pricePerShare * 100).round();
+      final payable = result.shares * priceMinor / 100;
       emit(
         state.copyWith(
           sharesText: result.shares.toString(),
+          fiatText: payable.toStringAsFixed(2),
           loading: false,
         ),
       );

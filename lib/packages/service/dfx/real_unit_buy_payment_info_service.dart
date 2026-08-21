@@ -15,7 +15,7 @@ class RealUnitBuyPaymentInfoService extends DFXAuthService {
 
   RealUnitBuyPaymentInfoService(super.appStore, super.walletService);
 
-  Future<BuyPaymentInfo> getPaymentInfo(int amount, {Currency currency = Currency.chf}) async {
+  Future<BuyPaymentInfo> getPaymentInfo(num amount, {Currency currency = Currency.chf}) async {
     final buyDto = RealUnitBuyDto(amount: amount, currency: currency);
 
     final uri = buildUri(host, _buyPaymentInfoPath);
