@@ -7,10 +7,10 @@ double? tryParseFiatAmount(String input) {
   return double.tryParse(input.replaceAll(',', '.'));
 }
 
-/// The whole-currency integer the backend charges for the raw [input] the user
-/// typed (e.g. `300,75` → `301`); empty input counts as zero.
-int chargedFiatAmount(String input) {
+/// Rappen-snapped major units the backend is asked to quote (e.g. `300,75` →
+/// `300.75`). Never rounds to whole currency. Empty input counts as zero.
+double chargedFiatAmount(String input) {
   final amount = tryParseFiatAmount(input.isEmpty ? '0' : input);
   if (amount == null) throw FormatException('Invalid fiat amount', input);
-  return amount.round();
+  return (amount * 100).round() / 100;
 }

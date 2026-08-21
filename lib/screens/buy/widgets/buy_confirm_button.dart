@@ -54,7 +54,7 @@ class BuyConfirmButtonView extends StatelessWidget {
             extra: BuyPaymentDetailsParams(
               buyPaymentInfo: buyPaymentInfo,
               // The charged amount comes from the quote itself, never keystrokes.
-              amount: '${buyPaymentInfo.amount.round()}',
+              amount: buyPaymentInfo.amount.toStringAsFixed(2),
               // Backward compatible: prefer the API-designated purpose once it
               // ships; until then `reference` (always returned) is the value.
               purposeOfPayment: state.remittanceInfo ?? state.reference,

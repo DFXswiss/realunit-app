@@ -175,8 +175,7 @@ void main() {
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300,75');
 
-      // 300.75 rounded to 301.
-      verify(() => service.getPaymentInfo(301, currency: Currency.chf)).called(1);
+      verify(() => service.getPaymentInfo(300.75, currency: Currency.chf)).called(1);
     });
 
     test('KycLevelRequiredException → Failure(kycRequired, requiredLevel)', () async {

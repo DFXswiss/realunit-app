@@ -33,7 +33,7 @@ const _info = BuyPaymentInfo(
   currency: Currency.chf,
 );
 
-// The quote echoes the charged amount; a fractional echo must render rounded.
+// The quote echoes the charged amount; rappen must render, not round to francs.
 const _quotedFractional = BuyPaymentInfo(
   amount: 300.75,
   id: 42,
@@ -200,7 +200,7 @@ void main() {
     });
 
     testWidgets('shows the charged amount echoed by the quote on the details '
-        'page, rounded (300.75 → 301) — never derived from keystrokes', (tester) async {
+        'page with rappen (300.75, not 301) — never derived from keystrokes', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -218,8 +218,8 @@ void main() {
 
       // The details amount is the quote's own echoed charge, so it can never
       // disagree with the SEPA transfer / QR the backend built for the quote.
-      expect(find.text('301'), findsOneWidget);
-      expect(find.text('300.75'), findsNothing);
+      expect(find.text('300.75'), findsOneWidget);
+      expect(find.text('301'), findsNothing);
     });
 
     testWidgets('forward path: remittanceInfo + paymentRequest drive the '
