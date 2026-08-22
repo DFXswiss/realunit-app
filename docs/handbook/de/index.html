@@ -724,6 +724,70 @@
         border-radius: 8px;
         padding: 14px 16px;
       }
+      #geo-filter-live .geo-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 12px 0;
+        align-items: center;
+      }
+      #geo-filter-live .geo-toolbar input,
+      #geo-filter-live .geo-toolbar select {
+        font: inherit;
+        padding: 6px 8px;
+        border: 1px solid var(--line-2);
+        border-radius: 4px;
+        background: var(--surface);
+        color: var(--ink);
+      }
+      #geo-filter-live .geo-toolbar input {
+        min-width: 180px;
+        flex: 1;
+      }
+      #geo-filter-status {
+        margin: 0 0 10px 0;
+        font-size: 12.5px;
+        color: var(--ink-3);
+      }
+      #geo-filter-scroller {
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+      #geo-filter-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12.5px;
+      }
+      #geo-filter-table th,
+      #geo-filter-table td {
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        white-space: nowrap;
+      }
+      #geo-filter-table thead th {
+        background: var(--surface-2);
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+      }
+      #geo-filter-table tbody tr:hover {
+        background: var(--surface-2);
+      }
+      .geo-tone-ok {
+        color: #0f7a3d;
+      }
+      .geo-tone-warn {
+        color: #9a6b12;
+      }
+      .geo-tone-bad {
+        color: #b42318;
+      }
+      .geo-tone-muted {
+        color: var(--ink-3);
+      }
       /* Downloads section (#spec-downloads) — static, hand-maintained list of
          the three public tester/download links. Reuses the .test card chrome
          (border + :target highlight) and the .copy-link button; the body adds a
@@ -773,6 +837,7 @@
         word-break: break-all;
       }
     </style>
+    <script src="geo-filter.js" defer></script>
   </head>
   <body>
     <div class="wrap">
@@ -1032,6 +1097,9 @@
             </li>
             <li>
               <a href="#spec-79"><span class="spec-num">79</span>Insider-Freischaltung — Bezahlen &amp; Senden</a>
+            </li>
+            <li>
+              <a href="#spec-geo"><span class="spec-num">G</span>Aktientoken — Geo-Filter</a>
             </li>
             <li>
               <a href="#spec-web"><span class="spec-num">W</span>Web · realunit.app</a>
@@ -8054,6 +8122,81 @@
                 Golden-Quelle: <code>dashboard_insider_unlocked.png</code> aus
                 <code>dashboard_golden_test.dart</code>.
               </div>
+            </div>
+          </div>
+        </details>
+
+        <hr class="sep" />
+
+        <details id="spec-geo" class="spec" open>
+          <summary>
+            <div class="spec-head">
+              <div class="lhs">
+                <h2><span class="num">G</span>Aktientoken — Geo-Filter</h2>
+                <div class="file">GET /v1/country · realunit.*</div>
+              </div>
+              <div class="rhs">
+                <b>Live aus der API</b>
+                <div class="links">
+                  <a href="https://api.dfx.swiss/v1/country">GET /v1/country ↗</a>
+                </div>
+              </div>
+            </div>
+          </summary>
+          <p class="spec-intro">
+            Wohnsitz- und Nationalitäts-Filter für den RealUnit-Aktientoken, direkt
+            aus <code>GET /v1/country</code>. Die JSON-Felder sind
+            <code>realunit.residence</code> und <code>realunit.nationality</code>
+            (plus nullable Existing/IP/Tax unter demselben <code>realunit</code>-Objekt);
+            auf der country-Tabelle heissen die Spalten
+            <code>realunitResidence</code> / <code>realunitNationality</code>.
+            Die Tabelle kopiert keine Zeilen ins Repo. Onboarding prüft nur Residence
+            und Nationality; IP, Steueransässigkeit und Grandfathering bleiben leer,
+            bis Legal sie füllt.
+          </p>
+          <div id="geo-filter-live">
+            <div class="geo-toolbar">
+              <input id="geo-filter-search" type="search" placeholder="Land oder ISO suchen" autocomplete="off" />
+              <select id="geo-filter-residence" aria-label="Wohnsitz">
+                <option value="">Wohnsitz: alle</option>
+                <option value="Allowed">Allowed</option>
+                <option value="Sanction">Sanction</option>
+                <option value="Restricted">Restricted</option>
+                <option value="Other">Other</option>
+              </select>
+              <select id="geo-filter-nationality" aria-label="Nationalität">
+                <option value="">Nationalität: alle</option>
+                <option value="Ok">Ok</option>
+                <option value="Blocked">Blocked</option>
+                <option value="Exception">Exception</option>
+              </select>
+            </div>
+            <p id="geo-filter-status">Lade GET /v1/country …</p>
+            <div class="callout warn" id="geo-filter-missing" hidden>
+              <p>
+                <b>API ohne <code>realunit</code>-Objekt.</b> Die Geo-Spalten bleiben
+                leer, bis DFXswiss/backend mit dem Country-DTO auf dieser Umgebung
+                deployed ist.
+              </p>
+            </div>
+            <div id="geo-filter-scroller">
+              <table id="geo-filter-table">
+                <thead>
+                  <tr>
+                    <th>ISO</th>
+                    <th>Land</th>
+                    <th>Wohnsitz</th>
+                    <th>Nationalität</th>
+                    <th>Wohnsitz Bestand</th>
+                    <th>Nationalität Bestand</th>
+                    <th>IP neu</th>
+                    <th>IP Bestand</th>
+                    <th>Steuer neu</th>
+                    <th>Steuer Bestand</th>
+                  </tr>
+                </thead>
+                <tbody id="geo-filter-body"></tbody>
+              </table>
             </div>
           </div>
         </details>
