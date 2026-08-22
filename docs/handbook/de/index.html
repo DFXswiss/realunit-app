@@ -656,7 +656,8 @@
         font-size: 13px;
         color: var(--ink-2);
       }
-      a.dl-btn {
+      a.dl-btn,
+      button.dl-btn {
         text-decoration: none;
         font-size: 12.5px;
         font-weight: 600;
@@ -670,7 +671,8 @@
           border-color 0.15s,
           color 0.15s;
       }
-      a.dl-btn:hover {
+      a.dl-btn:hover,
+      button.dl-btn:hover:not(:disabled) {
         background: var(--surface);
         border-color: var(--brand);
       }
@@ -743,6 +745,20 @@
       #geo-filter-live .geo-toolbar input {
         min-width: 180px;
         flex: 1;
+      }
+      #geo-filter-live .geo-downloads {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0 0 12px 0;
+      }
+      #geo-filter-live .geo-downloads button.dl-btn {
+        cursor: pointer;
+        font: inherit;
+      }
+      #geo-filter-live .geo-downloads button.dl-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
       }
       #geo-filter-status {
         margin: 0 0 10px 0;
@@ -8150,6 +8166,9 @@
             (plus nullable Existing/IP/Tax unter demselben <code>realunit</code>-Objekt);
             auf der country-Tabelle heissen die Spalten
             <code>realunitResidence</code> / <code>realunitNationality</code>.
+            Ländernamen sind Deutsch und Englisch (ISO 3166 über
+            <code>Intl.DisplayNames</code>), nicht die native <code>foreignName</code>
+            der API. CSV, Excel und PDF laden die aktuell angezeigte Liste.
             Die Tabelle kopiert keine Zeilen ins Repo. Onboarding prüft nur Residence
             und Nationality; IP, Steueransässigkeit und Grandfathering bleiben leer,
             bis Legal sie füllt.
@@ -8171,6 +8190,11 @@
                 <option value="Exception">Exception</option>
               </select>
             </div>
+            <div class="geo-downloads">
+              <button type="button" class="dl-btn" id="geo-filter-csv" disabled>CSV</button>
+              <button type="button" class="dl-btn" id="geo-filter-xls" disabled>Excel</button>
+              <button type="button" class="dl-btn" id="geo-filter-pdf" disabled>PDF</button>
+            </div>
             <p id="geo-filter-status">Lade GET /v1/country …</p>
             <div class="callout warn" id="geo-filter-missing" hidden>
               <p>
@@ -8184,7 +8208,8 @@
                 <thead>
                   <tr>
                     <th>ISO</th>
-                    <th>Land</th>
+                    <th>Land (DE)</th>
+                    <th>Country (EN)</th>
                     <th>Wohnsitz</th>
                     <th>Nationalität</th>
                     <th>Wohnsitz Bestand</th>
