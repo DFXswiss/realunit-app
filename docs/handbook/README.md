@@ -67,9 +67,11 @@ mehr aus diesen Maestro-Läufen.)
 ## Live Geo-Filter-Tabelle
 
 Die Sektion **Aktientoken — Geo-Filter** (`#spec-geo`) lädt `GET /v1/country`
-zur Laufzeit. Länderzeilen gehören nicht ins Repo. Im Image proxied nginx
-`/v1/country` auf `https://api.dfx.swiss/v1/country`; eine lokale HTML-Vorschau
-fällt auf die öffentliche API zurück.
+zur Laufzeit. Länderzeilen gehören nicht ins Repo. Namen kommen als Deutsch und
+Englisch aus `Intl.DisplayNames` (ISO 3166), nicht aus `foreignName`. CSV, Excel
+und PDF exportieren die angezeigte Liste. Im Image proxied nginx `/v1/country`
+auf `https://api.dfx.swiss/v1/country`; eine lokale HTML-Vorschau fällt auf die
+öffentliche API zurück.
 
 ## Einen neuen Handbook-Eintrag hinzufügen
 
