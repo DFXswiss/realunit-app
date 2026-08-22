@@ -24,11 +24,16 @@
   var displayDe;
   var displayEn;
   try {
-    displayDe = new Intl.DisplayNames(['de'], { type: 'region' });
-    displayEn = new Intl.DisplayNames(['en'], { type: 'region' });
+    displayDe = new Intl.DisplayNames(['de'], { type: 'region', fallback: 'none' });
+    displayEn = new Intl.DisplayNames(['en'], { type: 'region', fallback: 'none' });
   } catch (e) {
-    displayDe = null;
-    displayEn = null;
+    try {
+      displayDe = new Intl.DisplayNames(['de'], { type: 'region' });
+      displayEn = new Intl.DisplayNames(['en'], { type: 'region' });
+    } catch (e2) {
+      displayDe = null;
+      displayEn = null;
+    }
   }
 
   function $(id) {
@@ -39,7 +44,9 @@
     if (display && symbol) {
       try {
         var label = display.of(symbol);
-        if (label) return label;
+        if (label && String(label).toUpperCase() !== String(symbol).toUpperCase()) {
+          return label;
+        }
       } catch (e) {}
     }
     return fallback || symbol || '';
@@ -190,17 +197,48 @@
     saveBlob(blob, fileBase() + '.xls');
   }
 
+  var WINANSI = {
+    0x20ac: 128,
+    0x201a: 130,
+    0x0192: 131,
+    0x201e: 132,
+    0x2026: 133,
+    0x2020: 134,
+    0x2021: 135,
+    0x02c6: 136,
+    0x2030: 137,
+    0x0160: 138,
+    0x2039: 139,
+    0x0152: 140,
+    0x017d: 142,
+    0x2018: 145,
+    0x2019: 146,
+    0x201c: 147,
+    0x201d: 148,
+    0x2022: 149,
+    0x2013: 150,
+    0x2014: 151,
+    0x02dc: 152,
+    0x2122: 153,
+    0x0161: 154,
+    0x203a: 155,
+    0x0153: 156,
+    0x017e: 158,
+    0x0178: 159,
+  };
+
   function pdfEscape(text) {
     var s = '';
     var raw = String(text);
     for (var i = 0; i < raw.length; i++) {
       var code = raw.charCodeAt(i);
+      if (WINANSI[code] != null) code = WINANSI[code];
       if (code === 92) s += '\\\\';
       else if (code === 40) s += '\\(';
       else if (code === 41) s += '\\)';
       else if (code === 13 || code === 10) s += ' ';
-      else if (code < 128) s += raw.charAt(i);
-      else if (code >= 160 && code <= 255) s += '\\' + ('00' + code.toString(8)).slice(-3);
+      else if (code >= 32 && code < 128) s += String.fromCharCode(code);
+      else if (code >= 128 && code <= 255) s += '\\' + ('00' + code.toString(8)).slice(-3);
       else s += '?';
     }
     return s;
