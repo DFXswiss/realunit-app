@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:flutter/foundation.dart';
@@ -54,6 +55,29 @@ Future<void> initCrashReporting({
       stackTrace: stackTrace,
     );
   }
+}
+
+/// Sink for a condition the app caught and handled but that should not have
+/// happened. Matches [reportNonFatal] so a caller can hold the seam as a field
+/// and a test can record instead of report.
+typedef NonFatalReporter = void Function(Object error);
+
+/// Records [error] as a non-fatal event: a `developer.log` line for an attached
+/// developer plus, when the crash reporter is running, an error event carrying
+/// the same object.
+///
+/// Same channel and same pinned option surface as the uncaught-error path — no
+/// PII, no attachments, no breadcrumb widening — so callers must pass an error
+/// object that describes the condition in its own `toString()` and nothing
+/// about the user.
+///
+/// Gated on the same [crashReportingDsn] that decides whether [initCrashReporting]
+/// starts the SDK at all: without an injected DSN — every local and test build —
+/// nothing was ever started, and the report is a pure log line.
+void reportNonFatal(Object error) {
+  developer.log('non-fatal: $error', name: 'WalletApp', error: error);
+  if (crashReportingDsn.isEmpty) return;
+  unawaited(Sentry.captureException(error));
 }
 
 /// Applies the pinned option set. The guarantee is exactly this list — an

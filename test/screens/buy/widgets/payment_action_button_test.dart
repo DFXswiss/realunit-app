@@ -31,7 +31,7 @@ void main() {
   // value (mirrors the registration / KYC gates), so the re-fetch is
   // asserted on both paths.
   bool? emailCaptureResult;
-  String? kycExtra;
+  String? kycContext;
 
   setUpAll(() {
     registerFallbackValue(Currency.chf);
@@ -43,7 +43,7 @@ void main() {
     amountController = TextEditingController(text: '250');
     pushedRoutes = <String>[];
     emailCaptureResult = true;
-    kycExtra = null;
+    kycContext = null;
 
     when(() => converterCubit.state)
         .thenReturn(const BuyConverterState(currency: Currency.eur));
@@ -92,7 +92,7 @@ void main() {
           path: '/kyc',
           builder: (_, state) {
             pushedRoutes.add(AppRoutes.kyc);
-            kycExtra = state.extra as String?;
+            kycContext = state.uri.queryParameters['context'];
             return _EmailCaptureStub(
               onReady: (popContext) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -199,7 +199,7 @@ void main() {
 
         // Routed to KYC confirm-email, not to email capture.
         expect(pushedRoutes, [AppRoutes.kyc]);
-        expect(kycExtra, 'RealunitBuy');
+        expect(kycContext, 'RealunitBuy');
         // After the KYC flow returns, the quote is re-fetched with the
         // current amount + currency so a now-confirmed email surfaces the CTA.
         verify(

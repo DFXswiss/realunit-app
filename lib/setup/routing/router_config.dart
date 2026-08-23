@@ -222,7 +222,8 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       name: AppRoutes.kyc,
       path: '/kyc',
-      builder: (_, state) => KycPageManager(kycContext: state.extra as String?),
+      builder: (_, state) =>
+          KycPageManager(kycContext: state.uri.queryParameters['context']),
     ),
 
     GoRoute(
