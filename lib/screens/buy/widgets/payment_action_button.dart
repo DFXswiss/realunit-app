@@ -66,7 +66,10 @@ class PaymentActionButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: AppFilledButton(
                 onPressed: () async {
-                  await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
+                  await context.pushNamed(
+                    AppRoutes.kyc,
+                    queryParameters: kycRouteQuery(paymentState.context),
+                  );
                   if (context.mounted) {
                     context.read<BuyPaymentInfoCubit>().getPaymentInfo(
                       amount: amountController.text,
@@ -83,7 +86,10 @@ class PaymentActionButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: AppFilledButton(
                 onPressed: () async {
-                  await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
+                  await context.pushNamed(
+                    AppRoutes.kyc,
+                    queryParameters: kycRouteQuery(paymentState.context),
+                  );
                   if (context.mounted) {
                     context.read<BuyPaymentInfoCubit>().getPaymentInfo(
                       amount: amountController.text,
@@ -128,7 +134,10 @@ class PaymentActionButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: AppFilledButton(
                 onPressed: () async {
-                  await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
+                  await context.pushNamed(
+                    AppRoutes.kyc,
+                    queryParameters: kycRouteQuery(paymentState.context),
+                  );
                   if (context.mounted) {
                     context.read<BuyPaymentInfoCubit>().getPaymentInfo(
                       amount: amountController.text,

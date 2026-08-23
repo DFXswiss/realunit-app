@@ -32,10 +32,13 @@ void main() {
         path: '/dashboard',
         builder: (_, _) => const Text('dashboard'),
       ),
+      // Mirrors the production builder: the KYC context is read off the URL,
+      // not off `extra`, so a restore by bare location keeps the flow scoped.
       GoRoute(
         name: AppRoutes.kyc,
         path: '/kyc',
-        builder: (_, _) => const Text('kyc'),
+        builder: (_, state) =>
+            Text('kyc:${state.uri.queryParameters['context'] ?? 'unscoped'}'),
       ),
       GoRoute(
         name: AppRoutes.buyPaymentDetails,
@@ -84,7 +87,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('kyc'), findsOneWidget);
+      expect(find.text('kyc:unscoped'), findsOneWidget);
       expect(effectiveLocation(router.routerDelegate.currentConfiguration), '/kyc');
       expect(cleared, isTrue);
 
@@ -96,6 +99,33 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('dashboard'), findsOneWidget);
       expect(locationOf(router), '/dashboard');
+    },
+  );
+
+  // The KYC flow is scoped by the context its entry point reported, and a
+  // background lock must not silently drop that scope. The restore re-pushes
+  // the captured location by bare path — it has no `extra` to give — so the
+  // context has to ride in the URL to survive.
+  testWidgets(
+    'restore keeps the KYC context the flow was entered with',
+    (tester) async {
+      final router = buildRouter();
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      applyBootNavAction(
+        resolveAfterRelock('/kyc?context=RealunitBuy'),
+        router,
+        onLoadWallet: () {},
+        onClearResume: () {},
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('kyc:RealunitBuy'), findsOneWidget);
+      expect(
+        effectiveLocation(router.routerDelegate.currentConfiguration),
+        '/kyc?context=RealunitBuy',
+      );
     },
   );
 
@@ -354,7 +384,7 @@ void main() {
         expect(router.canPop(), isTrue);
         router.pop();
         await tester.pumpAndSettle();
-        expect(find.text('kyc'), findsOneWidget);
+        expect(find.text('kyc:unscoped'), findsOneWidget);
       },
     );
 
