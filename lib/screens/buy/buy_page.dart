@@ -8,6 +8,7 @@ import 'package:realunit_wallet/screens/buy/cubits/buy_payment_info/buy_payment_
 import 'package:realunit_wallet/screens/buy/widgets/payment_action_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_converter.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_information.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
@@ -33,7 +34,15 @@ class BuyPage extends StatelessWidget {
           ),
         ),
       ],
-      child: const BuyView(),
+      child: BlocListener<SettingsBloc, SettingsState>(
+        listenWhen: (previous, current) => previous.currency != current.currency,
+        listener: (context, settingsState) {
+          final cubit = context.read<BuyConverterCubit>();
+          if (cubit.state.currency == settingsState.currency) return;
+          cubit.onCurrencyChanged(settingsState.currency);
+        },
+        child: const BuyView(),
+      ),
     );
   }
 }

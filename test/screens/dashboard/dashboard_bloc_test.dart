@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/models/portfolio_value_point.dart';
@@ -33,16 +35,21 @@ void main() {
   });
 
   DashboardBloc build({Currency currency = Currency.chf}) {
-    when(() => priceService.getPriceOfAsset(any(), any()))
-        .thenAnswer((_) async => BigInt.from(12345));
-    when(() => priceService.getPriceChart(any(), any())).thenAnswer((_) async => [
-          _pp(10000, DateTime.utc(2026, 1, 1)),
-          _pp(11000, DateTime.utc(2026, 2, 1)),
-        ]);
-    when(() => accountService.getPortfolioHistory(any())).thenAnswer((_) async => [
-          _pt(50000, DateTime.utc(2026, 1, 1)),
-          _pt(52000, DateTime.utc(2026, 2, 1)),
-        ]);
+    when(
+      () => priceService.getPriceOfAsset(any(), any()),
+    ).thenAnswer((_) async => BigInt.from(12345));
+    when(() => priceService.getPriceChart(any(), any())).thenAnswer(
+      (_) async => [
+        _pp(10000, DateTime.utc(2026, 1, 1)),
+        _pp(11000, DateTime.utc(2026, 2, 1)),
+      ],
+    );
+    when(() => accountService.getPortfolioHistory(any())).thenAnswer(
+      (_) async => [
+        _pt(50000, DateTime.utc(2026, 1, 1)),
+        _pt(52000, DateTime.utc(2026, 2, 1)),
+      ],
+    );
     return DashboardBloc(
       priceService,
       accountService,
@@ -80,8 +87,7 @@ void main() {
     });
 
     test('refresh survives priceService failure without crashing', () async {
-      when(() => priceService.getPriceOfAsset(any(), any()))
-          .thenThrow(Exception('503'));
+      when(() => priceService.getPriceOfAsset(any(), any())).thenThrow(Exception('503'));
 
       final bloc = build();
       // If the handler crashes without try-catch, an unhandled error propagates.
@@ -93,8 +99,7 @@ void main() {
     });
 
     test('refresh survives priceChart failure without crashing', () async {
-      when(() => priceService.getPriceChart(any(), any()))
-          .thenThrow(Exception('timeout'));
+      when(() => priceService.getPriceChart(any(), any())).thenThrow(Exception('timeout'));
 
       final bloc = build();
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -103,8 +108,7 @@ void main() {
     });
 
     test('refresh survives portfolioHistory failure without crashing', () async {
-      when(() => accountService.getPortfolioHistory(any()))
-          .thenThrow(Exception('network'));
+      when(() => accountService.getPortfolioHistory(any())).thenThrow(Exception('network'));
 
       final bloc = build();
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -118,8 +122,9 @@ void main() {
       await bloc.stream.firstWhere((s) => s.portfolioHistory.isNotEmpty);
       clearInteractions(priceService);
       clearInteractions(accountService);
-      when(() => priceService.getPriceOfAsset(any(), any()))
-          .thenAnswer((_) async => BigInt.from(99));
+      when(
+        () => priceService.getPriceOfAsset(any(), any()),
+      ).thenAnswer((_) async => BigInt.from(99));
       when(() => priceService.getPriceChart(any(), any())).thenAnswer((_) async => []);
       when(() => accountService.getPortfolioHistory(any())).thenAnswer((_) async => []);
 
@@ -135,6 +140,43 @@ void main() {
       verify(() => priceService.getPriceOfAsset(realUnitAsset, Currency.eur)).called(1);
       verify(() => priceService.getPriceChart(realUnitAsset, Currency.eur)).called(1);
       verify(() => accountService.getPortfolioHistory(Currency.eur)).called(1);
+    });
+
+    test('late price for the previous currency is dropped after CurrencyChangedEvent', () async {
+      final stalePrice = Completer<BigInt>();
+      when(() => priceService.getPriceOfAsset(any(), any())).thenAnswer((invocation) {
+        final currency = invocation.positionalArguments[1] as Currency;
+        if (currency == Currency.chf) return stalePrice.future;
+        return Future.value(BigInt.from(99));
+      });
+      when(() => priceService.getPriceChart(any(), any())).thenAnswer(
+        (_) async => [
+          _pp(10000, DateTime.utc(2026, 1, 1)),
+        ],
+      );
+      when(() => accountService.getPortfolioHistory(any())).thenAnswer(
+        (_) async => [
+          _pt(50000, DateTime.utc(2026, 1, 1)),
+        ],
+      );
+
+      final bloc = DashboardBloc(
+        priceService,
+        accountService,
+        asset: realUnitAsset,
+        initialCurrency: Currency.chf,
+      );
+      bloc.add(const CurrencyChangedEvent(Currency.eur));
+      await bloc.stream.firstWhere(
+        (s) => s.currency == Currency.eur && s.price == BigInt.from(99),
+      );
+
+      stalePrice.complete(BigInt.from(12345));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(bloc.state.currency, Currency.eur);
+      expect(bloc.state.price, BigInt.from(99));
+      await bloc.close();
     });
   });
 }
