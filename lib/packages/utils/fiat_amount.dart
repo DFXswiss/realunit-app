@@ -6,22 +6,32 @@
 /// 105.0 would silently buy a thousandth of the intended amount. One or two
 /// digits after the separator stay a decimal (`300,75` → 300.75).
 double? tryParseFiatAmount(String input) {
-  final compact = input.trim().replaceAll("'", '').replaceAll(' ', '');
-  if (compact.isEmpty) return null;
+  final trimmed = input.trim().replaceAll(' ', '');
+  if (trimmed.isEmpty) return null;
 
-  // 105.000 / 1.000.000 / 90,000 — grouping only. The first group must not be
-  // a leading zero (`0.105` is three fractional digits, not one hundred five).
-  if (RegExp(r'^[1-9]\d{0,2}([.,]\d{3})+$').hasMatch(compact)) {
-    return double.tryParse(compact.replaceAll(RegExp('[.,]'), ''));
+  // Swiss apostrophes are thousands marks only (`90'000`, `105'000.50`).
+  // Strip them only after the grouping shape is valid — otherwise `0'105`
+  // becomes `0105` → 105 and `1'23` becomes 123.
+  if (trimmed.contains("'")) {
+    if (!RegExp(r"^[1-9]\d{0,2}('\d{3})+([.,]\d{1,2})?$").hasMatch(trimmed)) {
+      return null;
+    }
+    return tryParseFiatAmount(trimmed.replaceAll("'", ''));
+  }
+
+  // 105.000 / 1,000,000 — same separator throughout. First group has no
+  // leading zero (`0.105` is three fractional digits, not one hundred five).
+  if (RegExp(r'^[1-9]\d{0,2}([.,])(\d{3}(?:\1\d{3})*)$').hasMatch(trimmed)) {
+    return double.tryParse(trimmed.replaceAll(RegExp('[.,]'), ''));
   }
 
   // 300,75 / 300.75 / 0,5 — decimal with at most Rappen/cent precision.
-  if (RegExp(r'^\d+[.,]\d{1,2}$').hasMatch(compact)) {
-    return double.tryParse(compact.replaceAll(',', '.'));
+  if (RegExp(r'^\d+[.,]\d{1,2}$').hasMatch(trimmed)) {
+    return double.tryParse(trimmed.replaceAll(',', '.'));
   }
 
-  if (RegExp(r'^\d+$').hasMatch(compact)) {
-    return double.tryParse(compact);
+  if (RegExp(r'^\d+$').hasMatch(trimmed)) {
+    return double.tryParse(trimmed);
   }
 
   return null;

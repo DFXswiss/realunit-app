@@ -78,5 +78,11 @@ void main() {
       expect(tryParseFiatAmount('0,001'), isNull);
       expect(tryParseFiatAmount('0.010'), isNull);
     });
+
+    test('malformed apostrophe or mixed grouping is rejected, not stripped to digits', () {
+      expect(tryParseFiatAmount("0'105"), isNull);
+      expect(tryParseFiatAmount("1'23"), isNull);
+      expect(tryParseFiatAmount('1.000,000'), isNull);
+    });
   });
 }
