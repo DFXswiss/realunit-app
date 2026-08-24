@@ -51,11 +51,9 @@ class RealUnitBuyPaymentInfoService extends DFXAuthService {
         error: responseDto.error,
       );
     } else if (response.statusCode == 403) {
-      final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
-      throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+      throw ApiException.fromBody(response.body, httpStatusCode: response.statusCode);
     } else {
-      final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
-      throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+      throw ApiException.fromBody(response.body, httpStatusCode: response.statusCode);
     }
   }
 
@@ -67,8 +65,7 @@ class RealUnitBuyPaymentInfoService extends DFXAuthService {
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
-      final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
-      throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+      throw ApiException.fromBody(response.body, httpStatusCode: response.statusCode);
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;

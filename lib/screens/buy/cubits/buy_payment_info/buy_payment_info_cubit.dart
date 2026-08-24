@@ -105,7 +105,8 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       // (Aktionariat) is down, so no quote can be built — surface that
       // explicitly instead of a generic failure. Must stay below the
       // KYC/Registration clauses (those are ApiException subclasses).
-      if (e.statusCode == 503 || e.code == 'PRICE_SOURCE_UNAVAILABLE') {
+      // Gateway plain-text 502 is the same "no quote" situation as 503.
+      if (e.statusCode == 503 || e.statusCode == 502 || e.code == 'PRICE_SOURCE_UNAVAILABLE') {
         return BuyPaymentInfoFailure(
           PaymentInfoError.priceSourceUnavailable,
           message: e.message,
@@ -115,7 +116,7 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.message);
     } catch (e) {
       developer.log(e.toString());
-      return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.toString());
+      return const BuyPaymentInfoFailure(PaymentInfoError.unknown, message: '');
     }
   }
 
