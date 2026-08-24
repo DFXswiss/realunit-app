@@ -21,16 +21,14 @@ import 'package:realunit_wallet/styles/currency.dart';
 
 import '../../../helper/helper.dart';
 
-class _MockBuyConverterCubit extends MockCubit<BuyConverterState>
-    implements BuyConverterCubit {}
+class _MockBuyConverterCubit extends MockCubit<BuyConverterState> implements BuyConverterCubit {}
 
 class _MockBuyPaymentInfoCubit extends MockCubit<BuyPaymentInfoState>
     implements BuyPaymentInfoCubit {}
 
 class _MockDfxBrokerbotService extends Mock implements DfxBrokerbotService {}
 
-class _MockRealUnitBuyPaymentInfoService extends Mock
-    implements RealUnitBuyPaymentInfoService {}
+class _MockRealUnitBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
 
 class _MockDfxPriceService extends Mock implements DFXPriceService {}
 
@@ -69,23 +67,21 @@ void main() {
     );
     getIt.registerSingleton<DFXPriceService>(_MockDfxPriceService());
     final fiatRepo = _MockSupportedFiatRepository();
-    when(() => fiatRepo.getBuyable())
-        .thenAnswer((_) async => const [Currency.chf, Currency.eur]);
+    when(() => fiatRepo.getBuyable()).thenAnswer((_) async => const [Currency.chf, Currency.eur]);
     when(() => fiatRepo.getSellable()).thenAnswer((_) async => const [Currency.chf]);
-    when(() => fiatRepo.getAll())
-        .thenAnswer((_) async => const [Currency.chf, Currency.eur]);
+    when(() => fiatRepo.getAll()).thenAnswer((_) async => const [Currency.chf, Currency.eur]);
     getIt.registerSingleton<SupportedFiatRepository>(fiatRepo);
   });
 
   tearDownAll(() async => GetIt.instance.reset());
 
   Widget buildSubject() => MultiBlocProvider(
-        providers: [
-          BlocProvider<BuyConverterCubit>.value(value: converterCubit),
-          BlocProvider<BuyPaymentInfoCubit>.value(value: paymentInfoCubit),
-        ],
-        child: const BuyView(),
-      );
+    providers: [
+      BlocProvider<BuyConverterCubit>.value(value: converterCubit),
+      BlocProvider<BuyPaymentInfoCubit>.value(value: paymentInfoCubit),
+    ],
+    child: const BuyView(),
+  );
 
   group('$BuyView', () {
     goldenTest(
@@ -188,8 +184,7 @@ void main() {
       // its timeout. pumpOnce captures the first frame without waiting.
       pumpBeforeTest: pumpOnce,
       builder: () {
-        when(() => paymentInfoCubit.state)
-            .thenReturn(const BuyPaymentInfoLoading());
+        when(() => paymentInfoCubit.state).thenReturn(const BuyPaymentInfoLoading());
         when(() => converterCubit.state).thenReturn(
           const BuyConverterState(
             fiatText: '100',
@@ -292,6 +287,28 @@ void main() {
           const BuyConverterState(
             fiatText: '1',
             sharesText: '0.01',
+            currency: Currency.chf,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'max amount exceeded failure',
+      fileName: 'buy_max_amount_exceeded',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoMaxAmountExceededFailure(
+            PaymentInfoError.maxAmountExceeded,
+            maxAmount: 90000,
+          ),
+        );
+        when(() => converterCubit.state).thenReturn(
+          const BuyConverterState(
+            fiatText: '105000',
+            sharesText: '76086',
             currency: Currency.chf,
           ),
         );
