@@ -265,7 +265,11 @@ void main() {
         ),
       );
       when(() => converterCubit.state).thenReturn(
-        const BuyConverterState(currency: Currency.eur),
+        const BuyConverterState(
+          currency: Currency.eur,
+          fiatText: '300',
+          payableText: '299.46',
+        ),
       );
 
       await tester.pumpApp(buildSubject(const BuyView()));
@@ -281,7 +285,7 @@ void main() {
 
       verify(
         () => buyPaymentInfoCubit.getPaymentInfo(
-          amount: '',
+          amount: '299.46',
           currency: Currency.eur,
         ),
       ).called(1);
@@ -308,6 +312,39 @@ void main() {
 
       expect(amount.controller!.text, equals('5.00'));
       expect(result.controller!.text, equals('0.50'));
+    });
+
+    testWidgets('requests the quote with the live payable, not the typed field text', (
+      tester,
+    ) async {
+      whenListen(
+        converterCubit,
+        Stream.fromIterable([
+          const BuyConverterState(
+            fiatText: '300',
+            payableText: '',
+            sharesText: '217',
+            loading: true,
+          ),
+          const BuyConverterState(
+            fiatText: '300',
+            payableText: '299.46',
+            sharesText: '217',
+            loading: false,
+          ),
+        ]),
+        initialState: const BuyConverterState(fiatText: '300'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => buyPaymentInfoCubit.getPaymentInfo(
+          amount: '299.46',
+          currency: Currency.chf,
+        ),
+      ).called(1);
     });
   });
 }

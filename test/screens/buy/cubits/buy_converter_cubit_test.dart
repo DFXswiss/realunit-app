@@ -198,7 +198,7 @@ void main() {
     });
 
     test(
-      'onCurrencyChanged refetches shares with the new currency and emits both fields',
+      'onCurrencyChanged refetches shares with the new currency and preserves fiatText',
       () async {
         when(() => service.getBuyShares(any(), any())).thenAnswer(
           (_) async => BrokerbotBuySharesDto(
@@ -209,12 +209,19 @@ void main() {
         );
 
         final cubit = BuyConverterCubit(service);
+        await cubit.onFiatChanged('300');
+        await Future<void>.delayed(const Duration(milliseconds: 250));
         await cubit.onCurrencyChanged(Currency.eur);
 
-        expect(cubit.state.currency, Currency.eur);
+        // Typed text survives the currency switch; conversion lands in
+        // sharesText / payableText only.
+        expect(cubit.state.fiatText, '300');
         expect(cubit.state.sharesText, '3');
+        expect(cubit.state.payableText, '30.00');
+        expect(cubit.state.quoteAmountText, '30.00');
+        expect(cubit.state.currency, Currency.eur);
         expect(cubit.state.loading, isFalse);
-        verify(() => service.getBuyShares('', Currency.eur)).called(1);
+        verify(() => service.getBuyShares('300', Currency.eur)).called(1);
       },
     );
 
@@ -247,26 +254,34 @@ void main() {
         final cubit = BuyConverterCubit(service);
 
         await cubit.onFiatChanged('460');
-        await Future<void>.delayed(const Duration(milliseconds: 150)); // timer fires → API_460 in flight
+        await Future<void>.delayed(
+          const Duration(milliseconds: 150),
+        ); // timer fires → API_460 in flight
         await cubit.onFiatChanged('4600');
-        await Future<void>.delayed(const Duration(milliseconds: 150)); // timer fires → API_4600 in flight
+        await Future<void>.delayed(
+          const Duration(milliseconds: 150),
+        ); // timer fires → API_4600 in flight
 
         // Pathological response order: the NEWER request resolves first…
-        c4600.complete(BrokerbotBuySharesDto(
-          shares: 3216,
-          pricePerShare: 1.43,
-          availableShares: 100,
-        ));
+        c4600.complete(
+          BrokerbotBuySharesDto(
+            shares: 3216,
+            pricePerShare: 1.43,
+            availableShares: 100,
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 50));
         expect(cubit.state.sharesText, '3216');
 
         // …and the OLDER request resolves later. Without the seq guard,
         // this would overwrite sharesText with '321'.
-        c460.complete(BrokerbotBuySharesDto(
-          shares: 321,
-          pricePerShare: 1.43,
-          availableShares: 100,
-        ));
+        c460.complete(
+          BrokerbotBuySharesDto(
+            shares: 321,
+            pricePerShare: 1.43,
+            availableShares: 100,
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 50));
         expect(
           cubit.state.sharesText,
@@ -292,19 +307,23 @@ void main() {
         await cubit.onSharesChanged('50');
         await Future<void>.delayed(const Duration(milliseconds: 150));
 
-        c50.complete(BrokerbotBuyPriceDto(
-          totalCost: 71.50,
-          pricePerShare: 1.43,
-          availableShares: 100,
-        ));
+        c50.complete(
+          BrokerbotBuyPriceDto(
+            totalCost: 71.50,
+            pricePerShare: 1.43,
+            availableShares: 100,
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 50));
         expect(cubit.state.fiatText, '71.50');
 
-        c5.complete(BrokerbotBuyPriceDto(
-          totalCost: 7.15,
-          pricePerShare: 1.43,
-          availableShares: 100,
-        ));
+        c5.complete(
+          BrokerbotBuyPriceDto(
+            totalCost: 7.15,
+            pricePerShare: 1.43,
+            availableShares: 100,
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 50));
         expect(
           cubit.state.fiatText,
@@ -340,16 +359,21 @@ void main() {
         await cubit.onFiatChanged('1000');
         await Future<void>.delayed(const Duration(milliseconds: 250));
 
-        cEur.complete(BrokerbotBuySharesDto(
-          shares: 0,
-          pricePerShare: 1.43,
-          availableShares: 100,
-        ));
+        cEur.complete(
+          BrokerbotBuySharesDto(
+            shares: 0,
+            pricePerShare: 1.43,
+            availableShares: 100,
+          ),
+        );
         await Future<void>.delayed(const Duration(milliseconds: 50));
 
         expect(cubit.state.currency, Currency.eur);
-        expect(cubit.state.sharesText, '700',
-            reason: 'the superseded onCurrencyChanged response (shares=0) must be dropped');
+        expect(
+          cubit.state.sharesText,
+          '700',
+          reason: 'the superseded onCurrencyChanged response (shares=0) must be dropped',
+        );
       },
     );
 
