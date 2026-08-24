@@ -15,7 +15,7 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 /// Bottom call-to-action of the buy page. It mirrors the `BuyPaymentInfoCubit`
 /// state: on a valid quote it shows the binding-buy CTA, otherwise it offers
 /// the action the current gate requires (register, KYC, reconnect, retry) or a
-/// disabled button for the min-amount validation error.
+/// disabled button for the min-amount or max-amount validation error.
 class PaymentActionButton extends StatelessWidget {
   const PaymentActionButton({super.key});
 
@@ -51,6 +51,33 @@ class PaymentActionButton extends StatelessWidget {
                         .of(context)
                         .buyMinAmount(
                           '${state.minAmount.ceil()}',
+                          context.read<BuyConverterCubit>().state.currency.code,
+                        ),
+                    style: const TextStyle(
+                      color: RealUnitColors.neutral500,
+                      fontSize: 14,
+                    ),
+                  ),
+                  AppFilledButton(
+                    onPressed: null,
+                    label: S.of(context).next,
+                  ),
+                ],
+              ),
+            );
+          }
+          if (paymentState.error == PaymentInfoError.maxAmountExceeded) {
+            final state = paymentState as BuyPaymentInfoMaxAmountExceededFailure;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20.0),
+              child: Column(
+                spacing: 8.0,
+                children: [
+                  Text(
+                    S
+                        .of(context)
+                        .buyMaxAmount(
+                          '${state.maxAmount.floor()}',
                           context.read<BuyConverterCubit>().state.currency.code,
                         ),
                     style: const TextStyle(

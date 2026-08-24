@@ -223,6 +223,31 @@ void main() {
       },
     );
   });
+
+  group('$PaymentActionButton maxAmountExceeded gate', () {
+    testWidgets(
+      'renders disabled Next, the max-amount label, not confirm or retry',
+      (tester) async {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoMaxAmountExceededFailure(
+            PaymentInfoError.maxAmountExceeded,
+            maxAmount: 90000.6,
+          ),
+        );
+        when(() => converterCubit.state).thenReturn(
+          const BuyConverterState(currency: Currency.chf, fiatText: '90001'),
+        );
+
+        await pumpButton(tester);
+
+        expect(find.text(S.current.next), findsOne);
+        expect(find.text(S.current.buyMaxAmount('90000', 'CHF')), findsOne);
+        expect(find.byType(BuyConfirmButton), findsNothing);
+        expect(find.text(S.current.buyPaymentConfirm), findsNothing);
+        expect(find.text(S.current.retry), findsNothing);
+      },
+    );
+  });
 }
 
 /// Minimal capture-page stub that pops with a caller-controlled value on

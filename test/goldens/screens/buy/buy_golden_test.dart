@@ -21,16 +21,14 @@ import 'package:realunit_wallet/styles/currency.dart';
 
 import '../../../helper/helper.dart';
 
-class _MockBuyConverterCubit extends MockCubit<BuyConverterState>
-    implements BuyConverterCubit {}
+class _MockBuyConverterCubit extends MockCubit<BuyConverterState> implements BuyConverterCubit {}
 
 class _MockBuyPaymentInfoCubit extends MockCubit<BuyPaymentInfoState>
     implements BuyPaymentInfoCubit {}
 
 class _MockDfxBrokerbotService extends Mock implements DfxBrokerbotService {}
 
-class _MockRealUnitBuyPaymentInfoService extends Mock
-    implements RealUnitBuyPaymentInfoService {}
+class _MockRealUnitBuyPaymentInfoService extends Mock implements RealUnitBuyPaymentInfoService {}
 
 class _MockDfxPriceService extends Mock implements DFXPriceService {}
 
@@ -69,23 +67,56 @@ void main() {
     );
     getIt.registerSingleton<DFXPriceService>(_MockDfxPriceService());
     final fiatRepo = _MockSupportedFiatRepository();
-    when(() => fiatRepo.getBuyable())
-        .thenAnswer((_) async => const [Currency.chf, Currency.eur]);
+    when(() => fiatRepo.getBuyable()).thenAnswer((_) async => const [Currency.chf, Currency.eur]);
     when(() => fiatRepo.getSellable()).thenAnswer((_) async => const [Currency.chf]);
-    when(() => fiatRepo.getAll())
-        .thenAnswer((_) async => const [Currency.chf, Currency.eur]);
+    when(() => fiatRepo.getAll()).thenAnswer((_) async => const [Currency.chf, Currency.eur]);
     getIt.registerSingleton<SupportedFiatRepository>(fiatRepo);
   });
 
   tearDownAll(() async => GetIt.instance.reset());
 
   Widget buildSubject() => MultiBlocProvider(
-        providers: [
-          BlocProvider<BuyConverterCubit>.value(value: converterCubit),
-          BlocProvider<BuyPaymentInfoCubit>.value(value: paymentInfoCubit),
-        ],
-        child: const BuyView(),
-      );
+    providers: [
+      BlocProvider<BuyConverterCubit>.value(value: converterCubit),
+      BlocProvider<BuyPaymentInfoCubit>.value(value: paymentInfoCubit),
+    ],
+    child: const BuyView(),
+  );
+
+  /// BuyView copies fiat/shares into the TextFields only when converter
+  /// `loading` flips true → false (the live conversion just settled).
+  void stubTypedConverter({
+    required String fiatText,
+    required String sharesText,
+    String payableText = '',
+    Currency currency = Currency.chf,
+  }) {
+    whenListen(
+      converterCubit,
+      Stream.fromIterable([
+        BuyConverterState(
+          fiatText: fiatText,
+          payableText: payableText,
+          sharesText: sharesText,
+          currency: currency,
+          loading: true,
+        ),
+        BuyConverterState(
+          fiatText: fiatText,
+          payableText: payableText,
+          sharesText: sharesText,
+          currency: currency,
+        ),
+      ]),
+      initialState: BuyConverterState(
+        fiatText: fiatText,
+        payableText: payableText,
+        sharesText: sharesText,
+        currency: currency,
+        loading: true,
+      ),
+    );
+  }
 
   group('$BuyView', () {
     goldenTest(
@@ -117,13 +148,7 @@ void main() {
             ),
           ),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );
@@ -150,30 +175,10 @@ void main() {
             ),
           ),
         );
-        // BuyView copies fiat/shares into the TextFields only when loading
-        // flips to false. Drive that transition so the golden shows 300.
-        whenListen(
-          converterCubit,
-          Stream.fromIterable([
-            const BuyConverterState(
-              fiatText: '300',
-              payableText: '',
-              sharesText: '217',
-              loading: true,
-            ),
-            const BuyConverterState(
-              fiatText: '300',
-              payableText: '299.46',
-              sharesText: '217',
-              loading: false,
-            ),
-          ]),
-          initialState: const BuyConverterState(
-            fiatText: '300',
-            payableText: '',
-            sharesText: '217',
-            loading: true,
-          ),
+        stubTypedConverter(
+          fiatText: '300',
+          payableText: '299.46',
+          sharesText: '217',
         );
         return wrapForGolden(buildSubject());
       },
@@ -183,20 +188,15 @@ void main() {
       'payment info loading',
       fileName: 'buy_payment_info_loading',
       constraints: const BoxConstraints.tightFor(width: 390, height: 844),
-      // Loading state renders a CircularProgressIndicator — its animation
-      // never settles, so pumpAndSettle (default in precacheImages) hits
-      // its timeout. pumpOnce captures the first frame without waiting.
-      pumpBeforeTest: pumpOnce,
+      // Loading spinner never settles, so skip pumpAndSettle. One extra
+      // pump delivers the converter loading→done flip so the typed amount
+      // is in the fields, matching a quote in flight after conversion.
+      pumpBeforeTest: (tester) async {
+        await tester.pump();
+      },
       builder: () {
-        when(() => paymentInfoCubit.state)
-            .thenReturn(const BuyPaymentInfoLoading());
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        when(() => paymentInfoCubit.state).thenReturn(const BuyPaymentInfoLoading());
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );
@@ -209,13 +209,7 @@ void main() {
         when(() => paymentInfoCubit.state).thenReturn(
           const BuyPaymentInfoFailure(PaymentInfoError.kycRequired),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );
@@ -228,13 +222,7 @@ void main() {
         when(() => paymentInfoCubit.state).thenReturn(
           const BuyPaymentInfoFailure(PaymentInfoError.registrationRequired),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );
@@ -247,13 +235,7 @@ void main() {
         when(() => paymentInfoCubit.state).thenReturn(
           const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailRequired),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );
@@ -266,13 +248,7 @@ void main() {
         when(() => paymentInfoCubit.state).thenReturn(
           const BuyPaymentInfoFailure(PaymentInfoError.primaryEmailNotConfirmed),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );
@@ -288,13 +264,23 @@ void main() {
             minAmount: 10,
           ),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '1',
-            sharesText: '0.01',
-            currency: Currency.chf,
+        stubTypedConverter(fiatText: '1', sharesText: '0.01');
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'max amount exceeded failure',
+      fileName: 'buy_max_amount_exceeded',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoMaxAmountExceededFailure(
+            PaymentInfoError.maxAmountExceeded,
+            maxAmount: 90000,
           ),
         );
+        stubTypedConverter(fiatText: '105000', sharesText: '76086');
         return wrapForGolden(buildSubject());
       },
     );
@@ -310,13 +296,7 @@ void main() {
             message: 'The purchase could not be quoted. Please try again later.',
           ),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );
@@ -332,13 +312,7 @@ void main() {
             message: 'RealUnit price source (Aktionariat) is currently unavailable',
           ),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
-            fiatText: '100',
-            sharesText: '1.00',
-            currency: Currency.chf,
-          ),
-        );
+        stubTypedConverter(fiatText: '100', sharesText: '1.00');
         return wrapForGolden(buildSubject());
       },
     );

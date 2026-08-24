@@ -104,6 +104,24 @@ void main() {
     );
   }
 
+  /// Quote-over-inventory: extra max-amount hint + disabled Next in the
+  /// sticky actions. Overflow-only — the button is not tappable by design.
+  void stubMaxAmountExceededState() {
+    when(() => buyPaymentInfoCubit.state).thenReturn(
+      const BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 90000.6,
+      ),
+    );
+    when(() => converterCubit.state).thenReturn(
+      const BuyConverterState(
+        currency: Currency.chf,
+        fiatText: '999999999',
+        sharesText: '1234567.89',
+      ),
+    );
+  }
+
   Widget buildSubject() {
     return MultiBlocProvider(
       providers: [
@@ -207,4 +225,28 @@ void main() {
       });
     },
   );
+
+  group('BuyView maxAmountExceeded matrix (overflow only)', () {
+    for (final cell in kFullResponsiveMatrix) {
+      testWidgets('maxAmountExceeded · ${cell.id}', (tester) async {
+        await withTargetPlatform(cell.device.platform, () async {
+          stubMaxAmountExceededState();
+
+          await expectNoLayoutOverflow(
+            tester,
+            () async {
+              await pumpScreen(tester, cell, buildSubject());
+            },
+            reason: 'overflow on maxAmountExceeded / ${cell.label}',
+          );
+
+          expect(find.byType(AppFilledButton), findsOneWidget);
+          expect(
+            tester.widget<AppFilledButton>(find.byType(AppFilledButton)).onPressed,
+            isNull,
+          );
+        });
+      });
+    }
+  });
 }
