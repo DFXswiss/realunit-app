@@ -24,7 +24,6 @@ class _MockBuyPaymentInfoCubit extends MockCubit<BuyPaymentInfoState>
 void main() {
   late BuyConverterCubit converterCubit;
   late BuyPaymentInfoCubit paymentInfoCubit;
-  late TextEditingController amountController;
   late List<String> pushedRoutes;
   // Result the modelled email-capture page pops with; the buy gate
   // re-fetches the quote after the capture flow returns regardless of the
@@ -40,13 +39,14 @@ void main() {
   setUp(() {
     converterCubit = _MockBuyConverterCubit();
     paymentInfoCubit = _MockBuyPaymentInfoCubit();
-    amountController = TextEditingController(text: '250');
     pushedRoutes = <String>[];
     emailCaptureResult = true;
     kycExtra = null;
 
+    // fiatText models the typed amount; with no live payable the re-fetch
+    // falls back to it (quoteAmountText), so '250' is what the gates send.
     when(() => converterCubit.state)
-        .thenReturn(const BuyConverterState(currency: Currency.eur));
+        .thenReturn(const BuyConverterState(currency: Currency.eur, fiatText: '250'));
     when(
       () => paymentInfoCubit.getPaymentInfo(
         amount: any(named: 'amount'),
@@ -54,8 +54,6 @@ void main() {
       ),
     ).thenAnswer((_) async {});
   });
-
-  tearDown(() => amountController.dispose());
 
   GoRouter buildRouter() {
     return GoRouter(
@@ -68,8 +66,8 @@ void main() {
               BlocProvider<BuyPaymentInfoCubit>.value(value: paymentInfoCubit),
               BlocProvider<BuyConverterCubit>.value(value: converterCubit),
             ],
-            child: Scaffold(
-              body: PaymentActionButton(amountController: amountController),
+            child: const Scaffold(
+              body: PaymentActionButton(),
             ),
           ),
         ),

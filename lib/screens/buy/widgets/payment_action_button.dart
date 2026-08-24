@@ -17,12 +17,17 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 /// the action the current gate requires (register, KYC, reconnect, retry) or a
 /// disabled button for the min-amount validation error.
 class PaymentActionButton extends StatelessWidget {
-  final TextEditingController amountController;
+  const PaymentActionButton({super.key});
 
-  const PaymentActionButton({
-    super.key,
-    required this.amountController,
-  });
+  // Re-fetches the quote with the converter's Rappen-exact payable (falling
+  // back to the typed amount) — never with the raw text-field content.
+  void _refetchQuote(BuildContext context) {
+    final converterState = context.read<BuyConverterCubit>().state;
+    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
+      amount: converterState.quoteAmountText,
+      currency: converterState.currency,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,12 +72,7 @@ class PaymentActionButton extends StatelessWidget {
               child: AppFilledButton(
                 onPressed: () async {
                   await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
+                  if (context.mounted) _refetchQuote(context);
                 },
                 label: S.of(context).next,
               ),
@@ -84,12 +84,7 @@ class PaymentActionButton extends StatelessWidget {
               child: AppFilledButton(
                 onPressed: () async {
                   await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
+                  if (context.mounted) _refetchQuote(context);
                 },
                 label: S.of(context).next,
               ),
@@ -108,12 +103,7 @@ class PaymentActionButton extends StatelessWidget {
                     SupportRoutes.emailCapture,
                     extra: S.of(context).buyPrimaryEmailRequiredCaptureDescription,
                   );
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
+                  if (context.mounted) _refetchQuote(context);
                 },
                 label: S.of(context).next,
               ),
@@ -129,12 +119,7 @@ class PaymentActionButton extends StatelessWidget {
               child: AppFilledButton(
                 onPressed: () async {
                   await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
+                  if (context.mounted) _refetchQuote(context);
                 },
                 label: S.of(context).next,
               ),
@@ -149,7 +134,7 @@ class PaymentActionButton extends StatelessWidget {
                   final converterCubit = context.read<BuyConverterCubit>();
                   await showBitboxReconnectSheet(context);
                   paymentInfoCubit.getPaymentInfo(
-                    amount: amountController.text,
+                    amount: converterCubit.state.quoteAmountText,
                     currency: converterCubit.state.currency,
                   );
                 },
@@ -162,10 +147,7 @@ class PaymentActionButton extends StatelessWidget {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: AppFilledButton(
-                onPressed: () => context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                  amount: amountController.text,
-                  currency: context.read<BuyConverterCubit>().state.currency,
-                ),
+                onPressed: () => _refetchQuote(context),
                 label: S.of(context).retry,
               ),
             );
