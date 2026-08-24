@@ -56,6 +56,19 @@ void main() {
       expect(build().state, isA<BuyPaymentInfoInitial>());
     });
 
+    test('clear drops an in-flight quote back to Initial', () async {
+      when(
+        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
+      ).thenAnswer((_) async => _info());
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+      expect(cubit.state, isA<BuyPaymentInfoSuccess>());
+
+      cubit.clear();
+      expect(cubit.state, isA<BuyPaymentInfoInitial>());
+    });
+
     test('happy path emits Success with the payment info from the API', () async {
       when(
         () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
@@ -69,13 +82,12 @@ void main() {
     });
 
     test('EUR quote emits Success with the EUR IBAN and currency from the API', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
-          .thenAnswer(
-            (_) async => _info(
-              currency: Currency.eur,
-              iban: 'CH9708307000560946317',
-            ),
-          );
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
+        (_) async => _info(
+          currency: Currency.eur,
+          iban: 'CH9708307000560946317',
+        ),
+      );
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '300', currency: Currency.eur);
@@ -87,19 +99,23 @@ void main() {
       verify(() => service.getPaymentInfo(300, currency: Currency.eur)).called(1);
     });
 
-    test('API isValid=false with error=AmountTooLow → MinAmountNotMetFailure with API limit', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
-          .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooLow', minVolume: 100));
+    test(
+      'API isValid=false with error=AmountTooLow → MinAmountNotMetFailure with API limit',
+      () async {
+        when(
+          () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
+        ).thenAnswer((_) async => _info(isValid: false, error: 'AmountTooLow', minVolume: 100));
 
-      final cubit = build();
-      await cubit.getPaymentInfo(amount: '50');
+        final cubit = build();
+        await cubit.getPaymentInfo(amount: '50');
 
-      expect(cubit.state, isA<BuyPaymentInfoMinAmountNotMetFailure>());
-      final f = cubit.state as BuyPaymentInfoMinAmountNotMetFailure;
-      expect(f.error, PaymentInfoError.minAmountNotMet);
-      expect(f.minAmount, 100);
-      verify(() => service.getPaymentInfo(50, currency: Currency.chf)).called(1);
-    });
+        expect(cubit.state, isA<BuyPaymentInfoMinAmountNotMetFailure>());
+        final f = cubit.state as BuyPaymentInfoMinAmountNotMetFailure;
+        expect(f.error, PaymentInfoError.minAmountNotMet);
+        expect(f.minAmount, 100);
+        verify(() => service.getPaymentInfo(50, currency: Currency.chf)).called(1);
+      },
+    );
 
     test('EUR min is reported by the API as-is, not scaled in the app', () async {
       // For EUR the API returns its own currency-specific minVolume; the
@@ -363,8 +379,7 @@ void main() {
     });
 
     test('FormatException from service → Failure(unknown) with empty message', () async {
-      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
-          .thenAnswer(
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency'))).thenAnswer(
         (_) async => throw const FormatException(
           'Unexpected character (at character 1)',
           'error code: 502',

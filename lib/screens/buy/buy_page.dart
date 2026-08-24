@@ -65,13 +65,19 @@ class _BuyViewState extends State<BuyView> {
         ),
       ),
       body: BlocConsumer<BuyConverterCubit, BuyConverterState>(
-        listenWhen: (prev, next) => prev.loading && !next.loading,
+        listenWhen: (prev, next) =>
+            prev.currency != next.currency || (prev.loading && !next.loading),
         listener: (context, state) {
+          final payment = context.read<BuyPaymentInfoCubit>();
+          if (state.loading) {
+            payment.clear();
+            return;
+          }
           _syncController(_amountController, state.fiatText);
           _syncController(_resultController, state.sharesText);
           // The quote charges the Rappen-exact payable of the conversion,
           // not the field text: the field keeps what the user typed.
-          context.read<BuyPaymentInfoCubit>().getPaymentInfo(
+          payment.getPaymentInfo(
             amount: state.quoteAmountText,
             currency: state.currency,
           );

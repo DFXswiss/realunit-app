@@ -73,6 +73,7 @@ void main() {
         currency: any(named: 'currency'),
       ),
     ).thenAnswer((_) => Future.value());
+    when(() => buyPaymentInfoCubit.clear()).thenReturn(null);
   });
 
   void setupDependencyInjection() {
@@ -349,6 +350,34 @@ void main() {
         expect(confirm.buyPaymentInfo.iban, isNot('CH2208307000560946309'));
       },
     );
+
+    testWidgets('clears the quote when the converter currency changes', (tester) async {
+      const start = BuyConverterState(currency: Currency.eur);
+      const next = BuyConverterState(currency: Currency.chf, loading: true);
+      when(() => converterCubit.state).thenReturn(start);
+      whenListen(
+        converterCubit,
+        Stream<BuyConverterState>.fromIterable([next]),
+        initialState: start,
+      );
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        const BuyPaymentInfoMinAmountNotMetFailure(
+          PaymentInfoError.minAmountNotMet,
+          minAmount: 108.4,
+        ),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+      await tester.pump();
+
+      verify(() => buyPaymentInfoCubit.clear()).called(1);
+      verifyNever(
+        () => buyPaymentInfoCubit.getPaymentInfo(
+          amount: any(named: 'amount'),
+          currency: any(named: 'currency'),
+        ),
+      );
+    });
 
     testWidgets('hides confirm when the quote currency does not match the converter', (
       tester,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:async/async.dart';
@@ -42,6 +43,13 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
     RealUnitBuyPaymentInfoService buyPaymentInfoService,
   ) : _buyPaymentInfoService = buyPaymentInfoService,
       super(const BuyPaymentInfoInitial());
+
+  void clear() {
+    unawaited(_completer?.cancel() ?? Future<void>.value());
+    _completer = null;
+    if (state is BuyPaymentInfoInitial) return;
+    emit(const BuyPaymentInfoInitial());
+  }
 
   Future<void> getPaymentInfo({String amount = '300', Currency currency = Currency.chf}) async {
     await _completer?.cancel();
