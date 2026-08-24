@@ -1,10 +1,29 @@
-/// Parses user-typed fiat text, accepting a comma as the decimal separator.
-/// Rejects grouping-ambiguous input — a lone separator followed by exactly
-/// three digits (`1,000` / `1.000`) usually means a thousands group, and
-/// reading it as a decimal would quote 1/1000th of the intended amount.
+/// Parses user-typed fiat text for CHF/EUR (at most two decimal places).
+///
+/// Swiss apostrophes and spaces are thousands marks. A single `.` or `,`
+/// followed by exactly three digits is a thousands group (`105.000` /
+/// `90,000` → 105000 / 90000), not a 3-decimal fraction — quoting that as
+/// 105.0 would silently buy a thousandth of the intended amount. One or two
+/// digits after the separator stay a decimal (`300,75` → 300.75).
 double? tryParseFiatAmount(String input) {
-  if (RegExp(r'^\d+[.,]\d{3}$').hasMatch(input)) return null;
-  return double.tryParse(input.replaceAll(',', '.'));
+  final compact = input.trim().replaceAll("'", '').replaceAll(' ', '');
+  if (compact.isEmpty) return null;
+
+  // 105.000 / 1.000.000 / 90,000 — grouping only.
+  if (RegExp(r'^\d{1,3}([.,]\d{3})+$').hasMatch(compact)) {
+    return double.tryParse(compact.replaceAll(RegExp('[.,]'), ''));
+  }
+
+  // 300,75 / 300.75 / 0,5 — decimal with at most Rappen/cent precision.
+  if (RegExp(r'^\d+[.,]\d{1,2}$').hasMatch(compact)) {
+    return double.tryParse(compact.replaceAll(',', '.'));
+  }
+
+  if (RegExp(r'^\d+$').hasMatch(compact)) {
+    return double.tryParse(compact);
+  }
+
+  return null;
 }
 
 /// Rappen-snapped major units the backend is asked to quote (e.g. `300,75` →

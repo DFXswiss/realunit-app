@@ -100,7 +100,7 @@ class _PaymentConverterState extends State<PaymentConverter> {
                   child: TextField(
                     controller: _amountController,
                     keyboardType: const .numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp("[0-9.,']"))],
                     decoration: const InputDecoration(
                       border: .none,
                       contentPadding: .symmetric(

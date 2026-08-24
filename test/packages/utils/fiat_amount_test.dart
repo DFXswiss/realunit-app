@@ -34,12 +34,16 @@ void main() {
       expect(() => chargedFiatAmount('3,5,7'), throwsFormatException);
     });
 
-    test('throws on grouping-ambiguous input instead of charging 1/1000th', () {
-      // `10,000` typed as ten thousand would otherwise parse as 10.0 and
-      // silently request a quote for ten francs.
-      expect(() => chargedFiatAmount('1,000'), throwsFormatException);
-      expect(() => chargedFiatAmount('10,000'), throwsFormatException);
-      expect(() => chargedFiatAmount('1.000'), throwsFormatException);
+    test('reads a thousands group as thousands, not as a 3-decimal fraction', () {
+      // CHF/EUR have at most two decimal places, so `10,000` / `105.000`
+      // cannot be a Rappen amount — they are ten thousand / one hundred five
+      // thousand. Parsing them as 10.0 would quote 1/1000th of the buy.
+      expect(chargedFiatAmount('1,000'), 1000);
+      expect(chargedFiatAmount('10,000'), 10000);
+      expect(chargedFiatAmount('1.000'), 1000);
+      expect(chargedFiatAmount('90.000'), 90000);
+      expect(chargedFiatAmount('105.000'), 105000);
+      expect(chargedFiatAmount("105'000"), 105000);
     });
   });
 
@@ -48,18 +52,25 @@ void main() {
       expect(tryParseFiatAmount('300,75'), 300.75);
     });
 
-    test('returns null on multi-separator input', () {
+    test('returns null on mixed decimal+grouping input', () {
       expect(tryParseFiatAmount('1.300,75'), isNull);
     });
 
-    test('returns null on grouping-ambiguous input (separator + 3 digits)', () {
-      expect(tryParseFiatAmount('1,000'), isNull);
-      expect(tryParseFiatAmount('1.000'), isNull);
+    test('treats separator + 3 digits as a thousands group', () {
+      expect(tryParseFiatAmount('1,000'), 1000);
+      expect(tryParseFiatAmount('1.000'), 1000);
+      expect(tryParseFiatAmount('105.000'), 105000);
+      expect(tryParseFiatAmount('105,000'), 105000);
+      expect(tryParseFiatAmount("90'000"), 90000);
     });
 
     test('still accepts unambiguous decimals', () {
       expect(tryParseFiatAmount('0,5'), 0.5);
       expect(tryParseFiatAmount('1,50'), 1.5);
+    });
+
+    test('plain six-digit amounts stay themselves', () {
+      expect(tryParseFiatAmount('105000'), 105000);
     });
   });
 }
