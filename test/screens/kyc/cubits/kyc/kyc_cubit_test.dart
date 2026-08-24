@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc_test/bloc_test.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
@@ -24,6 +25,8 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dar
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
+import 'package:realunit_wallet/styles/currency.dart';
 
 class _MockDfxKycService extends Mock implements DfxKycService {}
 
@@ -35,15 +38,19 @@ class _MockAppStore extends Mock implements AppStore {}
 
 class _MockAWallet extends Mock implements AWallet {}
 
+class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState> implements SettingsBloc {}
+
 UserKycDto _kycHeader({KycLevel level = KycLevel.level0}) =>
     UserKycDto(hash: 'h', level: level, dataComplete: false);
 
 UserDto _user({
   String? mail = 'test@example.com',
   KycLevel headerLevel = KycLevel.level0,
+  Currency? currency,
 }) => UserDto(
   mail: mail,
   kyc: _kycHeader(level: headerLevel),
+  currency: currency,
 );
 
 KycStepDto _step(
@@ -153,6 +160,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(<RealUnitLegalAgreement>[]);
+    registerFallbackValue(const ApplyAccountCurrencyEvent(Currency.chf));
   });
 
   setUp(() {
@@ -193,6 +201,52 @@ void main() {
         const KycLoading(),
         const KycSuccess(currentStep: KycStep.email),
       ],
+    );
+
+    blocTest<KycCubit, KycState>(
+      'applies account currency from GET /v2/user when SettingsBloc is registered',
+      setUp: () {
+        GetIt.instance.registerSingleton<SettingsBloc>(_MockSettingsBloc());
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level0),
+        );
+        when(() => kycService.getUser()).thenAnswer(
+          (_) async => _user(mail: null, currency: Currency.chf),
+        );
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        const KycSuccess(currentStep: KycStep.email),
+      ],
+      verify: (_) {
+        verify(
+          () => GetIt.instance<SettingsBloc>().add(const ApplyAccountCurrencyEvent(Currency.chf)),
+        ).called(1);
+      },
+      tearDown: () async => GetIt.instance.reset(),
+    );
+
+    blocTest<KycCubit, KycState>(
+      'does not dispatch ApplyAccountCurrencyEvent when GET /v2/user has no currency',
+      setUp: () {
+        GetIt.instance.registerSingleton<SettingsBloc>(_MockSettingsBloc());
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level0),
+        );
+        when(() => kycService.getUser()).thenAnswer((_) async => _user(mail: null));
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        const KycSuccess(currentStep: KycStep.email),
+      ],
+      verify: (_) {
+        verifyNever(() => GetIt.instance<SettingsBloc>().add(any()));
+      },
+      tearDown: () async => GetIt.instance.reset(),
     );
 
     blocTest<KycCubit, KycState>(
