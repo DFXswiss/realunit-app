@@ -71,10 +71,10 @@ void main() {
     when(() => cubit.confirmPayment(any())).thenAnswer((_) async {});
   });
 
-  Widget host({GoRouter? router}) {
+  Widget host({GoRouter? router, BuyPaymentInfo info = _info}) {
     final view = BlocProvider<BuyConfirmCubit>.value(
       value: cubit,
-      child: const BuyConfirmButtonView(buyPaymentInfo: _info),
+      child: BuyConfirmButtonView(buyPaymentInfo: info),
     );
     if (router != null) {
       return MaterialApp.router(
@@ -111,6 +111,15 @@ void main() {
 
     testWidgets('tapping confirms the payment for the quote id', (tester) async {
       await tester.pumpWidget(host());
+
+      await tester.tap(find.text(S.current.buyPaymentConfirm));
+      await tester.pump();
+
+      verify(() => cubit.confirmPayment(42)).called(1);
+    });
+
+    testWidgets('tapping confirms an EUR quote; the CTA is not disabled', (tester) async {
+      await tester.pumpWidget(host(info: _eurInfo));
 
       await tester.tap(find.text(S.current.buyPaymentConfirm));
       await tester.pump();
