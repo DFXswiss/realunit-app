@@ -206,7 +206,7 @@ class _PaymentConverterState extends State<PaymentConverter> {
         ),
         BlocBuilder<BuyConverterCubit, BuyConverterState>(
           builder: (context, state) {
-            if (state.payableText.isEmpty || state.payableText == state.fiatText) {
+            if (!_showsExactCharge(state)) {
               return const SizedBox.shrink();
             }
             return Padding(
@@ -321,5 +321,19 @@ class _PaymentConverterState extends State<PaymentConverter> {
         ),
       ],
     );
+  }
+
+  // payableText is always two fractional digits; fiatText is raw keystrokes
+  // ('300' vs '300.00'). Compare numerically so an exact match stays hidden.
+  bool _showsExactCharge(BuyConverterState state) {
+    if (state.payableText.isEmpty || state.payableText == state.fiatText) {
+      return false;
+    }
+    final fiat = num.tryParse(state.fiatText.replaceAll(',', '.'));
+    final payable = num.tryParse(state.payableText.replaceAll(',', '.'));
+    if (fiat != null && payable != null) {
+      return fiat != payable;
+    }
+    return true;
   }
 }

@@ -186,6 +186,18 @@ void main() {
       expect(find.byKey(const Key('buy-charged-amount')), findsNothing);
     });
 
+    testWidgets('hides charged amount when payable is the same value with extra fraction digits', (
+      tester,
+    ) async {
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(fiatText: '300', payableText: '300.00'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byKey(const Key('buy-charged-amount')), findsNothing);
+    });
+
     testWidgets('renders correctly when $BuyPaymentInfo is available', (tester) async {
       when(() => buyPaymentInfoCubit.state).thenReturn(
         const BuyPaymentInfoSuccess(
