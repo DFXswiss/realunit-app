@@ -130,6 +130,32 @@ void main() {
 
       expect(tester.widget<TextField>(amountField).controller!.text, '25');
     });
+
+    testWidgets('shows Rappen-exact charge under the amount without writing it into the field', (
+      tester,
+    ) async {
+      final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
+      when(() => brokerbot.getBuyShares(any(), any())).thenAnswer(
+        (_) async => BrokerbotBuySharesDto(
+          shares: 217,
+          pricePerShare: 1.38,
+          availableShares: 50000,
+        ),
+      );
+
+      await tester.pumpApp(const BuyPage());
+      // Past the 100ms conversion debounce of the initial default.
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      final amountField = find.byType(TextField).first;
+      expect(tester.widget<TextField>(amountField).controller!.text, '300');
+      expect(find.byKey(const Key('buy-charged-amount')), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('buy-charged-amount'))).data,
+        contains('299.46'),
+      );
+    });
   });
 
   group('$BuyView', () {
@@ -138,6 +164,26 @@ void main() {
 
       expect(find.byType(PaymentConverter), findsOne);
       expect(find.byType(PaymentInformation), findsOne);
+    });
+
+    testWidgets('hides charged amount when payable is empty', (tester) async {
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(fiatText: '300', payableText: ''),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byKey(const Key('buy-charged-amount')), findsNothing);
+    });
+
+    testWidgets('hides charged amount when payable matches the typed text', (tester) async {
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(fiatText: '125.50', payableText: '125.50'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byKey(const Key('buy-charged-amount')), findsNothing);
     });
 
     testWidgets('renders correctly when $BuyPaymentInfo is available', (tester) async {

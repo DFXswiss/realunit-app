@@ -26,6 +26,7 @@
   "blockchain": "Blockchain",
   "buy": "Kaufen",
   "buyBackToMain": "Zurück zum Hauptbereich",
+  "buyChargedAmount": "Genau belastet: ${amount} ${currency}",
   "buyMinAmount": "Mindestbetrag: ${amount} ${currency}",
   "buyPaymentConfirm": "Jetzt verbindlich kaufen",
   "buyPaymentDetailsTitle": "Zahlungsdetails",

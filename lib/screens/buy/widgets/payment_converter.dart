@@ -204,6 +204,26 @@ class _PaymentConverterState extends State<PaymentConverter> {
             ),
           ),
         ),
+        BlocBuilder<BuyConverterCubit, BuyConverterState>(
+          builder: (context, state) {
+            if (state.payableText.isEmpty || state.payableText == state.fiatText) {
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: const .symmetric(
+                horizontal: 12.0,
+                vertical: 4.0,
+              ),
+              child: Text(
+                S.of(context).buyChargedAmount(state.payableText, state.currency.code),
+                key: const Key('buy-charged-amount'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: RealUnitColors.neutral600,
+                ),
+              ),
+            );
+          },
+        ),
         const SizedBox(height: 32),
         Padding(
           padding: const .symmetric(
