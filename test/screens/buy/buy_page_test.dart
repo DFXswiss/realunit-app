@@ -12,6 +12,7 @@ import 'package:realunit_wallet/packages/repository/supported_fiat_repository.da
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_brokerbot_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_price_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/brokerbot/dfx_buy_shares_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/buy/buy_payment_info.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/payment_info_error.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
@@ -100,6 +101,34 @@ void main() {
       await tester.pumpApp(const BuyPage());
 
       expect(find.byType(BuyView), findsOne);
+    });
+
+    testWidgets('shows the 300 default and keeps the field freely editable — '
+        'the payable never replaces the typed amount', (tester) async {
+      final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
+      when(() => brokerbot.getBuyShares(any(), any())).thenAnswer(
+        (_) async => BrokerbotBuySharesDto(
+          shares: 217,
+          pricePerShare: 1.38,
+          availableShares: 50000,
+        ),
+      );
+
+      await tester.pumpApp(const BuyPage());
+      // Past the 100ms conversion debounce of the initial default.
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      final amountField = find.byType(TextField).first;
+      // The default stays 300 — the Rappen payable (217 × 1.38 = 299.46)
+      // belongs to the quote, not to the input field.
+      expect(tester.widget<TextField>(amountField).controller!.text, '300');
+
+      await tester.enterText(amountField, '25');
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(tester.widget<TextField>(amountField).controller!.text, '25');
     });
   });
 
