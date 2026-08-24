@@ -72,5 +72,11 @@ void main() {
     test('plain six-digit amounts stay themselves', () {
       expect(tryParseFiatAmount('105000'), 105000);
     });
+
+    test('three fractional digits after a leading zero are not a thousands group', () {
+      expect(tryParseFiatAmount('0.105'), isNull);
+      expect(tryParseFiatAmount('0,001'), isNull);
+      expect(tryParseFiatAmount('0.010'), isNull);
+    });
   });
 }

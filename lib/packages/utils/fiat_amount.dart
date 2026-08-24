@@ -9,8 +9,9 @@ double? tryParseFiatAmount(String input) {
   final compact = input.trim().replaceAll("'", '').replaceAll(' ', '');
   if (compact.isEmpty) return null;
 
-  // 105.000 / 1.000.000 / 90,000 — grouping only.
-  if (RegExp(r'^\d{1,3}([.,]\d{3})+$').hasMatch(compact)) {
+  // 105.000 / 1.000.000 / 90,000 — grouping only. The first group must not be
+  // a leading zero (`0.105` is three fractional digits, not one hundred five).
+  if (RegExp(r'^[1-9]\d{0,2}([.,]\d{3})+$').hasMatch(compact)) {
     return double.tryParse(compact.replaceAll(RegExp('[.,]'), ''));
   }
 
