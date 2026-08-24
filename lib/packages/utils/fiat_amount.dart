@@ -26,11 +26,13 @@ double? tryParseFiatAmount(String input) {
   }
 
   // 300,75 / 300.75 / 0,5 — decimal with at most Rappen/cent precision.
-  if (RegExp(r'^\d+[.,]\d{1,2}$').hasMatch(trimmed)) {
+  // Optional leading minus keeps the sell-cubit contract (`-100` is still
+  // parsed; the UI digitsOnly formatter already prevents typing it).
+  if (RegExp(r'^-?\d+[.,]\d{1,2}$').hasMatch(trimmed)) {
     return double.tryParse(trimmed.replaceAll(',', '.'));
   }
 
-  if (RegExp(r'^\d+$').hasMatch(trimmed)) {
+  if (RegExp(r'^-?\d+$').hasMatch(trimmed)) {
     return double.tryParse(trimmed);
   }
 

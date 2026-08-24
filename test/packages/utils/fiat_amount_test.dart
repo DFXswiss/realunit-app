@@ -73,6 +73,13 @@ void main() {
       expect(tryParseFiatAmount('105000'), 105000);
     });
 
+    test('optional leading minus is still parsed (sell cubit contract)', () {
+      expect(tryParseFiatAmount('-100'), -100);
+      expect(tryParseFiatAmount('-1.5'), -1.5);
+      expect(tryParseFiatAmount('-1,50'), -1.5);
+      expect(chargedFiatAmount('-100'), -100);
+    });
+
     test('three fractional digits after a leading zero are not a thousands group', () {
       expect(tryParseFiatAmount('0.105'), isNull);
       expect(tryParseFiatAmount('0,001'), isNull);
