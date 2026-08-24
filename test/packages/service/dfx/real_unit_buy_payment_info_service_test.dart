@@ -35,12 +35,14 @@ Map<String, dynamic> _buyPaymentInfoJson({
   int id = 42,
   bool isValid = true,
   String? error,
+  String iban = 'CH9300762011623852957',
+  String currency = 'CHF',
 }) {
   return {
     'id': id,
     'routeId': 99,
     'timestamp': '2026-05-23T10:00:00Z',
-    'iban': 'CH9300762011623852957',
+    'iban': iban,
     'bic': 'POFICHBEXXX',
     'name': 'DFX AG',
     'street': 'Bahnhofstrasse',
@@ -49,7 +51,7 @@ Map<String, dynamic> _buyPaymentInfoJson({
     'city': 'Zug',
     'country': 'CH',
     'amount': 500.0,
-    'currency': 'CHF',
+    'currency': currency,
     'fees': {
       'rate': 0.01,
       'fixed': 0.5,
@@ -104,7 +106,16 @@ void main() {
           capturedPath = request.url.path;
           capturedHeaders = request.headers;
           capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
-          return http.Response(jsonEncode(_buyPaymentInfoJson()), 200);
+          // EUR quote must return the EUR settlement IBAN + currency — not a CHF leftover.
+          return http.Response(
+            jsonEncode(
+              _buyPaymentInfoJson(
+                iban: 'CH9708307000560946317',
+                currency: 'EUR',
+              ),
+            ),
+            200,
+          );
         });
 
         final service = RealUnitBuyPaymentInfoService(appStore, walletService);
@@ -121,7 +132,7 @@ void main() {
         // pin the fields the UI / cubits actually consume so a wire-shape
         // drift breaks the test instead of leaking into the buy flow.
         expect(info.id, 42);
-        expect(info.iban, 'CH9300762011623852957');
+        expect(info.iban, 'CH9708307000560946317');
         expect(info.bic, 'POFICHBEXXX');
         expect(info.name, 'DFX AG');
         expect(info.street, 'Bahnhofstrasse');
@@ -129,7 +140,7 @@ void main() {
         expect(info.zip, '6300');
         expect(info.city, 'Zug');
         expect(info.country, 'CH');
-        expect(info.currency, Currency.chf);
+        expect(info.currency, Currency.eur);
         expect(info.paymentRequest, 'bcr:?query');
         expect(info.remittanceInfo, 'REALU-42');
         expect(info.isValid, isTrue);
@@ -138,17 +149,27 @@ void main() {
         expect(info.error, isNull);
       });
 
-      test('defaults the currency to CHF when the caller omits it', () async {
+      test('defaults the currency to CHF and maps the CHF settlement IBAN', () async {
         Map<String, dynamic>? capturedBody;
         final appStore = buildAppStore((request) async {
           capturedBody = jsonDecode(request.body) as Map<String, dynamic>;
-          return http.Response(jsonEncode(_buyPaymentInfoJson()), 200);
+          return http.Response(
+            jsonEncode(
+              _buyPaymentInfoJson(
+                iban: 'CH2208307000560946309',
+                currency: 'CHF',
+              ),
+            ),
+            200,
+          );
         });
 
         final service = RealUnitBuyPaymentInfoService(appStore, walletService);
-        await service.getPaymentInfo(1000);
+        final info = await service.getPaymentInfo(1000);
 
         expect(capturedBody!['currency'], 'CHF');
+        expect(info.iban, 'CH2208307000560946309');
+        expect(info.currency, Currency.chf);
       });
 
       test('propagates the `error` + invalid flag from the API response', () async {
