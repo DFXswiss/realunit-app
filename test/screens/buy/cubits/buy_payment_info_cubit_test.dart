@@ -81,7 +81,9 @@ void main() {
       expect(cubit.state, isA<BuyPaymentInfoInitial>());
 
       held.complete(_info());
-      await pending;
+      // clear() cancels the in-flight operation; awaiting `.value` hung.
+      // valueOrCancellation() must complete so this timeout is not hit.
+      await pending.timeout(const Duration(seconds: 1));
       expect(cubit.state, isA<BuyPaymentInfoInitial>());
     });
 

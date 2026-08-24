@@ -15,6 +15,7 @@ import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_reg
 import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/di.dart';
 
@@ -80,6 +81,11 @@ class KycCubit extends Cubit<KycState> {
     final currency = user.currency;
     if (currency == null) return;
     if (!getIt.isRegistered<SettingsBloc>()) return;
+    // WalletApp fences GET /v2/user by open/close generation. This cubit is
+    // page-scoped and can still finish after delete; skip unless a wallet is
+    // open so ClearAccountCurrencyEvent is not overwritten.
+    if (!getIt.isRegistered<HomeBloc>()) return;
+    if (getIt<HomeBloc>().state.openWallet == null) return;
     getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));
   }
 

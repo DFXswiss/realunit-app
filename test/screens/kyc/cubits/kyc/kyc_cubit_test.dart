@@ -24,6 +24,7 @@ import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_reg
 import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/styles/currency.dart';
@@ -39,6 +40,8 @@ class _MockAppStore extends Mock implements AppStore {}
 class _MockAWallet extends Mock implements AWallet {}
 
 class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState> implements SettingsBloc {}
+
+class _MockHomeBloc extends MockBloc<HomeEvent, HomeState> implements HomeBloc {}
 
 UserKycDto _kycHeader({KycLevel level = KycLevel.level0}) =>
     UserKycDto(hash: 'h', level: level, dataComplete: false);
@@ -204,9 +207,12 @@ void main() {
     );
 
     blocTest<KycCubit, KycState>(
-      'applies account currency from GET /v2/user when SettingsBloc is registered',
+      'applies account currency from GET /v2/user when a wallet is open',
       setUp: () {
         GetIt.instance.registerSingleton<SettingsBloc>(_MockSettingsBloc());
+        final home = _MockHomeBloc();
+        when(() => home.state).thenReturn(HomeState(openWallet: wallet));
+        GetIt.instance.registerSingleton<HomeBloc>(home);
         when(() => kycService.getKycStatus()).thenAnswer(
           (_) async => _kycStatus(level: KycLevel.level0),
         );
@@ -236,6 +242,55 @@ void main() {
           (_) async => _kycStatus(level: KycLevel.level0),
         );
         when(() => kycService.getUser()).thenAnswer((_) async => _user(mail: null));
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        const KycSuccess(currentStep: KycStep.email),
+      ],
+      verify: (_) {
+        verifyNever(() => GetIt.instance<SettingsBloc>().add(any()));
+      },
+      tearDown: () async => GetIt.instance.reset(),
+    );
+
+    blocTest<KycCubit, KycState>(
+      'does not dispatch ApplyAccountCurrencyEvent when the wallet is closed',
+      setUp: () {
+        GetIt.instance.registerSingleton<SettingsBloc>(_MockSettingsBloc());
+        final home = _MockHomeBloc();
+        when(() => home.state).thenReturn(const HomeState());
+        GetIt.instance.registerSingleton<HomeBloc>(home);
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level0),
+        );
+        when(() => kycService.getUser()).thenAnswer(
+          (_) async => _user(mail: null, currency: Currency.chf),
+        );
+      },
+      build: buildCubit,
+      act: (cubit) => cubit.checkKyc(),
+      expect: () => [
+        const KycLoading(),
+        const KycSuccess(currentStep: KycStep.email),
+      ],
+      verify: (_) {
+        verifyNever(() => GetIt.instance<SettingsBloc>().add(any()));
+      },
+      tearDown: () async => GetIt.instance.reset(),
+    );
+
+    blocTest<KycCubit, KycState>(
+      'does not dispatch ApplyAccountCurrencyEvent when HomeBloc is unregistered',
+      setUp: () {
+        GetIt.instance.registerSingleton<SettingsBloc>(_MockSettingsBloc());
+        when(() => kycService.getKycStatus()).thenAnswer(
+          (_) async => _kycStatus(level: KycLevel.level0),
+        );
+        when(() => kycService.getUser()).thenAnswer(
+          (_) async => _user(mail: null, currency: Currency.chf),
+        );
       },
       build: buildCubit,
       act: (cubit) => cubit.checkKyc(),

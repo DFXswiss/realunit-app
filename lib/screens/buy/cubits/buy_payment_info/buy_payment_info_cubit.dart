@@ -62,12 +62,16 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       emit(const BuyPaymentInfoLoading());
     }
 
-    _completer = CancelableOperation.fromFuture(
+    final operation = CancelableOperation.fromFuture(
       _runGetPaymentInfo(amount, currency),
     );
+    _completer = operation;
 
-    final newState = await _completer!.value;
-    if (isClosed || mySeq != _seq) return;
+    // `.value` never completes after cancel(); `.valueOrCancellation()`
+    // completes with null so a later getPaymentInfo is not stuck on the
+    // cancelled Future.
+    final newState = await operation.valueOrCancellation();
+    if (isClosed || mySeq != _seq || newState == null) return;
     emit(newState);
   }
 
