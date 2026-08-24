@@ -231,7 +231,7 @@ void main() {
         when(() => paymentInfoCubit.state).thenReturn(
           const BuyPaymentInfoMaxAmountExceededFailure(
             PaymentInfoError.maxAmountExceeded,
-            maxAmount: 90000,
+            maxAmount: 90000.6,
           ),
         );
         when(() => converterCubit.state).thenReturn(

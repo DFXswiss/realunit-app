@@ -352,7 +352,8 @@ void main() {
       // Non-integer max: the API returns the remaining cap in the input
       // currency. Display rounds DOWN to the largest whole amount that still
       // satisfies the server-side maximum (symmetric to min's ceil).
-      final maxAmount = 90000.4;
+      // 90000.6 distinguishes floor (90000) from round/ceil (90001).
+      final maxAmount = 90000.6;
       final currency = Currency.eur;
 
       when(() => buyPaymentInfoCubit.state).thenReturn(
