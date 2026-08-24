@@ -347,6 +347,35 @@ void main() {
       },
     );
 
+    testWidgets('hides confirm when the quote currency does not match the converter', (
+      tester,
+    ) async {
+      const eurQuote = BuyPaymentInfo(
+        amount: 300,
+        id: 1,
+        iban: 'CH9708307000560946317',
+        bic: 'bic',
+        name: 'name',
+        street: 'street',
+        number: 'number',
+        zip: 'zip',
+        city: 'city',
+        country: 'country',
+        currency: Currency.eur,
+      );
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        const BuyPaymentInfoSuccess(eurQuote),
+      );
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(currency: Currency.chf, fiatText: '300'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byType(BuyConfirmButton), findsNothing);
+      expect(find.text(S.current.buyPaymentConfirm), findsNothing);
+    });
+
     testWidgets('renders correctly when $BuyPaymentInfo is loading', (tester) async {
       when(() => buyPaymentInfoCubit.state).thenReturn(const BuyPaymentInfoLoading());
 
