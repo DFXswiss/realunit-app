@@ -14,7 +14,7 @@ import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class BuyPage extends StatelessWidget {
-  const BuyPage({super.key, this.currency = Currency.chf});
+  const BuyPage({super.key, required this.currency});
 
   final Currency currency;
 

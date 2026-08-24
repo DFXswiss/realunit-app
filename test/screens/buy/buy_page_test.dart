@@ -113,7 +113,7 @@ void main() {
 
   group('$BuyPage', () {
     testWidgets('renders $BuyView', (tester) async {
-      await tester.pumpApp(wrapBuyPage(const BuyPage()));
+      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.chf)));
 
       expect(find.byType(BuyView), findsOne);
     });
@@ -153,7 +153,7 @@ void main() {
         ),
       );
 
-      await tester.pumpApp(wrapBuyPage(const BuyPage()));
+      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.chf)));
       // Past the 100ms conversion debounce of the initial default.
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump();
@@ -182,7 +182,7 @@ void main() {
         ),
       );
 
-      await tester.pumpApp(wrapBuyPage(const BuyPage()));
+      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.chf)));
       // Past the 100ms conversion debounce of the initial default.
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump();
