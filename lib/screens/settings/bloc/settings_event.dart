@@ -36,6 +36,11 @@ final class ApplyAccountCurrencyEvent extends SettingsEvent {
   List<Object> get props => [currency];
 }
 
+/// Drops a non-persisted account default (wallet closed or switched).
+final class ClearAccountCurrencyEvent extends SettingsEvent {
+  const ClearAccountCurrencyEvent();
+}
+
 final class SetNetworkModeEvent extends SettingsEvent {
   final NetworkMode networkMode;
 

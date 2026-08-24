@@ -63,6 +63,8 @@ class WalletApp extends StatefulWidget {
 }
 
 class _WalletAppState extends State<WalletApp> {
+  int _accountCurrencyGeneration = 0;
+
   @override
   void initState() {
     super.initState();
@@ -95,7 +97,16 @@ class _WalletAppState extends State<WalletApp> {
               listenWhen: (previous, current) =>
                   previous.openWallet == null && current.openWallet != null,
               listener: (context, homeState) {
-                unawaited(_applyAccountCurrency());
+                final generation = ++_accountCurrencyGeneration;
+                unawaited(_applyAccountCurrency(generation));
+              },
+            ),
+            BlocListener<HomeBloc, HomeState>(
+              listenWhen: (previous, current) =>
+                  previous.openWallet != null && current.openWallet == null,
+              listener: (context, homeState) {
+                _accountCurrencyGeneration++;
+                getIt<SettingsBloc>().add(const ClearAccountCurrencyEvent());
               },
             ),
             BlocListener<HomeBloc, HomeState>(
@@ -120,9 +131,10 @@ class _WalletAppState extends State<WalletApp> {
     ),
   );
 
-  Future<void> _applyAccountCurrency() async {
+  Future<void> _applyAccountCurrency(int generation) async {
     try {
       final user = await getIt<DfxKycService>().getUser();
+      if (generation != _accountCurrencyGeneration) return;
       final currency = user.currency;
       if (currency == null) return;
       getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));

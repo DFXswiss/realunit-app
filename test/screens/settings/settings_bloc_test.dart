@@ -25,11 +25,11 @@ void main() {
   });
 
   SettingsBloc build() => SettingsBloc(
-        repo,
-        () async {
-          authRefreshCount++;
-        },
-      );
+    repo,
+    () async {
+      authRefreshCount++;
+    },
+  );
 
   group('$SettingsBloc', () {
     test('initial state reads from the repository', () {
@@ -84,6 +84,28 @@ void main() {
       build: build,
       setUp: () => when(() => repo.hasStoredCurrency).thenReturn(true),
       act: (bloc) => bloc.add(const ApplyAccountCurrencyEvent(Currency.chf)),
+      expect: () => <SettingsState>[],
+    );
+
+    blocTest<SettingsBloc, SettingsState>(
+      'ClearAccountCurrencyEvent restores the unset default when nothing is stored',
+      build: build,
+      seed: () => const SettingsState(currency: Currency.chf),
+      act: (bloc) => bloc.add(const ClearAccountCurrencyEvent()),
+      expect: () => [
+        isA<SettingsState>().having((s) => s.currency, 'currency', Currency.eur),
+      ],
+      verify: (bloc) {
+        verifyNever(() => repo.currency = any());
+      },
+    );
+
+    blocTest<SettingsBloc, SettingsState>(
+      'ClearAccountCurrencyEvent is ignored when the user already stored a currency',
+      build: build,
+      setUp: () => when(() => repo.hasStoredCurrency).thenReturn(true),
+      seed: () => const SettingsState(currency: Currency.chf),
+      act: (bloc) => bloc.add(const ClearAccountCurrencyEvent()),
       expect: () => <SettingsState>[],
     );
 
