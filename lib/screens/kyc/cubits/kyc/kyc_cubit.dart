@@ -52,6 +52,11 @@ class KycCubit extends Cubit<KycState> {
   // current one. Acts as a cancellation token for non-cancellable work.
   int _runGeneration = 0;
 
+  /// Wallet that was open when the current `checkKyc()` started. A late
+  /// GET /v2/user must not apply after delete or after a different wallet
+  /// is loaded (`LoadWalletEvent` can go A→B without a null gap).
+  AWallet? _walletAtCheckStart;
+
   KycCubit(
     DfxKycService kycService,
     RealUnitRegistrationService registrationService,
@@ -65,6 +70,9 @@ class KycCubit extends Cubit<KycState> {
 
   Future<void> checkKyc({String? context}) async {
     _kycContext = context ?? _kycContext;
+    _walletAtCheckStart = getIt.isRegistered<HomeBloc>()
+        ? getIt<HomeBloc>().state.openWallet
+        : null;
     final generation = ++_runGeneration;
     try {
       await _runCheckKyc(generation).timeout(_checkKycTimeout);
@@ -82,10 +90,11 @@ class KycCubit extends Cubit<KycState> {
     if (currency == null) return;
     if (!getIt.isRegistered<SettingsBloc>()) return;
     // WalletApp fences GET /v2/user by open/close generation. This cubit is
-    // page-scoped and can still finish after delete; skip unless a wallet is
-    // open so ClearAccountCurrencyEvent is not overwritten.
+    // page-scoped and can still finish after delete or a wallet switch;
+    // skip unless the same wallet instance is still open.
     if (!getIt.isRegistered<HomeBloc>()) return;
-    if (getIt<HomeBloc>().state.openWallet == null) return;
+    final open = getIt<HomeBloc>().state.openWallet;
+    if (open == null || !identical(open, _walletAtCheckStart)) return;
     getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));
   }
 

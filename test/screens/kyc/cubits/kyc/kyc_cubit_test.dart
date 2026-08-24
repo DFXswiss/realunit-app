@@ -281,6 +281,30 @@ void main() {
       tearDown: () async => GetIt.instance.reset(),
     );
 
+    test('does not dispatch ApplyAccountCurrencyEvent after a different wallet opens', () async {
+      GetIt.instance.registerSingleton<SettingsBloc>(_MockSettingsBloc());
+      final home = _MockHomeBloc();
+      when(() => home.state).thenReturn(HomeState(openWallet: wallet));
+      GetIt.instance.registerSingleton<HomeBloc>(home);
+      when(() => kycService.getKycStatus()).thenAnswer(
+        (_) async => _kycStatus(level: KycLevel.level0),
+      );
+      final held = Completer<UserDto>();
+      when(() => kycService.getUser()).thenAnswer((_) => held.future);
+
+      final cubit = buildCubit();
+      final pending = cubit.checkKyc();
+
+      final other = _MockAWallet();
+      when(() => home.state).thenReturn(HomeState(openWallet: other));
+      held.complete(_user(mail: null, currency: Currency.chf));
+      await pending;
+
+      verifyNever(() => GetIt.instance<SettingsBloc>().add(any()));
+      await cubit.close();
+      await GetIt.instance.reset();
+    });
+
     blocTest<KycCubit, KycState>(
       'does not dispatch ApplyAccountCurrencyEvent when HomeBloc is unregistered',
       setUp: () {
