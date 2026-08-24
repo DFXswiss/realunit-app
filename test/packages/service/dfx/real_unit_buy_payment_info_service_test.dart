@@ -251,6 +251,45 @@ void main() {
           ),
         );
       });
+
+      test('throws ApiException with empty message on plain-text 502', () async {
+        final appStore = buildAppStore(
+          (_) async => http.Response('error code: 502', 502),
+        );
+
+        final service = RealUnitBuyPaymentInfoService(appStore, walletService);
+
+        await expectLater(
+          service.getPaymentInfo(500),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', 502)
+                .having((e) => e.message, 'message', '')
+                .having((e) => e.code, 'code', 'UNKNOWN'),
+          ),
+        );
+      });
+
+      test('throws ApiException from JSON 502 body', () async {
+        final appStore = buildAppStore(
+          (_) async => http.Response(
+            jsonEncode({'statusCode': 502, 'code': 'X', 'message': 'upstream'}),
+            502,
+          ),
+        );
+
+        final service = RealUnitBuyPaymentInfoService(appStore, walletService);
+
+        await expectLater(
+          service.getPaymentInfo(500),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', 502)
+                .having((e) => e.code, 'code', 'X')
+                .having((e) => e.message, 'message', 'upstream'),
+          ),
+        );
+      });
     });
 
     group('confirmPayment', () {
@@ -315,6 +354,23 @@ void main() {
           () => service.confirmPayment(999),
           throwsA(
             isA<ApiException>().having((e) => e.statusCode, 'statusCode', 503),
+          ),
+        );
+      });
+
+      test('throws ApiException with empty message on plain-text 502', () async {
+        final appStore = buildAppStore(
+          (_) async => http.Response('error code: 502', 502),
+        );
+
+        final service = RealUnitBuyPaymentInfoService(appStore, walletService);
+
+        expect(
+          () => service.confirmPayment(999),
+          throwsA(
+            isA<ApiException>()
+                .having((e) => e.statusCode, 'statusCode', 502)
+                .having((e) => e.message, 'message', ''),
           ),
         );
       });

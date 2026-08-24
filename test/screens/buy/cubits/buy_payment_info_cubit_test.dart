@@ -285,6 +285,26 @@ void main() {
 
       final f = cubit.state as BuyPaymentInfoFailure;
       expect(f.error, PaymentInfoError.unknown);
+      expect(f.message, '');
+    });
+
+    test('FormatException from service → Failure(unknown) with empty message', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+        (_) async => throw const FormatException(
+          'Unexpected character (at character 1)',
+          'error code: 502',
+        ),
+      );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+
+      final f = cubit.state as BuyPaymentInfoFailure;
+      expect(f.error, PaymentInfoError.unknown);
+      expect(f.message, '');
+      expect(f.message, isNot(contains('FormatException')));
+      expect(f.message, isNot(contains('error code: 502')));
     });
 
     test('BitboxNotConnectedException → Failure(bitboxDisconnected)', () async {
@@ -316,6 +336,42 @@ void main() {
         (cubit.state as BuyPaymentInfoFailure).message,
         'RealUnit price source (Aktionariat) is currently unavailable',
       );
+    });
+
+    test('ApiException 502 with empty message → Failure(priceSourceUnavailable)', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 502,
+          code: 'UNKNOWN',
+          message: '',
+        ),
+      );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+
+      final f = cubit.state as BuyPaymentInfoFailure;
+      expect(f.error, PaymentInfoError.priceSourceUnavailable);
+      expect(f.message, '');
+    });
+
+    test('ApiException 502 with message → Failure(priceSourceUnavailable)', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+        (_) async => throw const ApiException(
+          statusCode: 502,
+          code: 'UNKNOWN',
+          message: 'upstream down',
+        ),
+      );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300');
+
+      final f = cubit.state as BuyPaymentInfoFailure;
+      expect(f.error, PaymentInfoError.priceSourceUnavailable);
+      expect(f.message, 'upstream down');
     });
 
     test('ApiException with code PRICE_SOURCE_UNAVAILABLE (non-503) → priceSourceUnavailable', () async {

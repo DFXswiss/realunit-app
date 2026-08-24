@@ -342,5 +342,26 @@ void main() {
         return wrapForGolden(buildSubject());
       },
     );
+
+    goldenTest(
+      'price source unavailable with empty message shows retry only',
+      fileName: 'buy_price_source_unavailable_empty',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoFailure(
+            PaymentInfoError.priceSourceUnavailable,
+          ),
+        );
+        when(() => converterCubit.state).thenReturn(
+          const BuyConverterState(
+            fiatText: '',
+            sharesText: '217',
+            currency: Currency.chf,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
   });
 }
