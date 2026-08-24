@@ -19,6 +19,7 @@ class KycRegistrationPersonalStep extends StatelessWidget {
   final ValueNotifier<String?> birthdayCtrl;
   final ValueNotifier<String?> phoneCtrl;
   final ValueNotifier<Country?> nationalityCtrl;
+  final TextEditingController? referralCodeCtrl;
   final Country? initialNationality;
 
   KycRegistrationPersonalStep({
@@ -29,6 +30,7 @@ class KycRegistrationPersonalStep extends StatelessWidget {
     required this.phoneCtrl,
     required this.nationalityCtrl,
     required this.birthdayCtrl,
+    this.referralCodeCtrl,
     this.initialNationality,
   });
 
@@ -105,6 +107,13 @@ class KycRegistrationPersonalStep extends StatelessWidget {
                   initialValue: initialNationality,
                   onChanged: (country) => nationalityCtrl.value = country,
                 ),
+                if (referralCodeCtrl != null)
+                  LabeledTextField(
+                    label: S.of(context).referralCodeOptional,
+                    hintText: S.of(context).referralCodeHint,
+                    controller: referralCodeCtrl!,
+                    textCapitalization: TextCapitalization.characters,
+                  ),
                 Padding(
                   padding: const .symmetric(vertical: 16.0),
                   child: AppFilledButton(

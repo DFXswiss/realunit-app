@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
+import 'package:realunit_wallet/setup/routing/referral_bind.dart';
+import 'package:realunit_wallet/setup/routing/referral_pending_code.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 
 /// Custom URL scheme the app is opened with. Registered in
@@ -53,9 +55,57 @@ String? extractPaymentDeeplinkPayload(String rawUri) {
 
   final isLightning = remainder.startsWith('lightning:');
   final isBareLnurl = remainder.toUpperCase().startsWith('LNURL');
-  final isHttpLnurlp = remainder.startsWith('http://') || remainder.startsWith('https://');
+  final isHttpLnurlp =
+      remainder.startsWith('http://') || remainder.startsWith('https://');
   if (!isLightning && !isBareLnurl && !isHttpLnurlp) return null;
   return remainder;
+}
+
+/// Extracts a referral/promo invite code from a custom-scheme or https App Link.
+///
+/// Matches:
+/// - `realunit-wallet://invite/{code}`
+/// - `realunit-wallet:invite/{code}`
+/// - `https://realunit.app/invite/{code}` (Android App Links / iOS Universal Links)
+///
+/// Returns the last path segment (trimmed, max 256) or null when not an invite link.
+String? extractReferralInviteCode(Uri uri) {
+  if ((uri.scheme == 'https' || uri.scheme == 'http') &&
+      uri.host == 'realunit.app') {
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.length >= 2 && segments.first == 'invite') {
+      return _capReferralCode(segments[1]);
+    }
+    return null;
+  }
+
+  if (uri.scheme != appLinkScheme) return null;
+
+  // Prefer structured Uri parts when hierarchical (`://invite/{code}`).
+  if (uri.host == 'invite') {
+    final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    if (segments.isNotEmpty) return _capReferralCode(segments.first);
+  }
+
+  // Fall back to raw-string parsing for opaque `realunit-wallet:invite/{code}`
+  // and any path-form the Uri parser did not split into host/path.
+  final raw = uri.toString();
+  const prefix = '$appLinkScheme:';
+  if (!raw.startsWith(prefix)) return null;
+  var remainder = raw.substring(prefix.length);
+  if (remainder.startsWith('//')) remainder = remainder.substring(2);
+  final withoutQuery = remainder.split('?').first;
+  final segments = withoutQuery.split('/').where((s) => s.isNotEmpty).toList();
+  if (segments.length >= 2 && segments.first == 'invite') {
+    return _capReferralCode(segments[1]);
+  }
+  return null;
+}
+
+String? _capReferralCode(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return null;
+  return trimmed.length > 256 ? trimmed.substring(0, 256) : trimmed;
 }
 
 /// Top-level go_router redirect for custom-scheme opens.
@@ -140,15 +190,46 @@ String? extractPaymentDeeplinkPayload(String rawUri) {
 // only be exercised on a real device, and no integration_test/ harness exists
 // in this repo yet. The redirect is covered by widget tests in
 // app_link_entry_test.dart.
-String? appLinkSchemeRedirect(GoRouterState state, String currentLocation, GoRouter router) {
+String? appLinkSchemeRedirect(
+  GoRouterState state,
+  String currentLocation,
+  GoRouter router,
+) {
+  // https App Links for /invite/{code} (Android) — go_router may receive them
+  // as hierarchical https URIs rather than the custom scheme.
+  if (state.uri.scheme == 'https' || state.uri.scheme == 'http') {
+    final httpsCode = extractReferralInviteCode(state.uri);
+    if (httpsCode != null) {
+      final current = Uri.parse(currentLocation);
+      final isInAppRoute =
+          current.scheme.isEmpty && current.path.startsWith('/');
+      return _handleReferralInviteRedirect(
+        code: httpsCode,
+        isInAppRoute: isInAppRoute,
+        router: router,
+      );
+    }
+    return null;
+  }
+
   if (state.uri.scheme != appLinkScheme) return null;
   final current = Uri.parse(currentLocation);
   final isInAppRoute = current.scheme.isEmpty && current.path.startsWith('/');
 
+  final inviteCode = extractReferralInviteCode(state.uri);
+  if (inviteCode != null) {
+    return _handleReferralInviteRedirect(
+      code: inviteCode,
+      isInAppRoute: isInAppRoute,
+      router: router,
+    );
+  }
+
   final paymentPayload = extractPaymentDeeplinkPayload(state.uri.toString());
   if (paymentPayload != null) {
     if (isInAppRoute) {
-      if (getIt<PinAuthCubit>().state.isPinVerified && getIt<PinAuthCubit>().state.isPinSetup) {
+      if (getIt<PinAuthCubit>().state.isPinVerified &&
+          getIt<PinAuthCubit>().state.isPinSetup) {
         // Warm resume, unlocked (including a step-up gate like /pinGate reached
         // from an already-unlocked seed-view / change-PIN flow): defer the push
         // to addPostFrameCallback (calling into the router synchronously from
@@ -198,6 +279,27 @@ String? appLinkSchemeRedirect(GoRouterState state, String currentLocation, GoRou
   return hasPath ? appLinkUrl : null;
 }
 
+/// Shared cold/warm handling for invite codes — same security properties as
+/// the payment carve-out (never `go` over KYC `extra` / back stack; defer bind).
+String? _handleReferralInviteRedirect({
+  required String code,
+  required bool isInAppRoute,
+  required GoRouter router,
+}) {
+  if (isInAppRoute) {
+    if (getIt<PinAuthCubit>().state.isPinVerified &&
+        getIt<PinAuthCubit>().state.isPinSetup) {
+      unawaited(stashPendingReferralCode(code));
+      scheduleReferralBind(router, code);
+      return null;
+    }
+    unawaited(stashPendingReferralCode(code));
+    return null;
+  }
+  unawaited(stashPendingReferralCode(code));
+  return appLinkColdStartLocation;
+}
+
 /// go_router exception handler paired with [appLinkSchemeRedirect].
 ///
 /// With an `onException` handler installed, go_router keeps the current route
@@ -213,7 +315,11 @@ String? appLinkSchemeRedirect(GoRouterState state, String currentLocation, GoRou
 // only be exercised on a real device, and no integration_test/ harness exists
 // in this repo yet. The handler is covered by widget tests in
 // app_link_entry_test.dart.
-void appLinkOnException(BuildContext context, GoRouterState state, GoRouter router) {
+void appLinkOnException(
+  BuildContext context,
+  GoRouterState state,
+  GoRouter router,
+) {
   if (state.uri.scheme == appLinkScheme) return;
   // A non-scheme URL that matches no route is a programming error. Installing
   // onException removes go_router's default error screen, so fail loud where

@@ -1,7 +1,16 @@
 import 'package:realunit_wallet/models/asset.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 
-enum TransactionTypes { transfer, genericContractCall, tokenTransfer, savingsAdd, savingsRemove }
+enum TransactionTypes {
+  transfer,
+  genericContractCall,
+  tokenTransfer,
+  savingsAdd,
+  savingsRemove,
+  /// Referral/promo payout credited via the API. [Transaction.data] holds the
+  /// CHF value frozen at credit (decimal string); never recompute from price.
+  referralPayout,
+}
 
 /// Transaction with on-chain metadata
 class Transaction {
