@@ -150,12 +150,29 @@ void main() {
             ),
           ),
         );
-        when(() => converterCubit.state).thenReturn(
-          const BuyConverterState(
+        // BuyView copies fiat/shares into the TextFields only when loading
+        // flips to false. Drive that transition so the golden shows 300.
+        whenListen(
+          converterCubit,
+          Stream.fromIterable([
+            const BuyConverterState(
+              fiatText: '300',
+              payableText: '',
+              sharesText: '217',
+              loading: true,
+            ),
+            const BuyConverterState(
+              fiatText: '300',
+              payableText: '299.46',
+              sharesText: '217',
+              loading: false,
+            ),
+          ]),
+          initialState: const BuyConverterState(
             fiatText: '300',
-            payableText: '299.46',
+            payableText: '',
             sharesText: '217',
-            currency: Currency.chf,
+            loading: true,
           ),
         );
         return wrapForGolden(buildSubject());
