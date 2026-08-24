@@ -215,7 +215,7 @@ class _PaymentConverterState extends State<PaymentConverter> {
                 vertical: 4.0,
               ),
               child: Text(
-                S.of(context).buyChargedAmount(state.payableText, state.currency.code),
+                '${S.of(context).buyChargedAmount}: ${state.payableText} ${state.currency.code}',
                 key: const Key('buy-charged-amount'),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: RealUnitColors.neutral600,
