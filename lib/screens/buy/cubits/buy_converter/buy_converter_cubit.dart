@@ -11,7 +11,7 @@ part 'buy_converter_state.dart';
 class BuyConverterCubit extends Cubit<BuyConverterState> {
   final DfxBrokerbotService _brokerbotService;
 
-  BuyConverterCubit(this._brokerbotService, {Currency currency = Currency.chf})
+  BuyConverterCubit(this._brokerbotService, {Currency currency = Currency.eur})
     : super(BuyConverterState(currency: currency));
 
   Timer? _fiatDebounce;

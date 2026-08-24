@@ -22,19 +22,19 @@ void main() {
   });
 
   group('$BuyConverterCubit', () {
-    test('initial state is empty with CHF', () {
+    test('initial state is empty with EUR', () {
       final cubit = BuyConverterCubit(service);
 
       expect(cubit.state.fiatText, '');
       expect(cubit.state.sharesText, '');
-      expect(cubit.state.currency, Currency.chf);
+      expect(cubit.state.currency, Currency.eur);
       expect(cubit.state.loading, isFalse);
     });
 
     test('honours an explicit initial currency', () {
-      final cubit = BuyConverterCubit(service, currency: Currency.eur);
+      final cubit = BuyConverterCubit(service, currency: Currency.chf);
 
-      expect(cubit.state.currency, Currency.eur);
+      expect(cubit.state.currency, Currency.chf);
     });
 
     test('onFiatChanged debounces, then writes the converted shares', () async {
@@ -58,7 +58,7 @@ void main() {
       expect(cubit.state.quoteAmountText, '87.50');
       expect(cubit.state.sharesText, '7');
       expect(cubit.state.loading, isFalse);
-      verify(() => service.getBuyShares('100', Currency.chf)).called(1);
+      verify(() => service.getBuyShares('100', Currency.eur)).called(1);
     });
 
     test('onFiatChanged exposes shares × list in Rappen as payable (10000 → 7299 × 1.37 = 9999.63) '
@@ -214,7 +214,7 @@ void main() {
           ),
         );
 
-        final cubit = BuyConverterCubit(service);
+        final cubit = BuyConverterCubit(service, currency: Currency.chf);
         await cubit.onFiatChanged('300');
         await Future<void>.delayed(const Duration(milliseconds: 250));
         await cubit.onCurrencyChanged(Currency.eur);
@@ -236,7 +236,7 @@ void main() {
         () => service.getBuyShares(any(), any()),
       ).thenAnswer((_) async => throw Exception('throttle'));
 
-      final cubit = BuyConverterCubit(service);
+      final cubit = BuyConverterCubit(service, currency: Currency.chf);
       await cubit.onCurrencyChanged(Currency.eur);
 
       expect(cubit.state.currency, Currency.eur);
