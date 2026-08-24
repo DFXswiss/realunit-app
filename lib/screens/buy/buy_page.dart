@@ -10,16 +10,14 @@ import 'package:realunit_wallet/screens/buy/widgets/payment_converter.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_information.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/di.dart';
-import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class BuyPage extends StatelessWidget {
-  const BuyPage({super.key, required this.currency});
-
-  final Currency currency;
+  const BuyPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final currency = context.read<SettingsBloc>().state.currency;
     return MultiBlocProvider(
       providers: [
         BlocProvider(

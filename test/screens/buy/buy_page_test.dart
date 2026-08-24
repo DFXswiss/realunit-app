@@ -113,12 +113,12 @@ void main() {
 
   group('$BuyPage', () {
     testWidgets('renders $BuyView', (tester) async {
-      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.chf)));
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
 
       expect(find.byType(BuyView), findsOne);
     });
 
-    testWidgets('opens the converter in the given currency', (tester) async {
+    testWidgets('opens the converter in the settings currency', (tester) async {
       final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
       when(() => brokerbot.getBuyShares(any(), any())).thenAnswer(
         (_) async => BrokerbotBuySharesDto(
@@ -127,8 +127,11 @@ void main() {
           availableShares: 50000,
         ),
       );
+      const eur = SettingsState(currency: Currency.eur);
+      when(() => settingsBloc.state).thenReturn(eur);
+      whenListen(settingsBloc, Stream<SettingsState>.empty(), initialState: eur);
 
-      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.eur)));
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump();
 
@@ -153,7 +156,7 @@ void main() {
         ),
       );
 
-      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.chf)));
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
       // Past the 100ms conversion debounce of the initial default.
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump();
@@ -182,7 +185,7 @@ void main() {
         ),
       );
 
-      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.chf)));
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
       // Past the 100ms conversion debounce of the initial default.
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump();
@@ -212,7 +215,7 @@ void main() {
       when(() => settingsBloc.state).thenReturn(initial);
       whenListen(settingsBloc, settings.stream, initialState: initial);
 
-      await tester.pumpApp(wrapBuyPage(const BuyPage(currency: Currency.eur)));
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump();
 
