@@ -69,6 +69,22 @@ void main() {
       expect(cubit.state, isA<BuyPaymentInfoInitial>());
     });
 
+    test('a quote that completes after clear does not replace Initial', () async {
+      final held = Completer<BuyPaymentInfo>();
+      when(
+        () => service.getPaymentInfo(any(), currency: any(named: 'currency')),
+      ).thenAnswer((_) => held.future);
+
+      final cubit = build();
+      final pending = cubit.getPaymentInfo(amount: '300');
+      cubit.clear();
+      expect(cubit.state, isA<BuyPaymentInfoInitial>());
+
+      held.complete(_info());
+      await pending;
+      expect(cubit.state, isA<BuyPaymentInfoInitial>());
+    });
+
     test('happy path emits Success with the payment info from the API', () async {
       when(
         () => service.getPaymentInfo(any(), currency: any(named: 'currency')),

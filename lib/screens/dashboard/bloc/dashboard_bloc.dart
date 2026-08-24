@@ -41,11 +41,12 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final APriceService _priceService;
   final RealUnitAccountService _accountService;
   final Asset asset;
+  int _generation = 0;
 
   Future<void> _onRefreshPriceEvent(RefreshPriceEvent event, Emitter<DashboardState> emit) async {
-    final currency = state.currency;
-    final price = await _priceService.getPriceOfAsset(realUnitAsset, currency);
-    if (state.currency != currency) return;
+    final generation = _generation;
+    final price = await _priceService.getPriceOfAsset(realUnitAsset, state.currency);
+    if (generation != _generation) return;
     emit(state.copyWith(price: price));
   }
 
@@ -53,9 +54,9 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     RefreshPriceChartEvent event,
     Emitter<DashboardState> emit,
   ) async {
-    final currency = state.currency;
-    final priceChart = await _priceService.getPriceChart(realUnitAsset, currency);
-    if (state.currency != currency) return;
+    final generation = _generation;
+    final priceChart = await _priceService.getPriceChart(realUnitAsset, state.currency);
+    if (generation != _generation) return;
     emit(state.copyWith(priceChart: priceChart));
   }
 
@@ -63,13 +64,14 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
     RefreshPortfolioHistoryEvent event,
     Emitter<DashboardState> emit,
   ) async {
-    final currency = state.currency;
-    final portfolioHistory = await _accountService.getPortfolioHistory(currency);
-    if (state.currency != currency) return;
+    final generation = _generation;
+    final portfolioHistory = await _accountService.getPortfolioHistory(state.currency);
+    if (generation != _generation) return;
     emit(state.copyWith(portfolioHistory: portfolioHistory));
   }
 
   void _onCurrencyChangedEvent(CurrencyChangedEvent event, Emitter<DashboardState> emit) {
+    _generation++;
     emit(
       state.copyWith(
         currency: event.currency,

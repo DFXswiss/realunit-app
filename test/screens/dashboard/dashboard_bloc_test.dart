@@ -167,6 +167,42 @@ void main() {
       await bloc.close();
     });
 
+    test('stale price is dropped after A→B→A even when the currency matches again', () async {
+      var chfCalls = 0;
+      final firstChf = Completer<BigInt>();
+      final secondChf = Completer<BigInt>();
+      when(() => priceService.getPriceOfAsset(any(), any())).thenAnswer((invocation) {
+        final currency = invocation.positionalArguments[1] as Currency;
+        if (currency == Currency.chf) {
+          chfCalls++;
+          return chfCalls == 1 ? firstChf.future : secondChf.future;
+        }
+        return Future.value(BigInt.from(50));
+      });
+      when(() => priceService.getPriceChart(any(), any())).thenAnswer((_) async => []);
+      when(() => accountService.getPortfolioHistory(any())).thenAnswer((_) async => []);
+
+      final bloc = DashboardBloc(
+        priceService,
+        accountService,
+        asset: realUnitAsset,
+        initialCurrency: Currency.chf,
+      );
+      bloc.add(const CurrencyChangedEvent(Currency.eur));
+      await bloc.stream.firstWhere((s) => s.currency == Currency.eur);
+      bloc.add(const CurrencyChangedEvent(Currency.chf));
+      await bloc.stream.firstWhere((s) => s.currency == Currency.chf && s.price == BigInt.zero);
+
+      firstChf.complete(BigInt.from(111));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(bloc.state.price, BigInt.zero);
+
+      secondChf.complete(BigInt.from(999));
+      await bloc.stream.firstWhere((s) => s.price == BigInt.from(999));
+      expect(bloc.state.currency, Currency.chf);
+      await bloc.close();
+    });
+
     test('late price for the previous currency is dropped after CurrencyChangedEvent', () async {
       final stalePrice = Completer<BigInt>();
       when(() => priceService.getPriceOfAsset(any(), any())).thenAnswer((invocation) {

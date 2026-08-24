@@ -38,6 +38,7 @@ const String _quoteErrorPrimaryEmailNotConfirmed = 'PrimaryEmailNotConfirmed';
 class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
   CancelableOperation<BuyPaymentInfoState>? _completer;
+  int _seq = 0;
 
   BuyPaymentInfoCubit(
     RealUnitBuyPaymentInfoService buyPaymentInfoService,
@@ -45,6 +46,7 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       super(const BuyPaymentInfoInitial());
 
   void clear() {
+    _seq++;
     unawaited(_completer?.cancel() ?? Future<void>.value());
     _completer = null;
     if (state is BuyPaymentInfoInitial) return;
@@ -52,7 +54,9 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
   }
 
   Future<void> getPaymentInfo({String amount = '300', Currency currency = Currency.chf}) async {
+    final mySeq = ++_seq;
     await _completer?.cancel();
+    if (isClosed || mySeq != _seq) return;
 
     if (state is! BuyPaymentInfoSuccess) {
       emit(const BuyPaymentInfoLoading());
@@ -63,7 +67,7 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
     );
 
     final newState = await _completer!.value;
-    if (isClosed) return;
+    if (isClosed || mySeq != _seq) return;
     emit(newState);
   }
 
