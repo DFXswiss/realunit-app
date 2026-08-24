@@ -139,9 +139,19 @@ jobs:
     # Drafts pass through unconditionally on push (they cannot push, so
     # the only way here is via a labelled PR) — no extra `draft == false`
     # guard needed.
+    # `labeled` must match the opt-in label itself: with only `contains(...)`,
+    # adding any other label on an already-labelled PR would start a second
+    # macos-latest run (labeled events use a unique concurrency group and
+    # would not cancel the in-flight one). `unlabeled` is skipped here —
+    # the unique group also means it cannot cancel an in-flight flow.
     if: >-
       github.event_name != 'pull_request'
-      || contains(github.event.pull_request.labels.*.name, 'tier3:full')
+      || (github.event.action == 'labeled' && github.event.label.name == 'tier3:full')
+      || (
+        github.event.action != 'labeled'
+        && github.event.action != 'unlabeled'
+        && contains(github.event.pull_request.labels.*.name, 'tier3:full')
+      )
     runs-on: macos-latest
     # ~12 min setup (Flutter + tooling, build, sim erase/boot/install) plus
     # ~26-33 min for the 26 handbook flows — each flow restarts the XCUITest
