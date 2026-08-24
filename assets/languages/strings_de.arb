@@ -27,6 +27,7 @@
   "buy": "Kaufen",
   "buyBackToMain": "Zurück zum Hauptbereich",
   "buyChargedAmount": "Genau belastet",
+  "buyMaxAmount": "Maximalbetrag: ${amount} ${currency}",
   "buyMinAmount": "Mindestbetrag: ${amount} ${currency}",
   "buyPaymentConfirm": "Jetzt verbindlich kaufen",
   "buyPaymentDetailsTitle": "Zahlungsdetails",

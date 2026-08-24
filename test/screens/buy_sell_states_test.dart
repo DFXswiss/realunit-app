@@ -106,6 +106,23 @@ void main() {
       expect(a, b);
       expect(a, isNot(c));
     });
+
+    test('MaxAmountExceededFailure adds the maxAmount to props', () {
+      const a = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 90000,
+      );
+      const b = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 90000,
+      );
+      const c = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 80000,
+      );
+      expect(a, b);
+      expect(a, isNot(c));
+    });
   });
 
   group('$SellPaymentInfoState equality', () {

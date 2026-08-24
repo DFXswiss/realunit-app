@@ -14,12 +14,13 @@ import 'package:realunit_wallet/styles/currency.dart';
 
 part 'buy_payment_info_state.dart';
 
-// Backend QuoteError code for the "amount below the per-currency minimum"
-// case. The API returns this in the success body's `error` field together
-// with the authoritative `minVolume`; the app surfaces it as a typed state
-// for the UI to render. Other QuoteError values (KYC, limit, …) are
-// already routed via dedicated ApiExceptions and dedicated failure states.
+// Backend QuoteError codes that arrive on the quote success body as
+// `isValid: false` plus the authoritative volume. AmountTooLow carries
+// `minVolume`; AmountTooHigh / LimitExceeded carry `maxVolume`. KYC and
+// registration still arrive as dedicated ApiExceptions.
 const String _quoteErrorAmountTooLow = 'AmountTooLow';
+const String _quoteErrorAmountTooHigh = 'AmountTooHigh';
+const String _quoteErrorLimitExceeded = 'LimitExceeded';
 
 // Backend QuoteError code for the "buyer has no primary email on record"
 // case. The API pre-tells this on the quote (`isValid: false`) so the app
@@ -73,6 +74,14 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
           return BuyPaymentInfoMinAmountNotMetFailure(
             PaymentInfoError.minAmountNotMet,
             minAmount: paymentInfo.minVolume!,
+          );
+        }
+        if ((paymentInfo.error == _quoteErrorAmountTooHigh ||
+                paymentInfo.error == _quoteErrorLimitExceeded) &&
+            paymentInfo.maxVolume != null) {
+          return BuyPaymentInfoMaxAmountExceededFailure(
+            PaymentInfoError.maxAmountExceeded,
+            maxAmount: paymentInfo.maxVolume!,
           );
         }
         if (paymentInfo.error == _quoteErrorPrimaryEmailRequired) {

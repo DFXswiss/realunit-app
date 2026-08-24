@@ -348,6 +348,39 @@ void main() {
       );
     });
 
+    testWidgets('renders correctly when max amount is exceeded', (tester) async {
+      // Non-integer max: the API returns the remaining cap in the input
+      // currency. Display rounds DOWN to the largest whole amount that still
+      // satisfies the server-side maximum (symmetric to min's ceil).
+      final maxAmount = 90000.4;
+      final currency = Currency.eur;
+
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        BuyPaymentInfoMaxAmountExceededFailure(
+          PaymentInfoError.maxAmountExceeded,
+          maxAmount: maxAmount,
+        ),
+      );
+      when(() => converterCubit.state).thenReturn(
+        BuyConverterState(
+          currency: currency,
+        ),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byType(PaymentActionRequired), findsNothing);
+      expect(find.byType(PaymentInformation), findsOne);
+      expect(find.text(S.current.buyMaxAmount('${maxAmount.floor()}', currency.code)), findsOne);
+      expect(find.text(S.current.retry), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (Widget widget) => widget is AppFilledButton && widget.onPressed == null,
+        ),
+        findsOne,
+      );
+    });
+
     testWidgets('retries payment info when unknown error is shown', (tester) async {
       when(() => buyPaymentInfoCubit.state).thenReturn(
         const BuyPaymentInfoFailure(

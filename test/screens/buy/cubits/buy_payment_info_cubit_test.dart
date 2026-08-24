@@ -17,6 +17,7 @@ class _MockBuyPaymentInfoService extends Mock
 BuyPaymentInfo _info({
   bool isValid = true,
   double? minVolume,
+  double? maxVolume,
   String? error,
   Currency currency = Currency.chf,
   String iban = 'CH56 0483 5012 3456 78',
@@ -34,6 +35,7 @@ BuyPaymentInfo _info({
   currency: currency,
   isValid: isValid,
   minVolume: minVolume,
+  maxVolume: maxVolume,
   error: error,
 );
 
@@ -166,9 +168,67 @@ void main() {
       expect((cubit.state as BuyPaymentInfoFailure).context, 'RealunitBuy');
     });
 
+    test('API isValid=false with error=AmountTooHigh and maxVolume → '
+        'MaxAmountExceededFailure with API limit', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(isValid: false, error: 'AmountTooHigh', maxVolume: 90000),
+          );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '90001');
+
+      expect(cubit.state, isA<BuyPaymentInfoMaxAmountExceededFailure>());
+      final f = cubit.state as BuyPaymentInfoMaxAmountExceededFailure;
+      expect(f.error, PaymentInfoError.maxAmountExceeded);
+      expect(f.maxAmount, 90000);
+      verify(() => service.getPaymentInfo(90001, currency: Currency.chf)).called(1);
+    });
+
+    test('API isValid=false with error=LimitExceeded and maxVolume → '
+        'MaxAmountExceededFailure with API limit', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(isValid: false, error: 'LimitExceeded', maxVolume: 90000.4),
+          );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '100000');
+
+      expect(cubit.state, isA<BuyPaymentInfoMaxAmountExceededFailure>());
+      final f = cubit.state as BuyPaymentInfoMaxAmountExceededFailure;
+      expect(f.error, PaymentInfoError.maxAmountExceeded);
+      expect(f.maxAmount, 90000.4);
+      verify(() => service.getPaymentInfo(100000, currency: Currency.chf)).called(1);
+    });
+
+    test('AmountTooHigh without maxVolume → generic Failure(unknown)', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooHigh'));
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '90001');
+
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect(cubit.state, isNot(isA<BuyPaymentInfoMaxAmountExceededFailure>()));
+      expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.unknown);
+    });
+
+    test('LimitExceeded without maxVolume → generic Failure(unknown)', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer((_) async => _info(isValid: false, error: 'LimitExceeded'));
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '100000');
+
+      expect(cubit.state, isA<BuyPaymentInfoFailure>());
+      expect(cubit.state, isNot(isA<BuyPaymentInfoMaxAmountExceededFailure>()));
+      expect((cubit.state as BuyPaymentInfoFailure).error, PaymentInfoError.unknown);
+    });
+
     test('API isValid=false with unknown error → generic Failure', () async {
       when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
-          .thenAnswer((_) async => _info(isValid: false, error: 'AmountTooHigh', minVolume: 100));
+          .thenAnswer((_) async => _info(isValid: false, error: 'CountryNotAllowed'));
 
       final cubit = build();
       await cubit.getPaymentInfo(amount: '999999999');
