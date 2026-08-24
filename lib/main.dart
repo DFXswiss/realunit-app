@@ -8,6 +8,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/utils/fuck_firebase.dart';
+import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
@@ -97,8 +98,17 @@ class _WalletAppState extends State<WalletApp> {
               listenWhen: (previous, current) =>
                   previous.openWallet == null && current.openWallet != null,
               listener: (context, homeState) {
-                final generation = ++_accountCurrencyGeneration;
-                unawaited(_applyAccountCurrency(generation));
+                _startAccountCurrencyApply(homeState.openWallet);
+              },
+            ),
+            BlocListener<HomeBloc, HomeState>(
+              listenWhen: (previous, current) =>
+                  previous.openWallet != null &&
+                  current.openWallet != null &&
+                  !identical(previous.openWallet, current.openWallet),
+              listener: (context, homeState) {
+                getIt<SettingsBloc>().add(const ClearAccountCurrencyEvent());
+                _startAccountCurrencyApply(homeState.openWallet);
               },
             ),
             BlocListener<HomeBloc, HomeState>(
@@ -131,10 +141,16 @@ class _WalletAppState extends State<WalletApp> {
     ),
   );
 
-  Future<void> _applyAccountCurrency(int generation) async {
+  void _startAccountCurrencyApply(AWallet? wallet) {
+    final generation = ++_accountCurrencyGeneration;
+    unawaited(_applyAccountCurrency(generation, wallet));
+  }
+
+  Future<void> _applyAccountCurrency(int generation, AWallet? captured) async {
     try {
       final user = await getIt<DfxKycService>().getUser();
       if (generation != _accountCurrencyGeneration) return;
+      if (!identical(getIt<HomeBloc>().state.openWallet, captured)) return;
       final currency = user.currency;
       if (currency == null) return;
       getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));
