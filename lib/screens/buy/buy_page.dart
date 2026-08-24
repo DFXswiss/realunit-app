@@ -58,8 +58,10 @@ class _BuyViewState extends State<BuyView> {
         listener: (context, state) {
           _syncController(_amountController, state.fiatText);
           _syncController(_resultController, state.sharesText);
+          // The quote charges the Rappen-exact payable of the conversion,
+          // not the field text: the field keeps what the user typed.
           context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-            amount: _amountController.text,
+            amount: state.quoteAmountText,
             currency: state.currency,
           );
         },
@@ -84,9 +86,7 @@ class _BuyViewState extends State<BuyView> {
                     ],
                   ),
                   actions: [
-                    PaymentActionButton(
-                      amountController: _amountController,
-                    ),
+                    const PaymentActionButton(),
                   ],
                 ),
               ),
