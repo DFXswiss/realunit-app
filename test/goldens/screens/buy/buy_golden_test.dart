@@ -129,6 +129,57 @@ void main() {
     );
 
     goldenTest(
+      'typed amount stays and exact charge shows under the field',
+      fileName: 'buy_charged_amount',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      builder: () {
+        when(() => paymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoSuccess(
+            BuyPaymentInfo(
+              amount: 299.46,
+              id: 1,
+              iban: 'CH00 0000 0000 0000 0000 0',
+              bic: 'BICCBIC',
+              name: 'RealUnit AG',
+              street: 'Bahnhofstrasse',
+              number: '1',
+              zip: '8001',
+              city: 'Zurich',
+              country: 'Switzerland',
+              currency: Currency.chf,
+            ),
+          ),
+        );
+        // BuyView copies fiat/shares into the TextFields only when loading
+        // flips to false. Drive that transition so the golden shows 300.
+        whenListen(
+          converterCubit,
+          Stream.fromIterable([
+            const BuyConverterState(
+              fiatText: '300',
+              payableText: '',
+              sharesText: '217',
+              loading: true,
+            ),
+            const BuyConverterState(
+              fiatText: '300',
+              payableText: '299.46',
+              sharesText: '217',
+              loading: false,
+            ),
+          ]),
+          initialState: const BuyConverterState(
+            fiatText: '300',
+            payableText: '',
+            sharesText: '217',
+            loading: true,
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
       'payment info loading',
       fileName: 'buy_payment_info_loading',
       constraints: const BoxConstraints.tightFor(width: 390, height: 844),
