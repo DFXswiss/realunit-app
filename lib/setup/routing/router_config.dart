@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/payment/sell/sell_payment_info.dart';
@@ -22,6 +23,7 @@ import 'package:realunit_wallet/screens/restore_wallet/restore_wallet_page.dart'
 import 'package:realunit_wallet/screens/sell/sell_page.dart';
 import 'package:realunit_wallet/screens/sell_bitbox/sell_bitbox_page.dart';
 import 'package:realunit_wallet/screens/send/send_recipient_page.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/screens/settings/settings_page.dart';
 import 'package:realunit_wallet/screens/settings_contact/settings_contact_page.dart';
 import 'package:realunit_wallet/screens/settings_currencies/settings_currencies_page.dart';
@@ -154,7 +156,9 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       name: AppRoutes.buy,
       path: '/buy',
-      builder: (_, _) => const BuyPage(),
+      builder: (context, _) => BuyPage(
+        currency: context.read<SettingsBloc>().state.currency,
+      ),
     ),
 
     GoRoute(

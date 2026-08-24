@@ -1,12 +1,18 @@
 import 'dart:ui';
 
 import 'package:realunit_wallet/packages/config/network_mode.dart';
+import 'package:realunit_wallet/styles/currency.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsRepository {
   final SharedPreferences _sharedPreferences;
+  final String? Function() _systemCountryCode;
 
-  SettingsRepository(this._sharedPreferences);
+  SettingsRepository(
+    this._sharedPreferences, {
+    String? Function()? systemCountryCode,
+  }) : _systemCountryCode =
+           systemCountryCode ?? (() => PlatformDispatcher.instance.locale.countryCode);
 
   Future<bool> saveCurrentWalletId(int walletId) =>
       _sharedPreferences.setInt('currentWalletId', walletId);
@@ -25,7 +31,11 @@ class SettingsRepository {
 
   set language(String langCode) => _sharedPreferences.setString('language', langCode);
 
-  String get currency => _sharedPreferences.getString('currency') ?? 'CHF';
+  String get currency {
+    final stored = _sharedPreferences.getString('currency');
+    if (stored != null) return stored;
+    return Currency.defaultForCountryCode(_systemCountryCode()).code;
+  }
 
   set currency(String currencyCode) => _sharedPreferences.setString('currency', currencyCode);
 

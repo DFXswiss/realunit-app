@@ -31,6 +31,12 @@ void main() {
       expect(cubit.state.loading, isFalse);
     });
 
+    test('honours an explicit initial currency', () {
+      final cubit = BuyConverterCubit(service, currency: Currency.eur);
+
+      expect(cubit.state.currency, Currency.eur);
+    });
+
     test('onFiatChanged debounces, then writes the converted shares', () async {
       when(() => service.getBuyShares(any(), any())).thenAnswer(
         (_) async => BrokerbotBuySharesDto(

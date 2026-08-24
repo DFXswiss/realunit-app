@@ -31,5 +31,22 @@ void main() {
         expect(() => Currency.fromCode(''), throwsA(isA<StateError>()));
       });
     });
+
+    group('defaultForCountryCode', () {
+      test('CHF for Switzerland and Liechtenstein', () {
+        expect(Currency.defaultForCountryCode('CH'), Currency.chf);
+        expect(Currency.defaultForCountryCode('LI'), Currency.chf);
+        expect(Currency.defaultForCountryCode('ch'), Currency.chf);
+        expect(Currency.defaultForCountryCode('li'), Currency.chf);
+      });
+
+      test('EUR for every other country and when the code is missing', () {
+        expect(Currency.defaultForCountryCode('DE'), Currency.eur);
+        expect(Currency.defaultForCountryCode('AT'), Currency.eur);
+        expect(Currency.defaultForCountryCode('US'), Currency.eur);
+        expect(Currency.defaultForCountryCode(''), Currency.eur);
+        expect(Currency.defaultForCountryCode(null), Currency.eur);
+      });
+    });
   });
 }

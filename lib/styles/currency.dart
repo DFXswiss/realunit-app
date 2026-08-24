@@ -9,6 +9,17 @@ enum Currency {
   factory Currency.fromCode(String code) =>
       Currency.values.firstWhere((e) => e.code == code.toUpperCase());
 
+  /// App-wide unset default: CHF for Switzerland and Liechtenstein, EUR otherwise.
+  factory Currency.defaultForCountryCode(String? countryCode) {
+    switch (countryCode?.toUpperCase()) {
+      case 'CH':
+      case 'LI':
+        return Currency.chf;
+      default:
+        return Currency.eur;
+    }
+  }
+
   final String code;
 
   String get name {

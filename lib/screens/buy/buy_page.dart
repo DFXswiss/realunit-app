@@ -9,10 +9,13 @@ import 'package:realunit_wallet/screens/buy/widgets/payment_action_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_converter.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_information.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class BuyPage extends StatelessWidget {
-  const BuyPage({super.key});
+  const BuyPage({super.key, this.currency = Currency.chf});
+
+  final Currency currency;
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +24,7 @@ class BuyPage extends StatelessWidget {
         BlocProvider(
           create: (_) => BuyConverterCubit(
             getIt<DfxBrokerbotService>(),
+            currency: currency,
           )..onFiatChanged('300'),
         ),
         BlocProvider(

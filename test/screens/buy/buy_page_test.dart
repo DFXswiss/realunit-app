@@ -103,6 +103,30 @@ void main() {
       expect(find.byType(BuyView), findsOne);
     });
 
+    testWidgets('opens the converter in the given currency', (tester) async {
+      final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
+      when(() => brokerbot.getBuyShares(any(), any())).thenAnswer(
+        (_) async => BrokerbotBuySharesDto(
+          shares: 217,
+          pricePerShare: 1.38,
+          availableShares: 50000,
+        ),
+      );
+
+      await tester.pumpApp(const BuyPage(currency: Currency.eur));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(find.text('EUR'), findsWidgets);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('buy-currency-picker')),
+          matching: find.text('EUR'),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('shows the 300 default and keeps the field freely editable — '
         'the payable never replaces the typed amount', (tester) async {
       final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
