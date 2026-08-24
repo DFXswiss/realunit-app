@@ -15,6 +15,8 @@ import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_reg
 import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
+import 'package:realunit_wallet/setup/di.dart';
 
 part 'kyc_state.dart';
 
@@ -74,6 +76,13 @@ class KycCubit extends Cubit<KycState> {
     }
   }
 
+  void _applyAccountCurrency(UserDto user) {
+    final currency = user.currency;
+    if (currency == null) return;
+    if (!getIt.isRegistered<SettingsBloc>()) return;
+    getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));
+  }
+
   Future<void> _runCheckKyc(int generation) async {
     try {
       if (isClosed || generation != _runGeneration) return;
@@ -88,6 +97,7 @@ class KycCubit extends Cubit<KycState> {
 
       final kycStatus = results.elementAt(0) as KycLevelDto;
       final user = results.elementAt(1) as UserDto;
+      _applyAccountCurrency(user);
       final level = kycStatus.kycLevel.value;
 
       if (user.mail == null) {

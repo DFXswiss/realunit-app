@@ -66,50 +66,12 @@ void main() {
     });
 
     group('currency', () {
-      test('defaults to CHF for Switzerland and Liechtenstein when nothing is stored', () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-
-        expect(
-          SettingsRepository(prefs, systemCountryCode: () => 'CH').currency,
-          'CHF',
-        );
-        expect(
-          SettingsRepository(prefs, systemCountryCode: () => 'LI').currency,
-          'CHF',
-        );
-      });
-
-      test('defaults to EUR for any other country when nothing is stored', () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-
-        expect(
-          SettingsRepository(prefs, systemCountryCode: () => 'DE').currency,
-          'EUR',
-        );
-        expect(
-          SettingsRepository(prefs, systemCountryCode: () => null).currency,
-          'EUR',
-        );
-      });
-
-      test('uses the system locale country when no override is given', () async {
+      test('defaults to EUR when nothing is stored', () async {
         SharedPreferences.setMockInitialValues({});
         final repo = SettingsRepository(await SharedPreferences.getInstance());
 
-        // Test binding locale is en_US → not CH/LI → EUR.
         expect(repo.currency, 'EUR');
-      });
-
-      test('returns the stored currency even when the system country would differ', () async {
-        SharedPreferences.setMockInitialValues({'currency': 'CHF'});
-        final repo = SettingsRepository(
-          await SharedPreferences.getInstance(),
-          systemCountryCode: () => 'DE',
-        );
-
-        expect(repo.currency, 'CHF');
+        expect(repo.hasStoredCurrency, isFalse);
       });
 
       test('returns the stored currency when set', () async {
@@ -117,6 +79,7 @@ void main() {
         final repo = SettingsRepository(await SharedPreferences.getInstance());
 
         expect(repo.currency, 'EUR');
+        expect(repo.hasStoredCurrency, isTrue);
       });
 
       test('currency setter persists', () async {

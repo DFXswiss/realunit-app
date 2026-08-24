@@ -21,6 +21,7 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
               _settingsRepository.insiderFeaturesUnlocked,
         )) {
     on<SetCurrencyEvent>(_onSetCurrencyEvent);
+    on<ApplyAccountCurrencyEvent>(_onApplyAccountCurrencyEvent);
     on<SetLanguageEvent>(_onSetLanguageEvent);
     on<SetNetworkModeEvent>(_onSetNetworkModeEvent);
     on<ToggleHideAmountEvent>(_onToggleHideAmountEvent);
@@ -42,6 +43,14 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
 
   void _onSetCurrencyEvent(SetCurrencyEvent event, Emitter<SettingsState> emit) {
     _settingsRepository.currency = event.currency.code;
+    emit(state.copyWith(currency: event.currency));
+  }
+
+  void _onApplyAccountCurrencyEvent(
+    ApplyAccountCurrencyEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    if (_settingsRepository.hasStoredCurrency) return;
     emit(state.copyWith(currency: event.currency));
   }
 

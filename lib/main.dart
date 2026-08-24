@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
+import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/utils/fuck_firebase.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
@@ -89,6 +92,13 @@ class _WalletAppState extends State<WalletApp> {
         builder: (context, child) => MultiBlocListener(
           listeners: [
             BlocListener<HomeBloc, HomeState>(
+              listenWhen: (previous, current) =>
+                  previous.openWallet == null && current.openWallet != null,
+              listener: (context, homeState) {
+                unawaited(_applyAccountCurrency());
+              },
+            ),
+            BlocListener<HomeBloc, HomeState>(
               listener: (context, homeState) {
                 if (!homeState.isLoadingWallet) {
                   _navigate();
@@ -109,6 +119,18 @@ class _WalletAppState extends State<WalletApp> {
       ),
     ),
   );
+
+  Future<void> _applyAccountCurrency() async {
+    try {
+      final user = await getIt<DfxKycService>().getUser();
+      final currency = user.currency;
+      if (currency == null) return;
+      getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));
+    } catch (_) {
+      // Account currency is a display default; boot must not fail if /v2/user
+      // is unavailable.
+    }
+  }
 
   void _loadWalletIfNeeded() {
     final homeState = getIt<HomeBloc>().state;

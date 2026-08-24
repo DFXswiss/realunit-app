@@ -18,7 +18,8 @@ void main() {
     authRefreshCount = 0;
     // Defaults — sane values for the initial state.
     when(() => repo.language).thenReturn('en');
-    when(() => repo.currency).thenReturn('CHF');
+    when(() => repo.currency).thenReturn('EUR');
+    when(() => repo.hasStoredCurrency).thenReturn(false);
     when(() => repo.networkMode).thenReturn(NetworkMode.mainnet);
     when(() => repo.insiderFeaturesUnlocked).thenReturn(false);
   });
@@ -64,6 +65,26 @@ void main() {
         expect(bloc.state.currency, Currency.eur);
         verify(() => repo.currency = 'EUR').called(1);
       },
+    );
+
+    blocTest<SettingsBloc, SettingsState>(
+      'ApplyAccountCurrencyEvent emits the account currency when nothing is stored',
+      build: build,
+      act: (bloc) => bloc.add(const ApplyAccountCurrencyEvent(Currency.chf)),
+      expect: () => [
+        isA<SettingsState>().having((s) => s.currency, 'currency', Currency.chf),
+      ],
+      verify: (bloc) {
+        verifyNever(() => repo.currency = any());
+      },
+    );
+
+    blocTest<SettingsBloc, SettingsState>(
+      'ApplyAccountCurrencyEvent is ignored when the user already stored a currency',
+      build: build,
+      setUp: () => when(() => repo.hasStoredCurrency).thenReturn(true),
+      act: (bloc) => bloc.add(const ApplyAccountCurrencyEvent(Currency.chf)),
+      expect: () => <SettingsState>[],
     );
 
     test('SetNetworkModeEvent writes the new mode, refreshes auth, and emits', () async {
