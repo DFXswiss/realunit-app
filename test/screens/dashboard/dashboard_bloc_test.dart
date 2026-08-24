@@ -142,6 +142,31 @@ void main() {
       verify(() => accountService.getPortfolioHistory(Currency.eur)).called(1);
     });
 
+    test('CurrencyChangedEvent clears previous quotes before refetch', () async {
+      final bloc = build();
+      await bloc.stream.firstWhere((s) => s.portfolioHistory.isNotEmpty);
+      expect(bloc.state.price, BigInt.from(12345));
+      expect(bloc.state.priceChart, isNotEmpty);
+      expect(bloc.state.portfolioHistory, isNotEmpty);
+
+      final heldPrice = Completer<BigInt>();
+      when(() => priceService.getPriceOfAsset(any(), any())).thenAnswer((_) => heldPrice.future);
+      when(
+        () => priceService.getPriceChart(any(), any()),
+      ).thenAnswer((_) => Completer<List<PricePoint>>().future);
+      when(
+        () => accountService.getPortfolioHistory(any()),
+      ).thenAnswer((_) => Completer<List<PortfolioValuePoint>>().future);
+
+      bloc.add(const CurrencyChangedEvent(Currency.eur));
+      await bloc.stream.firstWhere((s) => s.currency == Currency.eur);
+
+      expect(bloc.state.price, BigInt.zero);
+      expect(bloc.state.priceChart, isEmpty);
+      expect(bloc.state.portfolioHistory, isEmpty);
+      await bloc.close();
+    });
+
     test('late price for the previous currency is dropped after CurrencyChangedEvent', () async {
       final stalePrice = Completer<BigInt>();
       when(() => priceService.getPriceOfAsset(any(), any())).thenAnswer((invocation) {

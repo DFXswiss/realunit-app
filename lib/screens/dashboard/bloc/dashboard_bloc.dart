@@ -70,7 +70,14 @@ class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   }
 
   void _onCurrencyChangedEvent(CurrencyChangedEvent event, Emitter<DashboardState> emit) {
-    emit(state.copyWith(currency: event.currency));
+    emit(
+      state.copyWith(
+        currency: event.currency,
+        price: BigInt.zero,
+        priceChart: const [],
+        portfolioHistory: const [],
+      ),
+    );
     refresh();
   }
 }
