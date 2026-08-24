@@ -27,9 +27,11 @@ name: Tier 3 — Handbook flows
 #   * `workflow_dispatch` for manual catch-up runs and a re-run path when
 #     the macOS image flips an Xcode default and we need to verify the fix
 #     before re-arming the gate. Always runs (label gate doesn't apply).
-#   * `labeled` / `unlabeled` keep the trigger surface in sync with the
-#     `tier3:full` opt-in: adding the label after the PR opened starts a
-#     run; removing it cancels via the concurrency block below.
+#   * `labeled` / `unlabeled` stay in `types` so GitHub delivers the
+#     opt-in events. Adding `tier3:full` starts a run (job `if` matches
+#     that label name). Removing it does not start a run and does not
+#     cancel an in-flight one — labeled events use a unique concurrency
+#     group, so an unlabeled skip cannot stop the flow already running.
 #
 # Concurrency:
 #   Same pattern as `pull-request.yaml`: group by `pull_request.number`
