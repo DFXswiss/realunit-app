@@ -236,6 +236,39 @@ void main() {
       expect(find.text(S.current.buyPaymentConfirm), findsOne);
     });
 
+    testWidgets('on an EUR quote the confirm CTA keeps the EUR settlement IBAN, not a CHF leftover', (
+      tester,
+    ) async {
+      const eurQuote = BuyPaymentInfo(
+        amount: 300,
+        id: 1,
+        iban: 'CH9708307000560946317',
+        bic: 'bic',
+        name: 'name',
+        street: 'street',
+        number: 'number',
+        zip: 'zip',
+        city: 'city',
+        country: 'country',
+        currency: Currency.eur,
+      );
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        const BuyPaymentInfoSuccess(eurQuote),
+      );
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(currency: Currency.eur, fiatText: '300'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byType(BuyConfirmButton), findsOne);
+      expect(find.text(S.current.buyPaymentConfirm), findsOne);
+      final confirm = tester.widget<BuyConfirmButton>(find.byType(BuyConfirmButton));
+      expect(confirm.buyPaymentInfo.iban, 'CH9708307000560946317');
+      expect(confirm.buyPaymentInfo.currency, Currency.eur);
+      expect(confirm.buyPaymentInfo.iban, isNot('CH2208307000560946309'));
+    });
+
     testWidgets('renders correctly when $BuyPaymentInfo is loading', (tester) async {
       when(() => buyPaymentInfoCubit.state).thenReturn(const BuyPaymentInfoLoading());
 
@@ -401,6 +434,41 @@ void main() {
         () => buyPaymentInfoCubit.getPaymentInfo(
           amount: '299.46',
           currency: Currency.chf,
+        ),
+      ).called(1);
+    });
+
+    testWidgets('requests the EUR quote with the live payable when converter settles in EUR', (
+      tester,
+    ) async {
+      whenListen(
+        converterCubit,
+        Stream.fromIterable([
+          const BuyConverterState(
+            fiatText: '300',
+            payableText: '',
+            sharesText: '217',
+            loading: true,
+            currency: Currency.eur,
+          ),
+          const BuyConverterState(
+            fiatText: '300',
+            payableText: '299.46',
+            sharesText: '217',
+            loading: false,
+            currency: Currency.eur,
+          ),
+        ]),
+        initialState: const BuyConverterState(fiatText: '300', currency: Currency.eur),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => buyPaymentInfoCubit.getPaymentInfo(
+          amount: '299.46',
+          currency: Currency.eur,
         ),
       ).called(1);
     });

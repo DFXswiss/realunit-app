@@ -19,10 +19,11 @@ BuyPaymentInfo _info({
   double? minVolume,
   String? error,
   Currency currency = Currency.chf,
+  String iban = 'CH56 0483 5012 3456 78',
 }) => BuyPaymentInfo(
   amount: 300,
   id: 1,
-  iban: 'CH56 0483 5012 3456 78',
+  iban: iban,
   bic: 'CRESCHZZ80A',
   name: 'DFX AG',
   street: 'Bahnhofstrasse',
@@ -63,6 +64,25 @@ void main() {
 
       expect(cubit.state, isA<BuyPaymentInfoSuccess>());
       verify(() => service.getPaymentInfo(300, currency: Currency.chf)).called(1);
+    });
+
+    test('EUR quote emits Success with the EUR IBAN and currency from the API', () async {
+      when(() => service.getPaymentInfo(any(), currency: any(named: 'currency')))
+          .thenAnswer(
+            (_) async => _info(
+              currency: Currency.eur,
+              iban: 'CH9708307000560946317',
+            ),
+          );
+
+      final cubit = build();
+      await cubit.getPaymentInfo(amount: '300', currency: Currency.eur);
+
+      expect(cubit.state, isA<BuyPaymentInfoSuccess>());
+      final success = cubit.state as BuyPaymentInfoSuccess;
+      expect(success.buyPaymentInfo.iban, 'CH9708307000560946317');
+      expect(success.buyPaymentInfo.currency, Currency.eur);
+      verify(() => service.getPaymentInfo(300, currency: Currency.eur)).called(1);
     });
 
     test('API isValid=false with error=AmountTooLow → MinAmountNotMetFailure with API limit', () async {
