@@ -69,10 +69,11 @@ class _BuyViewState extends State<BuyView> {
             prev.currency != next.currency || (prev.loading && !next.loading),
         listener: (context, state) {
           final payment = context.read<BuyPaymentInfoCubit>();
-          if (state.loading) {
-            payment.clear();
-            return;
-          }
+          // Drop the previous quote before a new fetch so Confirm cannot
+          // bind an old Success while getPaymentInfo is in flight (it does
+          // not emit Loading over Success).
+          payment.clear();
+          if (state.loading) return;
           _syncController(_amountController, state.fiatText);
           _syncController(_resultController, state.sharesText);
           // The quote charges the Rappen-exact payable of the conversion,

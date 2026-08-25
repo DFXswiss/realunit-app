@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/user/dto/user_dto.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 
@@ -22,6 +23,18 @@ class AccountCurrencySync {
   final DfxKycService _kyc;
   final AWallet? Function() _currentWallet;
   int _generation = 0;
+
+  AWallet? get currentWallet => _currentWallet();
+
+  /// Applies an already-fetched GET /v2/user currency (KYC path) only if
+  /// [captured] is still the open wallet.
+  void applyFromUser(UserDto user, {required AWallet? captured}) {
+    final currency = user.currency;
+    if (currency == null) return;
+    final open = _currentWallet();
+    if (open == null || !identical(open, captured)) return;
+    _settings.add(ApplyAccountCurrencyEvent(currency));
+  }
 
   void onOpened(AWallet? wallet) {
     final generation = ++_generation;

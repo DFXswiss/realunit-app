@@ -15,8 +15,7 @@ import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_reg
 import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
-import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
-import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
+import 'package:realunit_wallet/setup/account_currency_sync.dart';
 import 'package:realunit_wallet/setup/di.dart';
 
 part 'kyc_state.dart';
@@ -70,8 +69,8 @@ class KycCubit extends Cubit<KycState> {
 
   Future<void> checkKyc({String? context}) async {
     _kycContext = context ?? _kycContext;
-    _walletAtCheckStart = getIt.isRegistered<HomeBloc>()
-        ? getIt<HomeBloc>().state.openWallet
+    _walletAtCheckStart = getIt.isRegistered<AccountCurrencySync>()
+        ? getIt<AccountCurrencySync>().currentWallet
         : null;
     final generation = ++_runGeneration;
     try {
@@ -86,16 +85,8 @@ class KycCubit extends Cubit<KycState> {
   }
 
   void _applyAccountCurrency(UserDto user) {
-    final currency = user.currency;
-    if (currency == null) return;
-    if (!getIt.isRegistered<SettingsBloc>()) return;
-    // WalletApp fences GET /v2/user by open/close generation. This cubit is
-    // page-scoped and can still finish after delete or a wallet switch;
-    // skip unless the same wallet instance is still open.
-    if (!getIt.isRegistered<HomeBloc>()) return;
-    final open = getIt<HomeBloc>().state.openWallet;
-    if (open == null || !identical(open, _walletAtCheckStart)) return;
-    getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));
+    if (!getIt.isRegistered<AccountCurrencySync>()) return;
+    getIt<AccountCurrencySync>().applyFromUser(user, captured: _walletAtCheckStart);
   }
 
   Future<void> _runCheckKyc(int generation) async {

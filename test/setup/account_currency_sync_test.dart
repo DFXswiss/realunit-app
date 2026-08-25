@@ -130,4 +130,16 @@ void main() {
     verifyNever(() => settings.add(const ApplyAccountCurrencyEvent(Currency.chf)));
     verify(() => settings.add(const ApplyAccountCurrencyEvent(Currency.eur))).called(1);
   });
+
+  test('applyFromUser dispatches when captured is still the open wallet', () {
+    build().applyFromUser(_user(currency: Currency.chf), captured: wallet);
+
+    verify(() => settings.add(const ApplyAccountCurrencyEvent(Currency.chf))).called(1);
+  });
+
+  test('applyFromUser is ignored when captured is a different wallet', () {
+    build().applyFromUser(_user(currency: Currency.chf), captured: _MockWallet());
+
+    verifyNever(() => settings.add(any()));
+  });
 }

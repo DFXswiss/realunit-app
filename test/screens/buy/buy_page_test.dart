@@ -379,6 +379,48 @@ void main() {
       );
     });
 
+    testWidgets('clears the quote when conversion finishes before fetching the new quote', (
+      tester,
+    ) async {
+      const start = BuyConverterState(currency: Currency.chf, fiatText: '300', loading: true);
+      const next = BuyConverterState(
+        currency: Currency.chf,
+        fiatText: '400',
+        payableText: '400.00',
+      );
+      when(() => converterCubit.state).thenReturn(start);
+      whenListen(
+        converterCubit,
+        Stream<BuyConverterState>.fromIterable([next]),
+        initialState: start,
+      );
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        const BuyPaymentInfoSuccess(
+          BuyPaymentInfo(
+            amount: 300,
+            id: 1,
+            iban: 'iban',
+            bic: 'bic',
+            name: 'name',
+            street: 'street',
+            number: 'number',
+            zip: 'zip',
+            city: 'city',
+            country: 'country',
+            currency: Currency.chf,
+          ),
+        ),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+      await tester.pump();
+
+      verifyInOrder([
+        () => buyPaymentInfoCubit.clear(),
+        () => buyPaymentInfoCubit.getPaymentInfo(amount: '400.00', currency: Currency.chf),
+      ]);
+    });
+
     testWidgets('hides confirm when the quote currency does not match the converter', (
       tester,
     ) async {

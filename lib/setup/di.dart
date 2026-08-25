@@ -45,6 +45,7 @@ import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
+import 'package:realunit_wallet/setup/account_currency_sync.dart';
 import 'package:realunit_wallet/setup/database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -244,6 +245,13 @@ Future<void> setupBlocs() async {
       getIt<SettingsService>(),
       getIt<AppStore>(),
       getIt<BitboxService>(),
+    ),
+  );
+  getIt.registerSingleton(
+    AccountCurrencySync(
+      settings: getIt<SettingsBloc>(),
+      kyc: getIt<DfxKycService>(),
+      currentWallet: () => getIt<HomeBloc>().state.openWallet,
     ),
   );
 

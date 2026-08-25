@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
-import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/utils/fuck_firebase.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
@@ -62,11 +61,7 @@ class WalletApp extends StatefulWidget {
 }
 
 class _WalletAppState extends State<WalletApp> {
-  late final AccountCurrencySync _accountCurrency = AccountCurrencySync(
-    settings: getIt<SettingsBloc>(),
-    kyc: getIt<DfxKycService>(),
-    currentWallet: () => getIt<HomeBloc>().state.openWallet,
-  );
+  late final AccountCurrencySync _accountCurrency = getIt<AccountCurrencySync>();
 
   @override
   void initState() {
