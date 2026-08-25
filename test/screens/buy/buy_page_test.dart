@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -24,6 +26,7 @@ import 'package:realunit_wallet/screens/buy/widgets/buy_confirm_button.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_action_required.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_converter.dart';
 import 'package:realunit_wallet/screens/buy/widgets/payment_information.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
@@ -49,10 +52,18 @@ class MockSupportedFiatRepository extends Mock implements SupportedFiatRepositor
 void main() {
   late BuyConverterCubit converterCubit;
   late BuyPaymentInfoCubit buyPaymentInfoCubit;
+  late MockSettingsBloc settingsBloc;
 
   setUp(() {
     converterCubit = MockBuyConverterCubit();
     buyPaymentInfoCubit = MockBuyPaymentInfoCubit();
+    settingsBloc = MockSettingsBloc();
+    when(() => settingsBloc.state).thenReturn(const SettingsState());
+    whenListen(
+      settingsBloc,
+      const Stream<SettingsState>.empty(),
+      initialState: const SettingsState(),
+    );
 
     when(() => converterCubit.state).thenReturn(const BuyConverterState());
     when(() => buyPaymentInfoCubit.state).thenReturn(const BuyPaymentInfoInitial());
@@ -62,6 +73,7 @@ void main() {
         currency: any(named: 'currency'),
       ),
     ).thenAnswer((_) => Future.value());
+    when(() => buyPaymentInfoCubit.clear()).thenReturn(null);
   });
 
   void setupDependencyInjection() {
@@ -96,11 +108,42 @@ void main() {
     );
   }
 
+  Widget wrapBuyPage(Widget page) {
+    return BlocProvider<SettingsBloc>.value(value: settingsBloc, child: page);
+  }
+
   group('$BuyPage', () {
     testWidgets('renders $BuyView', (tester) async {
-      await tester.pumpApp(const BuyPage());
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
 
       expect(find.byType(BuyView), findsOne);
+    });
+
+    testWidgets('opens the converter in the settings currency', (tester) async {
+      final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
+      when(() => brokerbot.getBuyShares(any(), any())).thenAnswer(
+        (_) async => BrokerbotBuySharesDto(
+          shares: 217,
+          pricePerShare: 1.38,
+          availableShares: 50000,
+        ),
+      );
+      const eur = SettingsState(currency: Currency.eur);
+      when(() => settingsBloc.state).thenReturn(eur);
+      whenListen(settingsBloc, const Stream<SettingsState>.empty(), initialState: eur);
+
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(find.text('EUR'), findsWidgets);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('buy-currency-picker')),
+          matching: find.text('EUR'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('shows the 300 default and keeps the field freely editable — '
@@ -114,7 +157,7 @@ void main() {
         ),
       );
 
-      await tester.pumpApp(const BuyPage());
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
       // Past the 100ms conversion debounce of the initial default.
       await tester.pump(const Duration(milliseconds: 250));
       await tester.pump();
@@ -130,6 +173,68 @@ void main() {
 
       expect(tester.widget<TextField>(amountField).controller!.text, '25');
     });
+
+    testWidgets('shows Rappen-exact charge under the amount without writing it into the field', (
+      tester,
+    ) async {
+      final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
+      when(() => brokerbot.getBuyShares(any(), any())).thenAnswer(
+        (_) async => BrokerbotBuySharesDto(
+          shares: 217,
+          pricePerShare: 1.38,
+          availableShares: 50000,
+        ),
+      );
+
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
+      // Past the 100ms conversion debounce of the initial default.
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      final amountField = find.byType(TextField).first;
+      expect(tester.widget<TextField>(amountField).controller!.text, '300');
+      expect(find.byKey(const Key('buy-charged-amount')), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('buy-charged-amount'))).data,
+        contains('299.46'),
+      );
+    });
+
+    testWidgets('applies a late SettingsBloc currency to the converter', (tester) async {
+      final brokerbot = GetIt.instance<DfxBrokerbotService>() as MockDfxBrokerbotService;
+      when(() => brokerbot.getBuyShares(any(), any())).thenAnswer(
+        (_) async => BrokerbotBuySharesDto(
+          shares: 217,
+          pricePerShare: 1.38,
+          availableShares: 50000,
+        ),
+      );
+
+      final settings = StreamController<SettingsState>.broadcast();
+      addTearDown(settings.close);
+      const initial = SettingsState(currency: Currency.eur);
+      when(() => settingsBloc.state).thenReturn(initial);
+      whenListen(settingsBloc, settings.stream, initialState: initial);
+
+      await tester.pumpApp(wrapBuyPage(const BuyPage()));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      const next = SettingsState(currency: Currency.chf);
+      when(() => settingsBloc.state).thenReturn(next);
+      settings.add(next);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('buy-currency-picker')),
+          matching: find.text('CHF'),
+        ),
+        findsOneWidget,
+      );
+    });
   });
 
   group('$BuyView', () {
@@ -138,6 +243,38 @@ void main() {
 
       expect(find.byType(PaymentConverter), findsOne);
       expect(find.byType(PaymentInformation), findsOne);
+    });
+
+    testWidgets('hides charged amount when payable is empty', (tester) async {
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(fiatText: '300', payableText: ''),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byKey(const Key('buy-charged-amount')), findsNothing);
+    });
+
+    testWidgets('hides charged amount when payable matches the typed text', (tester) async {
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(fiatText: '125.50', payableText: '125.50'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byKey(const Key('buy-charged-amount')), findsNothing);
+    });
+
+    testWidgets('hides charged amount when payable is the same value with extra fraction digits', (
+      tester,
+    ) async {
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(fiatText: '300', payableText: '300.00'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byKey(const Key('buy-charged-amount')), findsNothing);
     });
 
     testWidgets('renders correctly when $BuyPaymentInfo is available', (tester) async {
@@ -176,6 +313,141 @@ void main() {
       // bank-transfer details have moved to the BuyPaymentDetailsPage.
       expect(find.byType(BuyConfirmButton), findsOne);
       expect(find.text(S.current.buyPaymentConfirm), findsOne);
+    });
+
+    testWidgets(
+      'on an EUR quote the confirm CTA keeps the EUR settlement IBAN, not a CHF leftover',
+      (
+        tester,
+      ) async {
+        const eurQuote = BuyPaymentInfo(
+          amount: 300,
+          id: 1,
+          iban: 'CH9708307000560946317',
+          bic: 'bic',
+          name: 'name',
+          street: 'street',
+          number: 'number',
+          zip: 'zip',
+          city: 'city',
+          country: 'country',
+          currency: Currency.eur,
+        );
+        when(() => buyPaymentInfoCubit.state).thenReturn(
+          const BuyPaymentInfoSuccess(eurQuote),
+        );
+        when(() => converterCubit.state).thenReturn(
+          const BuyConverterState(currency: Currency.eur, fiatText: '300'),
+        );
+
+        await tester.pumpApp(buildSubject(const BuyView()));
+
+        expect(find.byType(BuyConfirmButton), findsOne);
+        expect(find.text(S.current.buyPaymentConfirm), findsOne);
+        final confirm = tester.widget<BuyConfirmButton>(find.byType(BuyConfirmButton));
+        expect(confirm.buyPaymentInfo.iban, 'CH9708307000560946317');
+        expect(confirm.buyPaymentInfo.currency, Currency.eur);
+        expect(confirm.buyPaymentInfo.iban, isNot('CH2208307000560946309'));
+      },
+    );
+
+    testWidgets('clears the quote when the converter currency changes', (tester) async {
+      const start = BuyConverterState(currency: Currency.eur);
+      const next = BuyConverterState(currency: Currency.chf, loading: true);
+      when(() => converterCubit.state).thenReturn(start);
+      whenListen(
+        converterCubit,
+        Stream<BuyConverterState>.fromIterable([next]),
+        initialState: start,
+      );
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        const BuyPaymentInfoMinAmountNotMetFailure(
+          PaymentInfoError.minAmountNotMet,
+          minAmount: 108.4,
+        ),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+      await tester.pump();
+
+      verify(() => buyPaymentInfoCubit.clear()).called(1);
+      verifyNever(
+        () => buyPaymentInfoCubit.getPaymentInfo(
+          amount: any(named: 'amount'),
+          currency: any(named: 'currency'),
+        ),
+      );
+    });
+
+    testWidgets('clears the quote when conversion finishes before fetching the new quote', (
+      tester,
+    ) async {
+      const start = BuyConverterState(currency: Currency.chf, fiatText: '300', loading: true);
+      const next = BuyConverterState(
+        currency: Currency.chf,
+        fiatText: '400',
+        payableText: '400.00',
+      );
+      when(() => converterCubit.state).thenReturn(start);
+      whenListen(
+        converterCubit,
+        Stream<BuyConverterState>.fromIterable([next]),
+        initialState: start,
+      );
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        const BuyPaymentInfoSuccess(
+          BuyPaymentInfo(
+            amount: 300,
+            id: 1,
+            iban: 'iban',
+            bic: 'bic',
+            name: 'name',
+            street: 'street',
+            number: 'number',
+            zip: 'zip',
+            city: 'city',
+            country: 'country',
+            currency: Currency.chf,
+          ),
+        ),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+      await tester.pump();
+
+      verifyInOrder([
+        () => buyPaymentInfoCubit.clear(),
+        () => buyPaymentInfoCubit.getPaymentInfo(amount: '400.00', currency: Currency.chf),
+      ]);
+    });
+
+    testWidgets('hides confirm when the quote currency does not match the converter', (
+      tester,
+    ) async {
+      const eurQuote = BuyPaymentInfo(
+        amount: 300,
+        id: 1,
+        iban: 'CH9708307000560946317',
+        bic: 'bic',
+        name: 'name',
+        street: 'street',
+        number: 'number',
+        zip: 'zip',
+        city: 'city',
+        country: 'country',
+        currency: Currency.eur,
+      );
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        const BuyPaymentInfoSuccess(eurQuote),
+      );
+      when(() => converterCubit.state).thenReturn(
+        const BuyConverterState(currency: Currency.chf, fiatText: '300'),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byType(BuyConfirmButton), findsNothing);
+      expect(find.text(S.current.buyPaymentConfirm), findsNothing);
     });
 
     testWidgets('renders correctly when $BuyPaymentInfo is loading', (tester) async {
@@ -249,6 +521,40 @@ void main() {
       expect(find.byType(PaymentActionRequired), findsNothing);
       expect(find.byType(PaymentInformation), findsOne);
       expect(find.text(S.current.buyMinAmount('${minAmount.ceil()}', currency.code)), findsOne);
+      expect(
+        find.byWidgetPredicate(
+          (Widget widget) => widget is AppFilledButton && widget.onPressed == null,
+        ),
+        findsOne,
+      );
+    });
+
+    testWidgets('renders correctly when max amount is exceeded', (tester) async {
+      // Non-integer max: the API returns the remaining cap in the input
+      // currency. Display rounds DOWN to the largest whole amount that still
+      // satisfies the server-side maximum (symmetric to min's ceil).
+      // 90000.6 distinguishes floor (90000) from round/ceil (90001).
+      final maxAmount = 90000.6;
+      final currency = Currency.eur;
+
+      when(() => buyPaymentInfoCubit.state).thenReturn(
+        BuyPaymentInfoMaxAmountExceededFailure(
+          PaymentInfoError.maxAmountExceeded,
+          maxAmount: maxAmount,
+        ),
+      );
+      when(() => converterCubit.state).thenReturn(
+        BuyConverterState(
+          currency: currency,
+        ),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+
+      expect(find.byType(PaymentActionRequired), findsNothing);
+      expect(find.byType(PaymentInformation), findsOne);
+      expect(find.text(S.current.buyMaxAmount('${maxAmount.floor()}', currency.code)), findsOne);
+      expect(find.text(S.current.retry), findsNothing);
       expect(
         find.byWidgetPredicate(
           (Widget widget) => widget is AppFilledButton && widget.onPressed == null,
@@ -343,6 +649,41 @@ void main() {
         () => buyPaymentInfoCubit.getPaymentInfo(
           amount: '299.46',
           currency: Currency.chf,
+        ),
+      ).called(1);
+    });
+
+    testWidgets('requests the EUR quote with the live payable when converter settles in EUR', (
+      tester,
+    ) async {
+      whenListen(
+        converterCubit,
+        Stream.fromIterable([
+          const BuyConverterState(
+            fiatText: '300',
+            payableText: '',
+            sharesText: '217',
+            loading: true,
+            currency: Currency.eur,
+          ),
+          const BuyConverterState(
+            fiatText: '300',
+            payableText: '299.46',
+            sharesText: '217',
+            loading: false,
+            currency: Currency.eur,
+          ),
+        ]),
+        initialState: const BuyConverterState(fiatText: '300', currency: Currency.eur),
+      );
+
+      await tester.pumpApp(buildSubject(const BuyView()));
+      await tester.pumpAndSettle();
+
+      verify(
+        () => buyPaymentInfoCubit.getPaymentInfo(
+          amount: '299.46',
+          currency: Currency.eur,
         ),
       ).called(1);
     });

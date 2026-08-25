@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/buy_exceptions.dart';
 
 class ApiException implements Exception {
@@ -27,6 +29,26 @@ class ApiException implements Exception {
           message: message is List ? message.join(', ') : message?.toString() ?? 'Unknown error',
         );
     }
+  }
+
+  /// Builds an [ApiException] from an HTTP error body that may or may not be JSON.
+  ///
+  /// JSON objects go through [fromJson] (KYC/registration subclasses preserved).
+  /// Non-JSON or non-object bodies yield an empty [message] — never the raw body.
+  factory ApiException.fromBody(String body, {required int httpStatusCode}) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) {
+        return ApiException.fromJson(decoded, httpStatusCode: httpStatusCode);
+      }
+    } on FormatException {
+      // Non-JSON body (plain text, HTML, empty). No API user-facing text.
+    }
+    return ApiException(
+      statusCode: httpStatusCode,
+      code: 'UNKNOWN',
+      message: '',
+    );
   }
 
   @override

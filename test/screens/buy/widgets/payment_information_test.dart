@@ -124,6 +124,37 @@ void main() {
       },
     );
 
+    testWidgets(
+      'MaxAmountExceededFailure: message lives on the CTA, not PaymentActionRequired',
+      (tester) async {
+        when(() => cubit.state).thenReturn(
+          const BuyPaymentInfoMaxAmountExceededFailure(
+            PaymentInfoError.maxAmountExceeded,
+            maxAmount: 90000,
+          ),
+        );
+
+        await tester.pumpApp(_host(cubit));
+
+        expect(find.byType(PaymentActionRequired), findsNothing);
+        expect(find.byType(CupertinoActivityIndicator), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Failure(maxAmountExceeded) (without specialized class) falls through to SizedBox.shrink',
+      (tester) async {
+        when(() => cubit.state).thenReturn(
+          const BuyPaymentInfoFailure(PaymentInfoError.maxAmountExceeded),
+        );
+
+        await tester.pumpApp(_host(cubit));
+
+        expect(find.byType(PaymentActionRequired), findsNothing);
+        expect(find.byType(CupertinoActivityIndicator), findsNothing);
+      },
+    );
+
     testWidgets('Initial (or unhandled): SizedBox.shrink', (tester) async {
       when(() => cubit.state).thenReturn(const BuyPaymentInfoInitial());
 

@@ -100,7 +100,7 @@ class _PaymentConverterState extends State<PaymentConverter> {
                   child: TextField(
                     controller: _amountController,
                     keyboardType: const .numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp("[0-9.,']"))],
                     decoration: const InputDecoration(
                       border: .none,
                       contentPadding: .symmetric(
@@ -204,6 +204,26 @@ class _PaymentConverterState extends State<PaymentConverter> {
             ),
           ),
         ),
+        BlocBuilder<BuyConverterCubit, BuyConverterState>(
+          builder: (context, state) {
+            if (!_showsExactCharge(state)) {
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: const .symmetric(
+                horizontal: 12.0,
+                vertical: 4.0,
+              ),
+              child: Text(
+                '${S.of(context).buyChargedAmount}: ${state.payableText} ${state.currency.code}',
+                key: const Key('buy-charged-amount'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: RealUnitColors.neutral600,
+                ),
+              ),
+            );
+          },
+        ),
         const SizedBox(height: 32),
         Padding(
           padding: const .symmetric(
@@ -301,5 +321,19 @@ class _PaymentConverterState extends State<PaymentConverter> {
         ),
       ],
     );
+  }
+
+  // payableText is always two fractional digits; fiatText is raw keystrokes
+  // ('300' vs '300.00'). Compare numerically so an exact match stays hidden.
+  bool _showsExactCharge(BuyConverterState state) {
+    if (state.payableText.isEmpty || state.payableText == state.fiatText) {
+      return false;
+    }
+    final fiat = num.tryParse(state.fiatText.replaceAll(',', '.'));
+    final payable = num.tryParse(state.payableText.replaceAll(',', '.'));
+    if (fiat != null && payable != null) {
+      return fiat != payable;
+    }
+    return true;
   }
 }

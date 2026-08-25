@@ -38,6 +38,20 @@ const _rawIbanInfo = BuyPaymentInfo(
   currency: Currency.chf,
 );
 
+const _eurInfo = BuyPaymentInfo(
+  amount: 300,
+  id: 1,
+  iban: 'CH9708307000560946317',
+  bic: 'BICCBIC',
+  name: 'RealUnit AG',
+  street: 'Bahnhofstrasse',
+  number: '1',
+  zip: '8001',
+  city: 'Zurich',
+  country: 'Switzerland',
+  currency: Currency.eur,
+);
+
 // The card uses IconButton (needs a Material ancestor) and renders a tall list of
 // rows — host it in a scrollable Scaffold so it lays out without overflow.
 Widget _host({
@@ -65,6 +79,17 @@ void main() {
       expect(find.text('RealUnit AG'), findsOneWidget);
       expect(find.text('100'), findsOneWidget);
       expect(find.text('${S.current.amountIn} ${Currency.chf.code}'), findsOneWidget);
+    });
+
+    testWidgets('renders the EUR settlement IBAN and amount-in EUR, not the CHF IBAN', (
+      tester,
+    ) async {
+      await tester.pumpApp(_host(buyPaymentInfo: _eurInfo));
+
+      expect(find.text('CH97 0830 7000 5609 4631 7'), findsOneWidget);
+      expect(find.text('${S.current.amountIn} ${Currency.eur.code}'), findsOneWidget);
+      expect(find.text('CH22 0830 7000 5609 4630 9'), findsNothing);
+      expect(find.text('${S.current.amountIn} ${Currency.chf.code}'), findsNothing);
     });
 
     testWidgets('renders the purpose of payment when purposeOfPayment is set', (tester) async {

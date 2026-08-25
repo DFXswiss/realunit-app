@@ -108,6 +108,7 @@ void main() {
       expect(dto.id, 1);
       expect(dto.routeId, 2);
       expect(dto.timestamp, DateTime.utc(2026, 5, 15, 10));
+      expect(dto.iban, 'CH...');
       expect(dto.amount, 100.5);
       expect(dto.currency, Currency.chf);
       expect(dto.fees.total, 2.0);
@@ -117,6 +118,17 @@ void main() {
       expect(dto.remittanceInfo, 'rem-info');
       expect(dto.isValid, isTrue);
       expect(dto.priceSteps, isEmpty);
+    });
+
+    test('parses the EUR settlement IBAN and currency from the wire', () {
+      final json = baseJson()
+        ..['iban'] = 'CH9708307000560946317'
+        ..['currency'] = 'EUR';
+
+      final dto = RealUnitBuyPaymentInfoDto.fromJson(json);
+
+      expect(dto.iban, 'CH9708307000560946317');
+      expect(dto.currency, Currency.eur);
     });
 
     test('keeps optional fields null when the wire sends null', () {
@@ -182,9 +194,9 @@ void main() {
   });
 
   group('$PaymentInfoError', () {
-    test('has the eight documented variants', () {
+    test('has the nine documented variants', () {
       // Pin the wire contract — any new variant has to be added intentionally.
-      expect(PaymentInfoError.values, hasLength(8));
+      expect(PaymentInfoError.values, hasLength(9));
       expect(
         PaymentInfoError.values.toSet(),
         {
@@ -193,6 +205,7 @@ void main() {
           PaymentInfoError.primaryEmailRequired,
           PaymentInfoError.primaryEmailNotConfirmed,
           PaymentInfoError.minAmountNotMet,
+          PaymentInfoError.maxAmountExceeded,
           PaymentInfoError.bitboxDisconnected,
           PaymentInfoError.priceSourceUnavailable,
           PaymentInfoError.unknown,

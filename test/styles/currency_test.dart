@@ -31,5 +31,15 @@ void main() {
         expect(() => Currency.fromCode(''), throwsA(isA<StateError>()));
       });
     });
+
+    group('tryFromCode', () {
+      test('resolves known codes and returns null otherwise', () {
+        expect(Currency.tryFromCode('CHF'), Currency.chf);
+        expect(Currency.tryFromCode('eur'), Currency.eur);
+        expect(Currency.tryFromCode('USD'), isNull);
+        expect(Currency.tryFromCode(''), isNull);
+        expect(Currency.tryFromCode(null), isNull);
+      });
+    });
   });
 }

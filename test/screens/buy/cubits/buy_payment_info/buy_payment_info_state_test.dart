@@ -133,6 +133,33 @@ void main() {
     });
   });
 
+  group('BuyPaymentInfoMaxAmountExceededFailure', () {
+    test('same error+maxAmount is equal and props match', () {
+      final a = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 90000,
+      );
+      final b = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 90000,
+      );
+      expect(a, equals(b));
+      expect(a.props, [PaymentInfoError.maxAmountExceeded, 90000]);
+    });
+
+    test('different maxAmount is unequal', () {
+      final a = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 90000,
+      );
+      final b = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 80000,
+      );
+      expect(a, isNot(equals(b)));
+    });
+  });
+
   group('BuyPaymentInfoState (cross-subclass identity)', () {
     test('Initial vs Loading are unequal', () {
       expect(BuyPaymentInfoInitial(), isNot(equals(BuyPaymentInfoLoading())));
@@ -146,6 +173,15 @@ void main() {
       );
       // MinAmountNotMetFailure extends Failure, but Equatable's runtimeType
       // check separates them.
+      expect(f, isNot(equals(m)));
+    });
+
+    test('Failure vs MaxAmountExceededFailure with matching error are unequal', () {
+      final f = BuyPaymentInfoFailure(PaymentInfoError.maxAmountExceeded);
+      final m = BuyPaymentInfoMaxAmountExceededFailure(
+        PaymentInfoError.maxAmountExceeded,
+        maxAmount: 90000,
+      );
       expect(f, isNot(equals(m)));
     });
   });

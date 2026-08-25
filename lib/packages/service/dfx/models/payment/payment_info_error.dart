@@ -4,6 +4,7 @@ enum PaymentInfoError {
   primaryEmailRequired,
   primaryEmailNotConfirmed,
   minAmountNotMet,
+  maxAmountExceeded,
   bitboxDisconnected,
   priceSourceUnavailable,
   unknown,
