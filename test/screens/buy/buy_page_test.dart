@@ -61,7 +61,7 @@ void main() {
     when(() => settingsBloc.state).thenReturn(const SettingsState());
     whenListen(
       settingsBloc,
-      Stream<SettingsState>.empty(),
+      const Stream<SettingsState>.empty(),
       initialState: const SettingsState(),
     );
 
@@ -130,7 +130,7 @@ void main() {
       );
       const eur = SettingsState(currency: Currency.eur);
       when(() => settingsBloc.state).thenReturn(eur);
-      whenListen(settingsBloc, Stream<SettingsState>.empty(), initialState: eur);
+      whenListen(settingsBloc, const Stream<SettingsState>.empty(), initialState: eur);
 
       await tester.pumpApp(wrapBuyPage(const BuyPage()));
       await tester.pump(const Duration(milliseconds: 250));
