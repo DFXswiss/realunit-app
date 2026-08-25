@@ -8,10 +8,10 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/utils/fuck_firebase.dart';
-import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
+import 'package:realunit_wallet/setup/account_currency_sync.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/error_handling/crash_reporting.dart';
 import 'package:realunit_wallet/setup/error_handling/error_handlers.dart';
@@ -64,7 +64,11 @@ class WalletApp extends StatefulWidget {
 }
 
 class _WalletAppState extends State<WalletApp> {
-  int _accountCurrencyGeneration = 0;
+  late final AccountCurrencySync _accountCurrency = AccountCurrencySync(
+    settings: getIt<SettingsBloc>(),
+    kyc: getIt<DfxKycService>(),
+    currentWallet: () => getIt<HomeBloc>().state.openWallet,
+  );
 
   @override
   void initState() {
@@ -98,7 +102,7 @@ class _WalletAppState extends State<WalletApp> {
               listenWhen: (previous, current) =>
                   previous.openWallet == null && current.openWallet != null,
               listener: (context, homeState) {
-                _startAccountCurrencyApply(homeState.openWallet);
+                _accountCurrency.onOpened(homeState.openWallet);
               },
             ),
             BlocListener<HomeBloc, HomeState>(
@@ -107,16 +111,14 @@ class _WalletAppState extends State<WalletApp> {
                   current.openWallet != null &&
                   !identical(previous.openWallet, current.openWallet),
               listener: (context, homeState) {
-                getIt<SettingsBloc>().add(const ClearAccountCurrencyEvent());
-                _startAccountCurrencyApply(homeState.openWallet);
+                _accountCurrency.onSwitched(homeState.openWallet);
               },
             ),
             BlocListener<HomeBloc, HomeState>(
               listenWhen: (previous, current) =>
                   previous.openWallet != null && current.openWallet == null,
               listener: (context, homeState) {
-                _accountCurrencyGeneration++;
-                getIt<SettingsBloc>().add(const ClearAccountCurrencyEvent());
+                _accountCurrency.onClosed();
               },
             ),
             BlocListener<HomeBloc, HomeState>(
@@ -140,25 +142,6 @@ class _WalletAppState extends State<WalletApp> {
       ),
     ),
   );
-
-  void _startAccountCurrencyApply(AWallet? wallet) {
-    final generation = ++_accountCurrencyGeneration;
-    unawaited(_applyAccountCurrency(generation, wallet));
-  }
-
-  Future<void> _applyAccountCurrency(int generation, AWallet? captured) async {
-    try {
-      final user = await getIt<DfxKycService>().getUser();
-      if (generation != _accountCurrencyGeneration) return;
-      if (!identical(getIt<HomeBloc>().state.openWallet, captured)) return;
-      final currency = user.currency;
-      if (currency == null) return;
-      getIt<SettingsBloc>().add(ApplyAccountCurrencyEvent(currency));
-    } catch (_) {
-      // Account currency is a display default; boot must not fail if /v2/user
-      // is unavailable.
-    }
-  }
 
   void _loadWalletIfNeeded() {
     final homeState = getIt<HomeBloc>().state;
