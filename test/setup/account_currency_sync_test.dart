@@ -142,4 +142,18 @@ void main() {
 
     verifyNever(() => settings.add(any()));
   });
+
+  test('applyFromUser drops an in-flight onOpened apply', () async {
+    final held = Completer<UserDto>();
+    when(() => kyc.getUser()).thenAnswer((_) => held.future);
+
+    final sync = build();
+    sync.onOpened(wallet);
+    sync.applyFromUser(_user(currency: Currency.chf), captured: wallet);
+    held.complete(_user(currency: Currency.eur));
+    await Future<void>.delayed(Duration.zero);
+
+    verify(() => settings.add(const ApplyAccountCurrencyEvent(Currency.chf))).called(1);
+    verifyNever(() => settings.add(const ApplyAccountCurrencyEvent(Currency.eur)));
+  });
 }

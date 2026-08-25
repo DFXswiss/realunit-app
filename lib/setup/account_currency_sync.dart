@@ -33,6 +33,7 @@ class AccountCurrencySync {
     if (currency == null) return;
     final open = _currentWallet();
     if (open == null || !identical(open, captured)) return;
+    _generation++;
     _settings.add(ApplyAccountCurrencyEvent(currency));
   }
 
