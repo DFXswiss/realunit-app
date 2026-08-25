@@ -9,6 +9,15 @@ enum Currency {
   factory Currency.fromCode(String code) =>
       Currency.values.firstWhere((e) => e.code == code.toUpperCase());
 
+  static Currency? tryFromCode(String? code) {
+    if (code == null || code.isEmpty) return null;
+    try {
+      return Currency.fromCode(code);
+    } catch (_) {
+      return null;
+    }
+  }
+
   final String code;
 
   String get name {

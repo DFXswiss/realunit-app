@@ -1,23 +1,31 @@
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
+import 'package:realunit_wallet/styles/currency.dart';
 
 class UserDto {
   final String? mail;
   final UserKycDto kyc;
   final UserCapabilitiesDto capabilities;
 
+  /// Account display currency from GET /v2/user. Null when the field is
+  /// absent or not a currency this app build knows.
+  final Currency? currency;
+
   const UserDto({
     this.mail,
     required this.kyc,
     this.capabilities = const UserCapabilitiesDto(),
+    this.currency,
   });
 
   factory UserDto.fromJson(Map<String, dynamic> json) {
+    final currencyJson = json['currency'] as Map<String, dynamic>?;
     return UserDto(
       mail: json['mail'] as String?,
       kyc: UserKycDto.fromJson(json['kyc'] as Map<String, dynamic>),
       capabilities: json['capabilities'] != null
           ? UserCapabilitiesDto.fromJson(json['capabilities'] as Map<String, dynamic>)
           : const UserCapabilitiesDto(),
+      currency: Currency.tryFromCode(currencyJson?['name'] as String?),
     );
   }
 }

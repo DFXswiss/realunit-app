@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:async/async.dart';
@@ -37,25 +38,40 @@ const String _quoteErrorPrimaryEmailNotConfirmed = 'PrimaryEmailNotConfirmed';
 class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
   CancelableOperation<BuyPaymentInfoState>? _completer;
+  int _seq = 0;
 
   BuyPaymentInfoCubit(
     RealUnitBuyPaymentInfoService buyPaymentInfoService,
   ) : _buyPaymentInfoService = buyPaymentInfoService,
       super(const BuyPaymentInfoInitial());
 
+  void clear() {
+    _seq++;
+    unawaited(_completer?.cancel() ?? Future<void>.value());
+    _completer = null;
+    if (state is BuyPaymentInfoInitial) return;
+    emit(const BuyPaymentInfoInitial());
+  }
+
   Future<void> getPaymentInfo({String amount = '300', Currency currency = Currency.chf}) async {
+    final mySeq = ++_seq;
     await _completer?.cancel();
+    if (isClosed || mySeq != _seq) return;
 
     if (state is! BuyPaymentInfoSuccess) {
       emit(const BuyPaymentInfoLoading());
     }
 
-    _completer = CancelableOperation.fromFuture(
+    final operation = CancelableOperation.fromFuture(
       _runGetPaymentInfo(amount, currency),
     );
+    _completer = operation;
 
-    final newState = await _completer!.value;
-    if (isClosed) return;
+    // `.value` never completes after cancel(); `.valueOrCancellation()`
+    // completes with null so a later getPaymentInfo is not stuck on the
+    // cancelled Future.
+    final newState = await operation.valueOrCancellation();
+    if (isClosed || mySeq != _seq || newState == null) return;
     emit(newState);
   }
 

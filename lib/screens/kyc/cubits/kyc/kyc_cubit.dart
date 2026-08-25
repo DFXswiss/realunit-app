@@ -15,6 +15,8 @@ import 'package:realunit_wallet/packages/service/dfx/models/wallet/real_unit_reg
 import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
+import 'package:realunit_wallet/setup/account_currency_sync.dart';
+import 'package:realunit_wallet/setup/di.dart';
 
 part 'kyc_state.dart';
 
@@ -49,6 +51,11 @@ class KycCubit extends Cubit<KycState> {
   // current one. Acts as a cancellation token for non-cancellable work.
   int _runGeneration = 0;
 
+  /// Wallet that was open when the current `checkKyc()` started. A late
+  /// GET /v2/user must not apply after delete or after a different wallet
+  /// is loaded (`LoadWalletEvent` can go A→B without a null gap).
+  AWallet? _walletAtCheckStart;
+
   KycCubit(
     DfxKycService kycService,
     RealUnitRegistrationService registrationService,
@@ -62,6 +69,9 @@ class KycCubit extends Cubit<KycState> {
 
   Future<void> checkKyc({String? context}) async {
     _kycContext = context ?? _kycContext;
+    _walletAtCheckStart = getIt.isRegistered<AccountCurrencySync>()
+        ? getIt<AccountCurrencySync>().currentWallet
+        : null;
     final generation = ++_runGeneration;
     try {
       await _runCheckKyc(generation).timeout(_checkKycTimeout);
@@ -72,6 +82,11 @@ class KycCubit extends Cubit<KycState> {
       if (isClosed || generation != _runGeneration) return;
       emit(KycFailure(ApiException.userFacingMessage(e)));
     }
+  }
+
+  void _applyAccountCurrency(UserDto user) {
+    if (!getIt.isRegistered<AccountCurrencySync>()) return;
+    getIt<AccountCurrencySync>().applyFromUser(user, captured: _walletAtCheckStart);
   }
 
   Future<void> _runCheckKyc(int generation) async {
@@ -88,6 +103,7 @@ class KycCubit extends Cubit<KycState> {
 
       final kycStatus = results.elementAt(0) as KycLevelDto;
       final user = results.elementAt(1) as UserDto;
+      _applyAccountCurrency(user);
       final level = kycStatus.kycLevel.value;
 
       if (user.mail == null) {

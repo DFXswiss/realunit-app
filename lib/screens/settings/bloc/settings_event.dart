@@ -25,6 +25,22 @@ final class SetCurrencyEvent extends SettingsEvent {
   List<Object> get props => [currency];
 }
 
+/// Account currency from GET /v2/user. Applied only when the user has not
+/// stored a local preference. Not written to prefs.
+final class ApplyAccountCurrencyEvent extends SettingsEvent {
+  final Currency currency;
+
+  const ApplyAccountCurrencyEvent(this.currency);
+
+  @override
+  List<Object> get props => [currency];
+}
+
+/// Drops a non-persisted account default (wallet closed or switched).
+final class ClearAccountCurrencyEvent extends SettingsEvent {
+  const ClearAccountCurrencyEvent();
+}
+
 final class SetNetworkModeEvent extends SettingsEvent {
   final NetworkMode networkMode;
 

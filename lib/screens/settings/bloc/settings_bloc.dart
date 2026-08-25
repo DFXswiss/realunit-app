@@ -13,14 +13,17 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     this._settingsRepository,
     this.getNewAuthToken, {
     this.onNetworkModeChanged,
-  }) : super(SettingsState(
-          language: Language.fromCode(_settingsRepository.language),
-          currency: Currency.fromCode(_settingsRepository.currency),
-          networkMode: _settingsRepository.networkMode,
-          insiderFeaturesUnlocked:
-              _settingsRepository.insiderFeaturesUnlocked,
-        )) {
+  }) : super(
+         SettingsState(
+           language: Language.fromCode(_settingsRepository.language),
+           currency: Currency.fromCode(_settingsRepository.currency),
+           networkMode: _settingsRepository.networkMode,
+           insiderFeaturesUnlocked: _settingsRepository.insiderFeaturesUnlocked,
+         ),
+       ) {
     on<SetCurrencyEvent>(_onSetCurrencyEvent);
+    on<ApplyAccountCurrencyEvent>(_onApplyAccountCurrencyEvent);
+    on<ClearAccountCurrencyEvent>(_onClearAccountCurrencyEvent);
     on<SetLanguageEvent>(_onSetLanguageEvent);
     on<SetNetworkModeEvent>(_onSetNetworkModeEvent);
     on<ToggleHideAmountEvent>(_onToggleHideAmountEvent);
@@ -45,8 +48,26 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
     emit(state.copyWith(currency: event.currency));
   }
 
+  void _onApplyAccountCurrencyEvent(
+    ApplyAccountCurrencyEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    if (_settingsRepository.hasStoredCurrency) return;
+    emit(state.copyWith(currency: event.currency));
+  }
+
+  void _onClearAccountCurrencyEvent(
+    ClearAccountCurrencyEvent event,
+    Emitter<SettingsState> emit,
+  ) {
+    if (_settingsRepository.hasStoredCurrency) return;
+    emit(state.copyWith(currency: Currency.fromCode(_settingsRepository.currency)));
+  }
+
   Future<void> _onSetNetworkModeEvent(
-      SetNetworkModeEvent event, Emitter<SettingsState> emit) async {
+    SetNetworkModeEvent event,
+    Emitter<SettingsState> emit,
+  ) async {
     _settingsRepository.networkMode = event.networkMode;
     await getNewAuthToken();
     onNetworkModeChanged?.call();
