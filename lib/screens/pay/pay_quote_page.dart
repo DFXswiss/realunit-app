@@ -8,6 +8,7 @@ import 'package:realunit_wallet/screens/pay/cubits/pay_quote/pay_quote_cubit.dar
 import 'package:realunit_wallet/screens/pay/pay_process_page.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/route_animation_gate.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 class PayQuotePage extends StatelessWidget {
@@ -18,8 +19,11 @@ class PayQuotePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => PayQuoteCubit(getIt<RealUnitPayService>(), paymentLinkId)..load(),
-      child: const PayQuoteView(),
+      create: (_) => PayQuoteCubit(getIt<RealUnitPayService>(), paymentLinkId),
+      child: RouteAnimationGate(
+        onSettled: (c) => c.read<PayQuoteCubit>().load(),
+        child: const PayQuoteView(),
+      ),
     );
   }
 }

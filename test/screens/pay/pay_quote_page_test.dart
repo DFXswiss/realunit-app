@@ -52,9 +52,11 @@ void main() {
   setUpAll(() {
     final getIt = GetIt.instance;
 
-    // PayQuotePage resolves the pay service from getIt and calls load(); the
-    // load throws a typed error here so the pushed route builds deterministically
-    // (rendering PayQuoteError) without a live backend.
+    // PayQuotePage resolves the pay service from getIt and creates the cubit
+    // without load(); a route gate calls load() after the route animation
+    // completes (immediately when pumped as home). The load throws a typed
+    // error here so the page builds deterministically (PayQuoteError) without
+    // a live backend.
     final payService = _MockPayService();
     when(() => payService.getPaymentDetails(any())).thenThrow(
       const ApiException(code: 'TEST', message: 'no backend in widget test'),
@@ -62,8 +64,9 @@ void main() {
     getIt.registerSingleton<RealUnitPayService>(payService);
 
     // The confirm button pushes PayProcessPage, which resolves a full service
-    // graph from getIt and calls start(). A debug wallet makes start() settle
-    // immediately (signatureUnsupported) without touching the chain.
+    // graph from getIt; its route gate starts the cubit after animation.
+    // A debug wallet makes start() settle immediately (signatureUnsupported)
+    // without touching the chain.
     getIt.registerSingleton<DfxFaucetService>(_MockFaucetService());
     getIt.registerSingleton<DfxBlockchainApiService>(_MockBlockchainService());
     getIt.registerSingleton<WalletService>(_MockWalletService());

@@ -7,6 +7,7 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_transfer_service.
 import 'package:realunit_wallet/screens/send/cubits/send_process/send_process_cubit.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/route_animation_gate.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 /// Final step: prepare → sign (EIP-712 delegation + EIP-7702 authorization) →
@@ -26,8 +27,11 @@ class SendProcessPage extends StatelessWidget {
         appStore: getIt<AppStore>(),
         recipient: recipient,
         amount: amount,
-      )..start(),
-      child: const SendProcessView(),
+      ),
+      child: RouteAnimationGate(
+        onSettled: (c) => c.read<SendProcessCubit>().start(),
+        child: const SendProcessView(),
+      ),
     );
   }
 }
@@ -125,6 +129,11 @@ class SendProcessView extends StatelessWidget {
     required String description,
     bool canRetry = false,
   }) async {
+    await waitForIncomingRouteAnimation(context);
+    if (!context.mounted) {
+      return;
+    }
+
     final shouldPopPage = await showModalBottomSheet<bool>(
       context: context,
       isDismissible: false,

@@ -162,10 +162,10 @@ void main() {
     blockchainService: blockchain,
     sellService: sellService,
     appStore: appStore,
-  );
+  )..start();
 
-  // Waits for the constructor's first non-Checking emit and asserts it is
-  // EthReady — the precondition every flow test in this file shares.
+  // Waits for start()'s first non-Checking emit and asserts it is EthReady —
+  // the precondition every flow test in this file shares.
   Future<void> settleToEthReady(SellBitboxCubit cubit) async {
     final state = await cubit.stream.firstWhere((s) => s is! SellBitboxCheckingEth);
     expect(
