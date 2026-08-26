@@ -86,3 +86,29 @@ class TransferAlreadyConfirmedException extends ApiException {
   @override
   String toString() => 'TransferAlreadyConfirmedException: $message';
 }
+
+/// Confirm already broadcast the transfer but the receipt wait timed out
+/// (HTTP 500 whose message names the tx hash). Callers must treat this as
+/// success — the chain has the tx; a retry must not prepare a second send.
+class TransferReceiptTimeoutException extends ApiException {
+  /// Hash named in the timeout message; always 0x + 64 hex.
+  final String txHash;
+
+  const TransferReceiptTimeoutException({
+    super.statusCode,
+    required super.code,
+    required super.message,
+    required this.txHash,
+  });
+
+  @override
+  String toString() => 'TransferReceiptTimeoutException: $message';
+}
+
+/// Returns the tx hash from a viem/receipt-wait timeout message, or null.
+String? txHashFromReceiptTimeout(String message) {
+  if (!message.toLowerCase().contains('timed out while waiting for transaction')) {
+    return null;
+  }
+  return RegExp(r'0x[a-fA-F0-9]{64}').firstMatch(message)?.group(0);
+}

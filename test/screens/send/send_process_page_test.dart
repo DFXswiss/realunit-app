@@ -368,6 +368,8 @@ void main() {
           ),
         );
 
+        expect(find.text(S.current.sendFailureGeneric), findsOne);
+        expect(find.text('socket hung up'), findsNothing);
         expect(find.text(S.current.retry), findsOne);
         expect(find.text(S.current.close), findsOne);
         expect(find.byType(SendProcessView), findsOne);

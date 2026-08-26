@@ -118,10 +118,6 @@ class SendProcessView extends StatelessWidget {
 
     final apiText = state.message;
     if (apiText != null && apiText.isNotEmpty) {
-      // Never display raw viem / receipt-wait strings on any reason.
-      if (apiText.contains('Timed out while waiting for transaction') || apiText.contains('viem@')) {
-        return localized;
-      }
       return apiText;
     }
     return localized;

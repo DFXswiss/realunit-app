@@ -475,6 +475,27 @@ void main() {
       );
     });
 
+    test('500 viem receipt-timeout with hash → TransferReceiptTimeoutException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 500,
+            'message': 'Timed out while waiting for transaction with hash "$hash"\nVersion: viem@2.21.0',
+            'error': 'Internal Server Error',
+          }),
+          500,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          isA<TransferReceiptTimeoutException>().having((e) => e.txHash, 'txHash', hash),
+        ),
+      );
+    });
+
     test('any other 409 conflict stays a plain ApiException', () async {
       final client = MockClient(
         (_) async => http.Response(
