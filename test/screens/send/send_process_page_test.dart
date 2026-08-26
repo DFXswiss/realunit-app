@@ -26,20 +26,6 @@ class _MockApiConfig extends Mock implements ApiConfig {}
 
 class _MockWallet extends Mock implements SoftwareWallet {}
 
-/// [MaterialPageRoute] does not expose [transitionDuration] as a constructor
-/// argument; override it so the regression test can drive a known 300ms slide.
-class _TimedMaterialPageRoute<T> extends MaterialPageRoute<T> {
-  _TimedMaterialPageRoute({
-    required super.builder,
-    required Duration transitionDuration,
-  }) : _transitionDuration = transitionDuration;
-
-  final Duration _transitionDuration;
-
-  @override
-  Duration get transitionDuration => _transitionDuration;
-}
-
 void main() {
   late _MockSendProcessCubit processCubit;
 
@@ -91,7 +77,7 @@ void main() {
               child: TextButton(
                 onPressed: () {
                   Navigator.of(context).push(
-                    _TimedMaterialPageRoute<void>(
+                    TimedMaterialPageRoute<void>(
                       transitionDuration: const Duration(milliseconds: 300),
                       builder: (_) => const SendProcessPage(recipient: '0xRecipient', amount: 5),
                     ),

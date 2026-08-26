@@ -8,3 +8,4 @@ export 'pump_app.dart';
 export 'pump_golden_app.dart';
 export 'responsive_matrix.dart';
 export 'responsive_surface_catalog.dart';
+export 'timed_material_page_route.dart';

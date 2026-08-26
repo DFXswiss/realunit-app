@@ -40,9 +40,11 @@ void main() {
 
   setUpAll(() {
     final getIt = GetIt.instance;
-    // PayProcessPage resolves a full service graph from getIt and calls
-    // start(). A debug wallet makes start() settle immediately
-    // (signatureUnsupported) without touching the chain.
+    // PayProcessPage resolves a full service graph from getIt and creates
+    // the cubit without start(); a route gate starts it after the route
+    // animation completes (immediately when pumped as home). A debug wallet
+    // makes start() settle immediately (signatureUnsupported) without
+    // touching the chain.
     final payService = _MockPayService();
     getIt.registerSingleton<RealUnitPayService>(payService);
     getIt.registerSingleton<DfxFaucetService>(_MockFaucetService());
@@ -74,11 +76,64 @@ void main() {
   group('$PayProcessPage', () {
     testWidgets('builds its own cubit and renders $PayProcessView', (tester) async {
       await tester.pumpApp(const PayProcessPage(paymentLinkId: 'pl_abc', zchfNeeded: 42.7));
-      // start() runs and emits a failure on the debug wallet; pump a frame to
-      // let the cubit settle (the sheet animation is not awaited here).
+      // The route gate starts the cubit after the home route is settled; pump
+      // a frame so start() can emit (the sheet animation is not awaited here).
       await tester.pump();
 
       expect(find.byType(PayProcessView), findsOne);
+    });
+
+    testWidgets('keeps preparing UI during route slide; starts only after animation completes', (
+      tester,
+    ) async {
+      await tester.pumpApp(
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    TimedMaterialPageRoute<void>(
+                      transitionDuration: const Duration(milliseconds: 300),
+                      builder: (_) =>
+                          const PayProcessPage(paymentLinkId: 'pl_abc', zchfNeeded: 42.7),
+                    ),
+                  );
+                },
+                child: const Text('go'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('go'));
+      await tester.pump();
+      await tester.pump(); // flush the post-frame callback
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(PayProcessView), findsOne);
+      expect(
+        find.text(S.current.payPreparingSwap, skipOffstage: false),
+        findsOne,
+      );
+      expect(
+        find.text(S.current.payFailureTitle, skipOffstage: false),
+        findsNothing,
+      );
+      expect(
+        find.text(S.current.close, skipOffstage: false),
+        findsNothing,
+      );
+
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Body label and the result sheet both use payFailureTitle.
+      expect(find.text(S.current.payFailureTitle), findsAtLeast(1));
+      expect(find.text(S.current.close), findsOne);
+      expect(find.byIcon(Icons.error_rounded), findsOne);
     });
   });
 

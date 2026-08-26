@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +7,7 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_transfer_service.
 import 'package:realunit_wallet/screens/send/cubits/send_process/send_process_cubit.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/route_animation_gate.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 /// Final step: prepare → sign (EIP-712 delegation + EIP-7702 authorization) →
@@ -29,139 +28,11 @@ class SendProcessPage extends StatelessWidget {
         recipient: recipient,
         amount: amount,
       ),
-      child: const _SendProcessRouteGate(),
+      child: RouteAnimationGate(
+        onSettled: (c) => c.read<SendProcessCubit>().start(),
+        child: const SendProcessView(),
+      ),
     );
-  }
-}
-
-/// Starts [SendProcessCubit.start] once the incoming route's real animation
-/// has completed. A first-frame [kAlwaysCompleteAnimation] placeholder is
-/// ignored so a push does not start during the slide; a first/home route
-/// with no incoming slide starts after one frame.
-class _SendProcessRouteGate extends StatefulWidget {
-  const _SendProcessRouteGate();
-
-  @override
-  State<_SendProcessRouteGate> createState() => _SendProcessRouteGateState();
-}
-
-class _SendProcessRouteGateState extends State<_SendProcessRouteGate> {
-  bool _started = false;
-  bool _postedFrame = false;
-  Animation<double>? _animation;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) {
-      return;
-    }
-
-    final animation = ModalRoute.of(context)?.animation;
-    if (_animation != null && identical(animation, _animation)) {
-      return;
-    }
-
-    _detach();
-    _animation = animation;
-    _arm(animation);
-  }
-
-  /// [ModalRoute.animation] is a [ProxyAnimation] that starts as
-  /// [kAlwaysCompleteAnimation] until the navigator attaches the real
-  /// controller. Treating that placeholder as "already completed" would
-  /// start the cubit on the first frame of a push (split-screen + error sheet).
-  bool _isUnresolved(Animation<double>? animation) {
-    if (animation == null) {
-      return true;
-    }
-    if (identical(animation, kAlwaysCompleteAnimation)) {
-      return true;
-    }
-    if (animation is ProxyAnimation) {
-      final parent = animation.parent;
-      if (parent == null || identical(parent, kAlwaysCompleteAnimation)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void _arm(Animation<double>? animation) {
-    if (animation == null || _isUnresolved(animation)) {
-      animation?.addListener(_onProxyChanged);
-      animation?.addStatusListener(_onAnimationStatus);
-      if (_postedFrame) {
-        return;
-      }
-      _postedFrame = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _started) {
-          return;
-        }
-        final next = ModalRoute.of(context)?.animation;
-        if (identical(next, _animation) && _isUnresolved(next)) {
-          // Home / first route: there is no incoming slide to wait for.
-          if (ModalRoute.of(context)?.isFirst ?? true) {
-            _startOnce();
-          }
-          return;
-        }
-        _detach();
-        _animation = next;
-        _arm(next);
-      });
-      return;
-    }
-
-    animation.addStatusListener(_onAnimationStatus);
-    if (animation.status == AnimationStatus.completed || animation.value >= 1.0) {
-      _startOnce();
-    }
-  }
-
-  void _onProxyChanged() {
-    if (_started || !mounted) {
-      return;
-    }
-    final animation = _animation;
-    if (animation == null || _isUnresolved(animation)) {
-      return;
-    }
-    _detach();
-    _animation = animation;
-    _arm(animation);
-  }
-
-  void _onAnimationStatus(AnimationStatus status) {
-    if (status == AnimationStatus.completed) {
-      _startOnce();
-    }
-  }
-
-  void _startOnce() {
-    if (_started || !mounted) {
-      return;
-    }
-    _started = true;
-    _detach();
-    context.read<SendProcessCubit>().start();
-  }
-
-  void _detach() {
-    _animation?.removeListener(_onProxyChanged);
-    _animation?.removeStatusListener(_onAnimationStatus);
-  }
-
-  @override
-  void dispose() {
-    _detach();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return const SendProcessView();
   }
 }
 
@@ -258,7 +129,7 @@ class SendProcessView extends StatelessWidget {
     required String description,
     bool canRetry = false,
   }) async {
-    await _waitForRouteAnimation(context);
+    await waitForIncomingRouteAnimation(context);
     if (!context.mounted) {
       return;
     }
@@ -284,39 +155,6 @@ class SendProcessView extends StatelessWidget {
     // Close (or null) — leave the send-process route.
     Navigator.of(context).pop();
   }
-}
-
-/// Completes when [ModalRoute.animation] is null or already completed;
-/// otherwise waits for [AnimationStatus.completed] or [AnimationStatus.dismissed].
-Future<void> _waitForRouteAnimation(BuildContext context) {
-  final animation = ModalRoute.of(context)?.animation;
-  if (animation == null || animation.status == AnimationStatus.completed) {
-    return Future<void>.value();
-  }
-
-  final completer = Completer<void>();
-
-  void listener(AnimationStatus status) {
-    if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
-      animation.removeStatusListener(listener);
-      if (!completer.isCompleted) {
-        completer.complete();
-      }
-    }
-  }
-
-  animation.addStatusListener(listener);
-
-  // Race: status may flip between the first check and addStatusListener.
-  if (animation.status == AnimationStatus.completed ||
-      animation.status == AnimationStatus.dismissed) {
-    animation.removeStatusListener(listener);
-    if (!completer.isCompleted) {
-      completer.complete();
-    }
-  }
-
-  return completer.future;
 }
 
 /// Terminal result sheet content. Isolates the double-tap lock for Retry so the
