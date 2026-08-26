@@ -44,7 +44,7 @@ Test layout mirrors `lib/`. Stack: [`flutter_test`](https://pub.dev/packages/flu
 | `test/screens/<feature>/cubit(s)/**` and `test/screens/<feature>/bloc/**` | Cubit/Bloc state-transition specs (in the activated surface for line-coverage) |
 | `test/screens/<feature>/**/*_page_test.dart` | `testWidgets` view specs (cover the page, not the cubit logic) |
 | `test/integration/` | Cross-layer Tier-1 specs using `FakeBitboxCredentials` (e.g. `kyc_sign_flow_test.dart`) |
-| `test/helper/` | Shared test infra: [`pump_app.dart`](../test/helper/pump_app.dart), [`fake_bitbox_credentials.dart`](../test/helper/fake_bitbox_credentials.dart), [`responsive_matrix.dart`](../test/helper/responsive_matrix.dart), [`layout_assertions.dart`](../test/helper/layout_assertions.dart), [`responsive_surface_catalog.dart`](../test/helper/responsive_surface_catalog.dart) |
+| `test/helper/` | Shared test infra: [`pump_app.dart`](../test/helper/pump_app.dart), [`fake_bitbox_credentials.dart`](../test/helper/fake_bitbox_credentials.dart), [`responsive_matrix.dart`](../test/helper/responsive_matrix.dart), [`layout_assertions.dart`](../test/helper/layout_assertions.dart), [`responsive_surface_catalog.dart`](../test/helper/responsive_surface_catalog.dart), [`scanner_navigation_catalog.dart`](../test/helper/scanner_navigation_catalog.dart) |
 | `test/models/` | DTO / marshalling specs (`asset_test.dart`, `balance_test.dart`, `transaction_test.dart`, …) |
 | `test/setup/` | App lifecycle / bootstrap specs (`lifecycle_initializer_test.dart`) |
 | `test/styles/` | Currency / language fixtures (`currency_test.dart`, `language_test.dart`) |

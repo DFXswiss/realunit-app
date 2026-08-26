@@ -65,24 +65,13 @@ void main() {
               'Surface "${surface.id}" regression test '
               '(${surface.regressionTestPath}) must fire BarcodeCapture',
         );
-        final expectedDestination = switch (surface.id) {
-          'send_recipient' => 'SendAmountView',
-          'pay_scan' => 'PayQuoteView',
-          _ => null,
-        };
         expect(
-          expectedDestination,
-          isNotNull,
-          reason:
-              'Surface "${surface.id}" has no expected destination widget name '
-              'in the catalog self-test — extend the switch when adding a surface',
-        );
-        expect(
-          contents.contains(expectedDestination!),
+          contents.contains(surface.destinationWidgetName),
           isTrue,
           reason:
               'Surface "${surface.id}" regression test '
-              '(${surface.regressionTestPath}) must assert $expectedDestination',
+              '(${surface.regressionTestPath}) must assert '
+              '${surface.destinationWidgetName}',
         );
         expect(
           contents.contains('findsOne'),

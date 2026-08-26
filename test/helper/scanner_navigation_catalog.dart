@@ -15,6 +15,7 @@ class ScannerNavigationSurface {
     required this.description,
     required this.productionPath,
     required this.regressionTestPath,
+    required this.destinationWidgetName,
   });
 
   final String id;
@@ -25,6 +26,9 @@ class ScannerNavigationSurface {
 
   /// Path under `test/` of the real-cubit double-capture regression test.
   final String regressionTestPath;
+
+  /// Public widget type the regression test must `findsOne` (e.g. `SendAmountView`).
+  final String destinationWidgetName;
 }
 
 /// Living catalog — extend when adding a new [QrScannerView] consumer that
@@ -35,11 +39,13 @@ const kScannerNavigationCatalog = <ScannerNavigationSurface>[
     description: 'Wallet-to-wallet send recipient scan',
     productionPath: 'lib/screens/send/send_recipient_page.dart',
     regressionTestPath: 'test/screens/send/send_recipient_scanner_navigation_test.dart',
+    destinationWidgetName: 'SendAmountView',
   ),
   ScannerNavigationSurface(
     id: 'pay_scan',
     description: 'Open CryptoPay scan',
     productionPath: 'lib/screens/pay/pay_scan_page.dart',
     regressionTestPath: 'test/screens/pay/pay_scan_scanner_navigation_test.dart',
+    destinationWidgetName: 'PayQuoteView',
   ),
 ];
