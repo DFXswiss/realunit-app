@@ -2,8 +2,9 @@
 // (enter/scan recipient → amount → confirm → sign → transfer → confirm). Each
 // one renders a human-readable string (enumerated in `exception_surface_test.dart`)
 // so it surfaces cleanly in logs and user-facing error states instead of the
-// Dart default `Instance of '...'`. Typed failures drive control flow — no
-// error-string parsing.
+// Dart default `Instance of '...'`. Cubit and UI branch only on these types.
+// String recognition of a viem receipt-timeout lives only at the API boundary
+// (`txHashFromReceiptTimeout` in this file, used by the transfer service).
 
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 

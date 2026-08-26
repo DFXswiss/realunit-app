@@ -517,6 +517,48 @@ void main() {
       );
     });
 
+    test('HTTP 400 with body statusCode 500 and timeout phrase stays a plain ApiException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 500,
+            'message': 'Timed out while waiting for transaction with hash "$hash"',
+            'error': 'Internal Server Error',
+          }),
+          400,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          predicate((e) => e is ApiException && e is! TransferReceiptTimeoutException),
+        ),
+      );
+    });
+
+    test('HTTP 500 with hash but no timeout phrase stays a plain ApiException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 500,
+            'message': 'relay failed for $hash',
+            'error': 'Internal Server Error',
+          }),
+          500,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          predicate((e) => e is ApiException && e is! TransferReceiptTimeoutException),
+        ),
+      );
+    });
+
     test('any other 409 conflict stays a plain ApiException', () async {
       final client = MockClient(
         (_) async => http.Response(

@@ -198,9 +198,9 @@ class RealUnitTransferService extends DFXAuthService {
         );
       }
       final timeoutHash = txHashFromReceiptTimeout(error.message);
-      if (error.statusCode == 500 && timeoutHash != null) {
+      if (response.statusCode == 500 && timeoutHash != null) {
         throw TransferReceiptTimeoutException(
-          statusCode: error.statusCode,
+          statusCode: response.statusCode,
           code: error.code,
           message: error.message,
           txHash: timeoutHash,
