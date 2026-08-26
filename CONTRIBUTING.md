@@ -40,7 +40,7 @@ New sticky-CTA UI without `ScrollableActionsLayout` + matrix entry is a **blocki
 **Navigation rule**
 
 - Navigating from a scan result in the same turn as `cubit.reset()` is **forbidden**: it drops the cubit's "already decoded" / Valid guard, so the next frame pushes a second copy of the next route. The user ends up on two stacked amount (or quote) screens and cannot leave cleanly.
-- Production contract: every `QrScannerView` consumer uses [`pushThenRearm`](lib/widgets/scanner/push_then_rearm.dart) to push the next route. Rearm / `reset` runs when `Navigator.push` completes (the route pops, or the push throws) — **never** in the same listener turn. In this app a scanner that does not push a route is not a valid consumer — add it to the catalog with `pushThenRearm` or do not construct `QrScannerView`.
+- Production contract: every `QrScannerView` consumer uses [`pushThenRearm`](lib/widgets/scanner/push_then_rearm.dart) to push the next route. Rearm / `reset` runs after `Route.completed` (the outgoing animation is gone) or immediately if the push throws — **never** in the same listener turn. In this app a scanner that does not push a route is not a valid consumer — add it to the catalog with `pushThenRearm` or do not construct `QrScannerView`.
 - Cubit `onCodeDetected` must ignore further detections while the decoded/valid state is held. That guard is **necessary and not sufficient** — without `pushThenRearm`, an early `reset()` makes it a no-op.
 
 **Test rule (gate for this bug class)**

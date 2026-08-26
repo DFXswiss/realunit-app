@@ -148,7 +148,7 @@ Reference implementation: `test/screens/hardware_connect_bitbox/connect_bitbox_r
 
 **Production contract**
 
-1. Every [`QrScannerView`](../lib/widgets/scanner/qr_scanner_view.dart) consumer uses [`pushThenRearm`](../lib/widgets/scanner/push_then_rearm.dart): push first, call `rearm` / `reset` when `Navigator.push` completes (pop or throw), never in the same listener turn. A scanner that does not push a route is not a valid `QrScannerView` consumer in this app.
+1. Every [`QrScannerView`](../lib/widgets/scanner/qr_scanner_view.dart) consumer uses [`pushThenRearm`](../lib/widgets/scanner/push_then_rearm.dart): push first, call `rearm` / `reset` after `Route.completed` (or immediately if the push throws), never in the same listener turn. A scanner that does not push a route is not a valid `QrScannerView` consumer in this app.
 2. Do **not** call `cubit.reset()` in the same turn as `Navigator.push` on a success/decoded branch. Invalid-scan snackbar paths that do not push a route may still reset immediately.
 3. Cubit `onCodeDetected` must ignore further detections while Valid/Decoded is held. That guard is necessary and **not sufficient** without `pushThenRearm`.
 
