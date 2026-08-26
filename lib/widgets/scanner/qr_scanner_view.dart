@@ -29,9 +29,16 @@ Widget _defaultErrorBuilder(BuildContext context, MobileScannerException error) 
 /// value of each capture via [onDetect]. Keeping the camera/MethodChannel
 /// wiring in one widget lets every flow reuse the scanner without duplicating
 /// it — each flow decides what the scanned payload means in its own cubit.
+///
+/// **Every camera frame is forwarded** while a barcode is in view — this is
+/// not a one-shot capture. Consumers that [Navigator.push] from a scan result
+/// **must** use [pushThenRearm] so the scanner cubit is re-armed only after
+/// that route pops; resetting in the same turn as the push drops the cubit's
+/// "already decoded" guard and double-pushes the next page.
 class QrScannerView extends StatelessWidget {
   /// Invoked with the raw string value of the first detected barcode in a
-  /// capture. Null raw values are filtered out before this is called.
+  /// capture. Null raw values are filtered out before this is called. Called
+  /// on every frame while a barcode remains visible — not once.
   final ValueChanged<String> onDetect;
 
   /// Optional error UI builder forwarded to [MobileScanner.errorBuilder].

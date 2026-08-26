@@ -142,6 +142,34 @@ Rules for PRs:
 
 Reference implementation: `test/screens/hardware_connect_bitbox/connect_bitbox_responsive_matrix_test.dart` (7 devices × 5 text scales × 5 button states + focused regressions). 29 surfaces are catalogued in [`responsive_surface_catalog.dart`](../test/helper/responsive_surface_catalog.dart) (living list — not a completeness proof; see above).
 
+### Scanner navigation (required)
+
+**Bug class this gates:** a live camera delivers the same QR on every frame. Pushing the next route and calling `cubit.reset()` in the same listener turn drops the "already decoded" guard, so frame 2 pushes a second copy of the amount/quote page. The user is stuck on two stacked routes and cannot leave cleanly.
+
+**Production contract**
+
+1. Every [`QrScannerView`](../lib/widgets/scanner/qr_scanner_view.dart) consumer that navigates from a scan result uses [`pushThenRearm`](../lib/widgets/scanner/push_then_rearm.dart): push first, call `rearm` / `reset` **only after** that route pops.
+2. Do **not** call `cubit.reset()` in the same turn as `Navigator.push` on a success/decoded branch. Invalid-scan snackbar paths that do not push a route may still reset immediately.
+3. Cubit `onCodeDetected` must ignore further detections while Valid/Decoded is held. That guard is necessary and **not sufficient** without `pushThenRearm`.
+
+**Test contract (gates every catalogued scanner surface against this bug class)**
+
+| Piece | Role |
+|---|---|
+| [`scanner_navigation_catalog.dart`](../test/helper/scanner_navigation_catalog.dart) | Living list of production paths that construct `QrScannerView` + their real-cubit double-capture regression tests |
+| [`scanner_navigation_catalog_test.dart`](../test/helper/scanner_navigation_catalog_test.dart) | Existence of catalogued files; production references `QrScannerView(` **and** `pushThenRearm`; regression files contain `BarcodeCapture` + destination `findsOne`; **discovery** — every `QrScannerView(` under `lib/` (except the widget definition) must be listed |
+| Real-cubit regression specs (e.g. `send_recipient_scanner_navigation_test.dart`) | Pump the public page (real cubit, not mocked); fire two `onDetect` / `BarcodeCapture`s; expect destination `findsOne`; pop; third capture accepted again |
+
+Mocking the scan cubit and `whenListen`-ing a single Valid/Decoded emission **cannot** catch this bug class — the gate is the real cubit plus two `onDetect` calls while the decoded state is still held.
+
+Rules for PRs:
+
+- Any new `QrScannerView` consumer that pushes a route **must** use `pushThenRearm`.
+- Register the surface in `kScannerNavigationCatalog` and add a real-cubit double-capture test **in the same PR**.
+- Do not weaken cubit Valid/Decoded guards; do not make `QrScannerView` one-shot.
+
+Reference implementations: `test/screens/send/send_recipient_scanner_navigation_test.dart`, `test/screens/pay/pay_scan_scanner_navigation_test.dart`.
+
 ### Service + HTTP
 
 For services that hit the DFX API, swap in `MockClient` from [`http/testing`](https://pub.dev/packages/http) and a `_MockAppStore` that returns it via the `httpClient` getter.

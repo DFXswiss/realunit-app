@@ -13,6 +13,11 @@ class PayScanCubit extends Cubit<PayScanState> {
 
   /// Called once per detected barcode. Guards against re-entry after a
   /// successful decode so a continuously-detecting scanner does not re-emit.
+  ///
+  /// This guard is necessary and not sufficient: the page must not call
+  /// [reset] until the pushed quote route pops (see [pushThenRearm]).
+  /// Resetting in the same turn as the push drops the [PayScanDecoded] hold
+  /// and the next camera frame pushes a second quote page.
   void onCodeDetected(String raw) {
     if (state is PayScanDecoded) return;
     try {

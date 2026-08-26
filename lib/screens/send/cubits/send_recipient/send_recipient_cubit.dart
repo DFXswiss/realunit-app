@@ -20,6 +20,11 @@ class SendRecipientCubit extends Cubit<SendRecipientState> {
   /// Called once per detected barcode while the scanner is open. Guards against
   /// re-entry after a successful decode so a continuously-detecting scanner does
   /// not re-emit.
+  ///
+  /// This guard is necessary and not sufficient: the page must not call
+  /// [reset] until the pushed amount route pops (see [pushThenRearm]).
+  /// Resetting in the same turn as the push drops the [SendRecipientValid]
+  /// hold and the next camera frame pushes a second amount page.
   void onCodeDetected(String raw) {
     if (state is SendRecipientValid) {
       return;
