@@ -361,7 +361,7 @@
   "sendRecipientManualHint": "Scannen Sie einen Wallet-QR-Code oder fügen Sie die Empfängeradresse unten ein.",
   "sendRecipientTitle": "Empfänger scannen",
   "sendShares": "${shares} REALU",
-  "sendSigning": "Bestätigen Sie die Überweisung in Ihrer Wallet",
+  "sendSigning": "Überweisung wird gesendet",
   "sendSuccess": "Überweisung gesendet",
   "sendSuccessDescription": "Ihre REALU sind auf dem Weg zum Empfänger.",
   "setNationalityFailed": "Ihre Staatsangehörigkeit konnte nicht gesetzt werden:\n${message}",

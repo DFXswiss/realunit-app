@@ -12,7 +12,8 @@ import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 /// Final step: prepare → sign (EIP-712 delegation + EIP-7702 authorization) →
 /// confirm, then render the txHash success or a typed failure. The cubit drives
-/// every outcome as a state — no error-string parsing in the view.
+/// every outcome as a state; the failure sheet never surfaces raw viem/exception
+/// text (generic always uses localized copy).
 class SendProcessPage extends StatelessWidget {
   final String recipient;
   final int amount;
@@ -98,11 +99,7 @@ class SendProcessView extends StatelessWidget {
   };
 
   String _failureMessage(BuildContext context, SendProcessFailure state) {
-    final apiText = state.message;
-    if (apiText != null && apiText.isNotEmpty) {
-      return apiText;
-    }
-    return switch (state.reason) {
+    final localized = switch (state.reason) {
       SendProcessFailureReason.signatureUnsupported => S.of(context).sendFailureSignatureUnsupported,
       SendProcessFailureReason.signatureCancelled => S.of(context).sendFailureSignatureCancelled,
       SendProcessFailureReason.gasFundingUnavailable => S.of(context).sendFailureGasUnavailable,
@@ -112,6 +109,22 @@ class SendProcessView extends StatelessWidget {
       SendProcessFailureReason.confirmMismatch => S.of(context).sendFailureConfirmMismatch,
       SendProcessFailureReason.generic => S.of(context).sendFailureGeneric,
     };
+
+    // Generic failures always use localized copy — never raw API/exception text
+    // (e.g. viem receipt-timeout strings stored as e.toString()).
+    if (state.reason == SendProcessFailureReason.generic) {
+      return localized;
+    }
+
+    final apiText = state.message;
+    if (apiText != null && apiText.isNotEmpty) {
+      // Never display raw viem / receipt-wait strings on any reason.
+      if (apiText.contains('Timed out while waiting for transaction') || apiText.contains('viem@')) {
+        return localized;
+      }
+      return apiText;
+    }
+    return localized;
   }
 
   /// Shows the terminal result sheet. Returns after the sheet is dismissed.

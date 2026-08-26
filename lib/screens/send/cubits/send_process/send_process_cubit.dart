@@ -202,21 +202,33 @@ class SendProcessCubit extends Cubit<SendProcessState> {
         message: e.message,
       );
     } on ApiException catch (e) {
-      // Definitive client/server business failures are terminal. Other API
-      // status codes (e.g. 500) may be transient after a confirm that already
-      // has a known-good id — offer retry against the same intent.
-      nextState = SendProcessFailure(
-        _reasonForApi(e),
-        message: e.message,
-        canRetry: !_isDefinitiveApiFailure(e),
-      );
+      // A receipt-wait timeout that already names a tx hash means the broadcast
+      // landed; treat as success so Retry cannot prepare a second transfer.
+      final timeoutHash = _txHashFromReceiptTimeout(e.message);
+      if (timeoutHash != null) {
+        nextState = SendProcessSuccess(timeoutHash);
+      } else {
+        // Definitive client/server business failures are terminal. Other API
+        // status codes (e.g. 500) may be transient after a confirm that already
+        // has a known-good id — offer retry against the same intent.
+        nextState = SendProcessFailure(
+          _reasonForApi(e),
+          message: e.message,
+          canRetry: !_isDefinitiveApiFailure(e),
+        );
+      }
     } catch (e) {
-      // Transport/timeout/unclassified: id is known-good; allow retryConfirm.
-      nextState = SendProcessFailure(
-        SendProcessFailureReason.generic,
-        message: e.toString(),
-        canRetry: true,
-      );
+      final timeoutHash = _txHashFromReceiptTimeout(e.toString());
+      if (timeoutHash != null) {
+        nextState = SendProcessSuccess(timeoutHash);
+      } else {
+        // Transport/timeout/unclassified: id is known-good; allow retryConfirm.
+        nextState = SendProcessFailure(
+          SendProcessFailureReason.generic,
+          message: e.toString(),
+          canRetry: true,
+        );
+      }
     } finally {
       _confirmInFlight = false;
     }
@@ -258,5 +270,16 @@ class SendProcessCubit extends Cubit<SendProcessState> {
         statusCode == 403 ||
         statusCode == 404 ||
         statusCode == 503;
+  }
+
+  static final RegExp _txHashPattern = RegExp(r'0x[a-fA-F0-9]{64}');
+
+  /// Extracts a tx hash from a viem/receipt-wait timeout message, or null when
+  /// the text is not that timeout (do not scrape hashes from unrelated errors).
+  static String? _txHashFromReceiptTimeout(String message) {
+    if (!message.toLowerCase().contains('timed out while waiting for transaction')) {
+      return null;
+    }
+    return _txHashPattern.firstMatch(message)?.group(0);
   }
 }

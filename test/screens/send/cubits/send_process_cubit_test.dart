@@ -817,6 +817,55 @@ void main() {
   );
 
   test(
+    'confirm-phase ApiException 500 with viem receipt-timeout + hash → SendProcessSuccess',
+    () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      when(() => service.prepareTransfer(any())).thenAnswer((_) async => _info());
+      stubConfirm(
+        const ApiException(
+          statusCode: 500,
+          code: 'X',
+          message:
+              'Timed out while waiting for transaction with hash "$hash"\nVersion: viem@2.21.0',
+        ),
+      );
+
+      final cubit = build();
+      await cubit.start();
+
+      final state = cubit.state as SendProcessSuccess;
+      expect(state.txHash, hash);
+      await cubit.close();
+    },
+  );
+
+  test(
+    'confirm-phase Error with viem receipt-timeout + hash → SendProcessSuccess',
+    () async {
+      const hash = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+      when(() => service.prepareTransfer(any())).thenAnswer((_) async => _info());
+      when(
+        () => service.confirmTransfer(
+          any(),
+          confirmedRecipient: any(named: 'confirmedRecipient'),
+          confirmedAmount: any(named: 'confirmedAmount'),
+        ),
+      ).thenThrow(
+        StateError(
+          'Timed out while waiting for transaction with hash "$hash"\nVersion: viem@2.21.0',
+        ),
+      );
+
+      final cubit = build();
+      await cubit.start();
+
+      final state = cubit.state as SendProcessSuccess;
+      expect(state.txHash, hash);
+      await cubit.close();
+    },
+  );
+
+  test(
     'confirm-phase API 400 → invalidRequest (non-retryable definitive failure)',
     () async {
       when(() => service.prepareTransfer(any())).thenAnswer((_) async => _info());
