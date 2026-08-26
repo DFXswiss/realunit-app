@@ -47,7 +47,7 @@ void main() {
     final getIt = GetIt.instance;
     // SendProcessPage resolves the service + AppStore from getIt and creates
     // the cubit without start(); a route gate starts it after the route
-    // animation completes (as home that is already completed). A debug wallet
+    // animation completes (immediately when pumped as home). A debug wallet
     // makes start() settle immediately (signatureUnsupported) without
     // touching the network.
     getIt.registerSingleton<RealUnitTransferService>(_MockTransferService());

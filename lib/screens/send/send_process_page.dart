@@ -34,8 +34,10 @@ class SendProcessPage extends StatelessWidget {
   }
 }
 
-/// Starts [SendProcessCubit.start] once the incoming route animation has
-/// completed (or immediately when there is no animation / it is already done).
+/// Starts [SendProcessCubit.start] once the incoming route's real animation
+/// has completed. A first-frame [kAlwaysCompleteAnimation] placeholder is
+/// ignored so a push does not start during the slide; a first/home route
+/// with no incoming slide starts after one frame.
 class _SendProcessRouteGate extends StatefulWidget {
   const _SendProcessRouteGate();
 
