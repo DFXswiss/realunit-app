@@ -316,6 +316,33 @@ void main() {
       expect(find.text(S.current.retry), findsNothing);
     });
 
+    testWidgets(
+      'generic failure with raw viem message still shows sendFailureGeneric; Retry when canRetry',
+      (tester) async {
+        const viemMessage =
+            'Timed out while waiting for transaction with hash '
+            '"0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"\n'
+            'Version: viem@2.21.0';
+        when(() => processCubit.retryConfirm()).thenAnswer((_) async {});
+
+        await pumpWithState(
+          tester,
+          const SendProcessFailure(
+            SendProcessFailureReason.generic,
+            message: viemMessage,
+            canRetry: true,
+          ),
+        );
+
+        expect(find.text(S.current.sendFailureGeneric), findsOne);
+        expect(find.text(viemMessage), findsNothing);
+        expect(find.textContaining('viem@'), findsNothing);
+        expect(find.textContaining('Timed out while waiting for transaction'), findsNothing);
+        expect(find.text(S.current.retry), findsOne);
+        expect(find.text(S.current.close), findsOne);
+      },
+    );
+
     testWidgets('confirm-mismatch failure message (non-retryable)', (tester) async {
       await pumpWithState(
         tester,
@@ -341,6 +368,8 @@ void main() {
           ),
         );
 
+        expect(find.text(S.current.sendFailureGeneric), findsOne);
+        expect(find.text('socket hung up'), findsNothing);
         expect(find.text(S.current.retry), findsOne);
         expect(find.text(S.current.close), findsOne);
         expect(find.byType(SendProcessView), findsOne);

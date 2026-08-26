@@ -100,25 +100,33 @@ void main() {
       verify(() => scanCubit.reset()).called(1);
     });
 
-    testWidgets('a decoded link navigates to the quote step and resets the cubit', (tester) async {
-      final link = DecodedPaymentLink(
-        id: 'pl_abc123',
-        lnurlpUrl: Uri.parse('https://api.dfx.swiss/v1/lnurlp/pl_abc123'),
-      );
-      whenListen(
-        scanCubit,
-        Stream<PayScanState>.fromIterable([PayScanDecoded(link)]),
-        initialState: const PayScanScanning(),
-      );
+    testWidgets(
+      'a decoded link navigates to the quote step; reset waits until pop',
+      (tester) async {
+        final link = DecodedPaymentLink(
+          id: 'pl_abc123',
+          lnurlpUrl: Uri.parse('https://api.dfx.swiss/v1/lnurlp/pl_abc123'),
+        );
+        whenListen(
+          scanCubit,
+          Stream<PayScanState>.fromIterable([PayScanDecoded(link)]),
+          initialState: const PayScanScanning(),
+        );
 
-      await tester.pumpApp(buildSubject());
-      await tester.pumpAndSettle();
+        await tester.pumpApp(buildSubject());
+        await tester.pumpAndSettle();
 
-      // The quote step is pushed and rendered; the cubit is reset so returning
-      // to the scanner re-arms detection.
-      expect(find.byType(PayQuoteView), findsOne);
-      verify(() => scanCubit.reset()).called(1);
-    });
+        // The quote step is pushed and rendered; reset is deferred until pop
+        // so the Decoded guard still blocks frame 2 from double-pushing.
+        expect(find.byType(PayQuoteView), findsOne);
+        verifyNever(() => scanCubit.reset());
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+
+        verify(() => scanCubit.reset()).called(1);
+      },
+    );
 
     testWidgets(
       'errorBuilder shows the camera-unavailable message for non-permission-denied errors',
@@ -193,9 +201,14 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Spinner dismissed, quote step pushed and rendered; the cubit is reset.
+        // Spinner dismissed, quote step pushed; reset waits until pop.
         expect(find.byType(CupertinoActivityIndicator), findsNothing);
         expect(find.byType(PayQuoteView), findsOne);
+        verifyNever(() => scanCubit.reset());
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+
         verify(() => scanCubit.reset()).called(1);
       },
     );

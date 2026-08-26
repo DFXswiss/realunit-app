@@ -178,6 +178,8 @@ class SendProcessCubit extends Cubit<SendProcessState> {
       } else {
         nextState = const SendProcessSuccess('');
       }
+    } on TransferReceiptTimeoutException catch (e) {
+      nextState = SendProcessSuccess(e.txHash);
     } on TransferConfirmMismatchException {
       nextState = const SendProcessFailure(SendProcessFailureReason.confirmMismatch);
     } on TransferSignatureUnsupportedException {

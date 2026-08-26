@@ -2,8 +2,9 @@
 // (enter/scan recipient → amount → confirm → sign → transfer → confirm). Each
 // one renders a human-readable string (enumerated in `exception_surface_test.dart`)
 // so it surfaces cleanly in logs and user-facing error states instead of the
-// Dart default `Instance of '...'`. Typed failures drive control flow — no
-// error-string parsing.
+// Dart default `Instance of '...'`. Cubit and UI branch only on these types.
+// String recognition of a viem receipt-timeout lives only at the API boundary
+// (`txHashFromReceiptTimeout` in this file, used by the transfer service).
 
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 
@@ -85,4 +86,30 @@ class TransferAlreadyConfirmedException extends ApiException {
 
   @override
   String toString() => 'TransferAlreadyConfirmedException: $message';
+}
+
+/// Confirm already broadcast the transfer but the receipt wait timed out
+/// (HTTP 500 whose message names the tx hash). Callers must treat this as
+/// success — the chain has the tx; a retry must not prepare a second send.
+class TransferReceiptTimeoutException extends ApiException {
+  /// Hash named in the timeout message; always 0x + 64 hex.
+  final String txHash;
+
+  const TransferReceiptTimeoutException({
+    super.statusCode,
+    required super.code,
+    required super.message,
+    required this.txHash,
+  });
+
+  @override
+  String toString() => 'TransferReceiptTimeoutException: $message';
+}
+
+/// Returns the tx hash from a viem/receipt-wait timeout message, or null.
+String? txHashFromReceiptTimeout(String message) {
+  if (!message.toLowerCase().contains('timed out while waiting for transaction')) {
+    return null;
+  }
+  return RegExp(r'0x[a-fA-F0-9]{64}').firstMatch(message)?.group(0);
 }

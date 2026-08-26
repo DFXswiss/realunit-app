@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -5,6 +7,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/send/cubits/send_recipient/send_recipient_cubit.dart';
 import 'package:realunit_wallet/screens/send/send_amount_page.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/scanner/push_then_rearm.dart';
 import 'package:realunit_wallet/widgets/scanner/qr_scanner_view.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
@@ -43,14 +46,18 @@ class _SendRecipientViewState extends State<SendRecipientView> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<SendRecipientCubit, SendRecipientState>(
+      listenWhen: (previous, current) =>
+          (current is SendRecipientValid && previous is! SendRecipientValid) ||
+          current is SendRecipientInvalid,
       listener: (context, state) {
         if (state is SendRecipientValid) {
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => SendAmountPage(recipient: state.address),
+          unawaited(
+            pushThenRearm(
+              context,
+              page: SendAmountPage(recipient: state.address),
+              rearm: () => context.read<SendRecipientCubit>().reset(),
             ),
           );
-          context.read<SendRecipientCubit>().reset();
         }
         if (state is SendRecipientInvalid) {
           ScaffoldMessenger.of(context).showSnackBar(

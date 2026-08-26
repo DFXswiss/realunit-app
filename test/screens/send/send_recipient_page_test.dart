@@ -162,20 +162,28 @@ void main() {
       expect(find.text(S.current.sendRecipientInvalid), findsOne);
     });
 
-    testWidgets('a valid recipient navigates to the amount step and resets', (tester) async {
-      whenListen(
-        recipientCubit,
-        Stream<SendRecipientState>.fromIterable([
-          const SendRecipientValid('0x9F5713dEAcb8e9CaB6c2D3FaE1aFc2715F8D2D71'),
-        ]),
-        initialState: const SendRecipientEmpty(),
-      );
+    testWidgets(
+      'a valid recipient navigates to the amount step; reset waits until pop',
+      (tester) async {
+        whenListen(
+          recipientCubit,
+          Stream<SendRecipientState>.fromIterable([
+            const SendRecipientValid('0x9F5713dEAcb8e9CaB6c2D3FaE1aFc2715F8D2D71'),
+          ]),
+          initialState: const SendRecipientEmpty(),
+        );
 
-      await tester.pumpApp(buildSubject());
-      await tester.pumpAndSettle();
+        await tester.pumpApp(buildSubject());
+        await tester.pumpAndSettle();
 
-      expect(find.byType(SendAmountView), findsOne);
-      verify(() => recipientCubit.reset()).called(1);
-    });
+        expect(find.byType(SendAmountView), findsOne);
+        verifyNever(() => recipientCubit.reset());
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+
+        verify(() => recipientCubit.reset()).called(1);
+      },
+    );
   });
 }
