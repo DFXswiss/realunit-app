@@ -31,8 +31,7 @@ class ScannerNavigationSurface {
   final String destinationWidgetName;
 }
 
-/// Living catalog — extend when adding a new [QrScannerView] consumer that
-/// navigates from a scan result.
+/// Living catalog — extend when adding a new [QrScannerView] consumer.
 const kScannerNavigationCatalog = <ScannerNavigationSurface>[
   ScannerNavigationSurface(
     id: 'send_recipient',

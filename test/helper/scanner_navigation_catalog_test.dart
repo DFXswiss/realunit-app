@@ -42,11 +42,11 @@ void main() {
               'the scanner',
         );
         expect(
-          contents.contains('pushThenRearm'),
+          contents.contains('pushThenRearm('),
           isTrue,
           reason:
               'Surface "${surface.id}" (${surface.productionPath}) constructs '
-              'QrScannerView but no longer references pushThenRearm — the '
+              'QrScannerView but no longer calls pushThenRearm( — the '
               'scanner-navigation contract regressed',
         );
       }
