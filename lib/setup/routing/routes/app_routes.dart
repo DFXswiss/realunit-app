@@ -26,8 +26,8 @@ abstract final class AppRoutes {
 /// instead of only those the entered flow needs — reporting a user who has
 /// finished `Ident` as still in progress for steps that do not gate buying.
 ///
-/// A null [kycContext] means the API attached none; the route is then entered
-/// unscoped exactly as before, never with an invented context.
+/// A null or empty [kycContext] means the API attached none; the route is
+/// then entered unscoped exactly as before, never with an invented context.
 Map<String, String> kycRouteQuery(String? kycContext) => {
   if (kycContext != null && kycContext.isNotEmpty) 'context': kycContext,
 };
