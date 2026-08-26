@@ -10,11 +10,13 @@ Future<T?> pushThenRearm<T extends Object?>(
   required Widget page,
   required VoidCallback rearm,
 }) async {
-  final result = await Navigator.of(context).push<T>(
-    MaterialPageRoute<T>(builder: (_) => page),
-  );
-  if (context.mounted) {
-    rearm();
+  try {
+    return await Navigator.of(context).push<T>(
+      MaterialPageRoute<T>(builder: (_) => page),
+    );
+  } finally {
+    if (context.mounted) {
+      rearm();
+    }
   }
-  return result;
 }
