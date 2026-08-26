@@ -48,7 +48,7 @@ class _SendRecipientViewState extends State<SendRecipientView> {
     return BlocListener<SendRecipientCubit, SendRecipientState>(
       listenWhen: (previous, current) =>
           (current is SendRecipientValid && previous is! SendRecipientValid) ||
-          (current is SendRecipientInvalid && previous is! SendRecipientInvalid),
+          current is SendRecipientInvalid,
       listener: (context, state) {
         if (state is SendRecipientValid) {
           unawaited(
