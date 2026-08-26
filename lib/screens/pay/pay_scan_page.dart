@@ -3,6 +3,8 @@
 // camera. The decode logic it feeds is unit-tested in lnurl_decoder_test.dart
 // and the cubit behaviour in pay_scan_cubit_test.dart; the camera preview
 // itself is out of scope for widget tests.
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,6 +13,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/pay/cubits/pay_scan/pay_scan_cubit.dart';
 import 'package:realunit_wallet/screens/pay/pay_quote_page.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/scanner/push_then_rearm.dart';
 import 'package:realunit_wallet/widgets/scanner/qr_scanner_view.dart';
 
 class PayScanPage extends StatelessWidget {
@@ -68,16 +71,19 @@ class _PayScanViewState extends State<PayScanView> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<PayScanCubit, PayScanState>(
+      listenWhen: (previous, current) =>
+          (current is PayScanDecoded && previous is! PayScanDecoded) ||
+          (current is PayScanInvalid && previous is! PayScanInvalid),
       listener: (context, state) {
         if (state is PayScanDecoded) {
           setState(() => _awaitingInitialDecode = false);
-          Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => PayQuotePage(paymentLinkId: state.link.id),
+          unawaited(
+            pushThenRearm(
+              context,
+              page: PayQuotePage(paymentLinkId: state.link.id),
+              rearm: () => context.read<PayScanCubit>().reset(),
             ),
           );
-          // Reset so returning to the scanner re-arms detection.
-          context.read<PayScanCubit>().reset();
         }
         if (state is PayScanInvalid) {
           setState(() => _awaitingInitialDecode = false);
