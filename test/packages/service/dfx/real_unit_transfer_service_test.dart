@@ -475,6 +475,27 @@ void main() {
       );
     });
 
+    test('400 with timeout-like message stays a plain ApiException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 400,
+            'message': 'Timed out while waiting for transaction with hash "$hash"',
+            'error': 'Bad Request',
+          }),
+          400,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          predicate((e) => e is ApiException && e is! TransferReceiptTimeoutException),
+        ),
+      );
+    });
+
     test('500 viem receipt-timeout with hash → TransferReceiptTimeoutException', () async {
       const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
       final client = MockClient(
