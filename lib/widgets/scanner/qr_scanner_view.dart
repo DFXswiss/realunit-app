@@ -32,8 +32,8 @@ Widget _defaultErrorBuilder(BuildContext context, MobileScannerException error) 
 ///
 /// **Every camera frame is forwarded** while a barcode is in view — this is
 /// not a one-shot capture. Consumers that [Navigator.push] from a scan result
-/// **must** use [pushThenRearm] so the scanner cubit is re-armed only after
-/// that route pops; resetting in the same turn as the push drops the cubit's
+/// **must** use [pushThenRearm] so the scanner cubit is re-armed when that
+/// push completes (pop or throw), never in the same listener turn; resetting in the same turn as the push drops the cubit's
 /// "already decoded" guard and double-pushes the next page.
 class QrScannerView extends StatelessWidget {
   /// Invoked with the raw string value of the first detected barcode in a

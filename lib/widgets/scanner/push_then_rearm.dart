@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// Pushes [page] and calls [rearm] only after that route pops.
+/// Pushes [page] and calls [rearm] when [Navigator.push] completes — after
+/// the route pops, or if the push throws — never in the same listener turn.
 ///
 /// [QrScannerView] forwards every camera frame. Resetting a scanner cubit in
 /// the same turn as the push drops the "already decoded" guard, so the next
