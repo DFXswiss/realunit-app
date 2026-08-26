@@ -78,10 +78,12 @@ void reportNonFatal(Object error) {
   developer.log('non-fatal: $error', name: 'WalletApp', error: error);
   if (crashReportingDsn.isEmpty) return;
   try {
-    unawaited(Sentry.captureException(error));
+    Sentry.captureException(error).ignore();
   } catch (_) {
-    // Best-effort, same as initCrashReporting: a reporting-layer failure must
-    // never propagate into the caller that is reporting through us.
+    // A caller-visible throw here must never happen, since this runs before
+    // a required emit in KycCubit. `.ignore()` discards both the eventual
+    // value and any asynchronous error; the try/catch covers a synchronous
+    // throw from the call itself.
   }
 }
 

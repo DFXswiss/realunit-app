@@ -29,5 +29,5 @@ abstract final class AppRoutes {
 /// A null [kycContext] means the API attached none; the route is then entered
 /// unscoped exactly as before, never with an invented context.
 Map<String, String> kycRouteQuery(String? kycContext) => {
-  if (kycContext != null) 'context': kycContext,
+  if (kycContext != null && kycContext.isNotEmpty) 'context': kycContext,
 };

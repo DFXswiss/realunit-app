@@ -14,5 +14,11 @@ void main() {
     test('omits the parameter when the API attached no context', () {
       expect(kycRouteQuery(null), isEmpty);
     });
+
+    // An empty string is not a real context either — treat it the same as
+    // null rather than inventing a query the API never attached.
+    test('omits the parameter when the API attached an empty context', () {
+      expect(kycRouteQuery(''), isEmpty);
+    });
   });
 }
