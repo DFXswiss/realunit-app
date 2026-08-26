@@ -817,6 +817,29 @@ void main() {
   );
 
   test(
+    'confirm-phase TransferReceiptTimeoutException → SendProcessSuccess',
+    () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      when(() => service.prepareTransfer(any())).thenAnswer((_) async => _info());
+      stubConfirm(
+        const TransferReceiptTimeoutException(
+          statusCode: 500,
+          code: 'X',
+          message: 'Timed out while waiting for transaction',
+          txHash: hash,
+        ),
+      );
+
+      final cubit = build();
+      await cubit.start();
+
+      final state = cubit.state as SendProcessSuccess;
+      expect(state.txHash, hash);
+      await cubit.close();
+    },
+  );
+
+  test(
     'confirm-phase API 400 → invalidRequest (non-retryable definitive failure)',
     () async {
       when(() => service.prepareTransfer(any())).thenAnswer((_) async => _info());

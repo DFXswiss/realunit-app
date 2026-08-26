@@ -361,7 +361,7 @@
   "sendRecipientManualHint": "Scan a wallet QR code, or paste the recipient address below.",
   "sendRecipientTitle": "Scan recipient",
   "sendShares": "${shares} REALU",
-  "sendSigning": "Confirm the transfer in your wallet",
+  "sendSigning": "Sending the transfer",
   "sendSuccess": "Transfer sent",
   "sendSuccessDescription": "Your REALU is on its way to the recipient.",
   "setNationalityFailed": "Could not set your nationality:\n${message}",
