@@ -87,4 +87,27 @@ void main() {
       expect(find.byType(SendAmountView), findsOne);
     },
   );
+
+  testWidgets(
+    'a capture during the pop animation does not push a second amount page',
+    (tester) async {
+      await tester.pumpApp(const SendRecipientPage());
+
+      final scanner = tester.widget<MobileScanner>(find.byType(MobileScanner));
+      final onDetect = scanner.onDetect!;
+      const capture = BarcodeCapture(barcodes: [Barcode(rawValue: checksummed)]);
+      onDetect(capture);
+      await tester.pumpAndSettle();
+      expect(find.byType(SendAmountView), findsOne);
+
+      await tester.pageBack();
+      await tester.pump(); // pop animation in flight — not settled
+      onDetect(capture);
+      await tester.pump();
+      expect(find.byType(SendAmountView), findsOne);
+
+      await tester.pumpAndSettle();
+      expect(find.byType(SendAmountView), findsNothing);
+    },
+  );
 }

@@ -22,7 +22,7 @@ class SendRecipientCubit extends Cubit<SendRecipientState> {
   /// not re-emit.
   ///
   /// This guard is necessary and not sufficient: the page must not call
-  /// [reset] until [pushThenRearm] finishes (route pop or thrown push),
+  /// [reset] until [pushThenRearm] finishes (`Route.completed` or thrown push),
   /// never in the same listener turn. Resetting in the same turn as the
   /// push drops the [SendRecipientValid] hold and the next camera frame
   /// pushes a second amount page.

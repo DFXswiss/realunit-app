@@ -61,4 +61,27 @@ void main() {
       expect(find.byType(PayQuoteView), findsOne);
     },
   );
+
+  testWidgets(
+    'a capture during the pop animation does not push a second quote page',
+    (tester) async {
+      await tester.pumpApp(const PayScanPage());
+
+      final scanner = tester.widget<MobileScanner>(find.byType(MobileScanner));
+      final onDetect = scanner.onDetect!;
+      const capture = BarcodeCapture(barcodes: [Barcode(rawValue: lnurl)]);
+      onDetect(capture);
+      await tester.pumpAndSettle();
+      expect(find.byType(PayQuoteView), findsOne);
+
+      Navigator.of(tester.element(find.byType(PayQuoteView))).pop();
+      await tester.pump(); // pop animation in flight — not settled
+      onDetect(capture);
+      await tester.pump();
+      expect(find.byType(PayQuoteView), findsOne);
+
+      await tester.pumpAndSettle();
+      expect(find.byType(PayQuoteView), findsNothing);
+    },
+  );
 }
