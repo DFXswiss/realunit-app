@@ -22,9 +22,10 @@ class _MockWallet extends Mock implements SoftwareWallet {}
 
 void main() {
   setUpAll(() {
-    // The confirm button pushes SendProcessPage, which builds a cubit off getIt
-    // and calls start(). A debug wallet makes start() settle immediately without
-    // any network call.
+    // The confirm button pushes SendProcessPage, which creates a cubit off getIt
+    // without start(); a route gate starts it after the push animation
+    // completes. A debug wallet makes start() settle immediately without any
+    // network call.
     final getIt = GetIt.instance;
     getIt.registerSingleton<RealUnitTransferService>(_MockTransferService());
     final appStore = _MockAppStore();

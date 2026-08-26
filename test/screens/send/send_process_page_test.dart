@@ -26,14 +26,30 @@ class _MockApiConfig extends Mock implements ApiConfig {}
 
 class _MockWallet extends Mock implements SoftwareWallet {}
 
+/// [MaterialPageRoute] does not expose [transitionDuration] as a constructor
+/// argument; override it so the regression test can drive a known 300ms slide.
+class _TimedMaterialPageRoute<T> extends MaterialPageRoute<T> {
+  _TimedMaterialPageRoute({
+    required super.builder,
+    required Duration transitionDuration,
+  }) : _transitionDuration = transitionDuration;
+
+  final Duration _transitionDuration;
+
+  @override
+  Duration get transitionDuration => _transitionDuration;
+}
+
 void main() {
   late _MockSendProcessCubit processCubit;
 
   setUpAll(() {
     final getIt = GetIt.instance;
-    // SendProcessPage resolves the service + AppStore from getIt and calls
-    // start(). A debug wallet makes start() settle immediately
-    // (signatureUnsupported) without touching the network.
+    // SendProcessPage resolves the service + AppStore from getIt and creates
+    // the cubit without start(); a route gate starts it after the route
+    // animation completes (immediately when pumped as home). A debug wallet
+    // makes start() settle immediately (signatureUnsupported) without
+    // touching the network.
     getIt.registerSingleton<RealUnitTransferService>(_MockTransferService());
     final appStore = _MockAppStore();
     final apiConfig = _MockApiConfig();
@@ -63,6 +79,58 @@ void main() {
       await tester.pump();
 
       expect(find.byType(SendProcessView), findsOne);
+    });
+
+    testWidgets('keeps preparing UI during route slide; starts only after animation completes', (
+      tester,
+    ) async {
+      await tester.pumpApp(
+        Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    _TimedMaterialPageRoute<void>(
+                      transitionDuration: const Duration(milliseconds: 300),
+                      builder: (_) => const SendProcessPage(recipient: '0xRecipient', amount: 5),
+                    ),
+                  );
+                },
+                child: const Text('go'),
+              ),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('go'));
+      await tester.pump();
+      await tester.pump(); // flush the post-frame callback
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.byType(SendProcessView), findsOne);
+      expect(
+        find.text(S.current.sendPreparing, skipOffstage: false),
+        findsOne,
+      );
+      expect(
+        find.text(S.current.sendFailureTitle, skipOffstage: false),
+        findsNothing,
+      );
+      expect(
+        find.text(S.current.close, skipOffstage: false),
+        findsNothing,
+      );
+
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+
+      // Body label and the result sheet both use sendFailureTitle.
+      expect(find.text(S.current.sendFailureTitle), findsAtLeast(1));
+      expect(find.text(S.current.close), findsOne);
+      expect(find.byIcon(Icons.error_rounded), findsOne);
     });
   });
 
