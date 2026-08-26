@@ -15,6 +15,7 @@ import 'package:realunit_wallet/screens/sell_bitbox/widgets/sell_bitbox_swap_ste
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/handlebars.dart';
+import 'package:realunit_wallet/widgets/route_animation_gate.dart';
 
 class SellBitboxPage extends StatelessWidget {
   final SellPaymentInfo paymentInfo;
@@ -31,7 +32,10 @@ class SellBitboxPage extends StatelessWidget {
         sellService: getIt<RealUnitSellPaymentInfoService>(),
         appStore: getIt<AppStore>(),
       ),
-      child: SellBitboxView(paymentInfo: paymentInfo),
+      child: RouteAnimationGate(
+        onSettled: (c) => c.read<SellBitboxCubit>().start(),
+        child: SellBitboxView(paymentInfo: paymentInfo),
+      ),
     );
   }
 }
@@ -46,6 +50,10 @@ class SellBitboxView extends StatelessWidget {
     return BlocConsumer<SellBitboxCubit, SellBitboxState>(
       listener: (context, state) async {
         if (state is SellBitboxBitboxRequired) {
+          await waitForIncomingRouteAnimation(context);
+          if (!context.mounted) {
+            return;
+          }
           final reconnected = await showBitboxReconnectSheet(context);
           if (reconnected && context.mounted) {
             context.read<SellBitboxCubit>().retryAfterConnection();
@@ -61,6 +69,10 @@ class SellBitboxView extends StatelessWidget {
           );
         }
         if (state is SellBitboxSuccess) {
+          await waitForIncomingRouteAnimation(context);
+          if (!context.mounted) {
+            return;
+          }
           final isSuccess = await _showSuccessSheet(context);
           if (isSuccess == true && context.mounted) {
             context.pop();

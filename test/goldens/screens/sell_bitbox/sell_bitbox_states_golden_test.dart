@@ -13,7 +13,7 @@ import 'package:realunit_wallet/styles/currency.dart';
 
 import '../../../helper/helper.dart';
 
-// SellBitboxCubit fires `scheduleMicrotask(_checkEthBalance)` in its constructor
+// SellBitboxCubit.start() schedules `_checkEthBalance` via scheduleMicrotask
 // and installs a periodic ETH-polling Timer, so the real page can't be pumped
 // deterministically (learned in #815). We render the shared [SellBitboxView]
 // with a mocked cubit whose `state` getter is stubbed to the exact target
