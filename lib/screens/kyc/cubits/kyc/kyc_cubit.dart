@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
-import 'package:realunit_wallet/packages/service/dfx/exceptions/unsupported_kyc_step_exception.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/kyc_unsupported_step_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/dto/kyc_level_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/legal/real_unit_legal_agreement.dart';
@@ -69,7 +69,7 @@ class KycCubit extends Cubit<KycState> {
        super(const KycInitial());
 
   Future<void> checkKyc({String? context}) async {
-    _kycContext = context ?? _kycContext;
+    _kycContext = (context == null || context.isEmpty) ? _kycContext : context;
     final generation = ++_runGeneration;
     try {
       await _runCheckKyc(generation).timeout(_checkKycTimeout);
@@ -360,7 +360,7 @@ class KycCubit extends Cubit<KycState> {
   /// before the emit keeps the event even when the user leaves the flow on this
   /// screen.
   void _emitUnsupportedStep(KycStepName? stepName) {
-    _report(UnsupportedKycStepException(stepName));
+    _report(KycUnsupportedStepException(stepName));
     emit(KycUnsupportedStepFailure(stepName));
   }
 

@@ -7,7 +7,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/dfx_kyc_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
-import 'package:realunit_wallet/packages/service/dfx/exceptions/unsupported_kyc_step_exception.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/kyc_unsupported_step_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/dto/kyc_level_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/dto/kyc_session_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/dto/kyc_step_dto.dart';
@@ -1325,6 +1325,34 @@ void main() {
         const KycCompleted(),
       ],
     );
+
+    blocTest<KycCubit, KycState>(
+      'an empty context is treated as absent — the stored context is kept',
+      setUp: () {
+        when(() => kycService.getKycStatus(context: 'RealunitBuy')).thenAnswer(
+          (_) async => _kycStatus(
+            level: KycLevel.level50,
+            processStatus: KycProcessStatus.completed,
+          ),
+        );
+        when(() => kycService.getUser()).thenAnswer((_) async => _user());
+      },
+      build: buildCubit,
+      act: (cubit) async {
+        await cubit.checkKyc(context: 'RealunitBuy');
+        // An API-supplied empty string must not overwrite a real context.
+        await cubit.checkKyc(context: '');
+      },
+      verify: (_) {
+        verify(() => kycService.getKycStatus(context: 'RealunitBuy')).called(2);
+      },
+      expect: () => [
+        const KycLoading(),
+        const KycCompleted(),
+        const KycLoading(),
+        const KycCompleted(),
+      ],
+    );
   });
 
   // The handoff screen alone leaves the gap silent: every call in the flow
@@ -1355,7 +1383,7 @@ void main() {
       ],
       verify: (_) {
         expect(reported, hasLength(1));
-        final error = reported.single as UnsupportedKycStepException;
+        final error = reported.single as KycUnsupportedStepException;
         expect(error.stepName, KycStepName.residencePermit);
         // The wire identifier has to be in the rendered event, otherwise the
         // report cannot say which mapping entry is missing.
@@ -1383,7 +1411,7 @@ void main() {
       ],
       verify: (_) {
         expect(reported, hasLength(1));
-        expect((reported.single as UnsupportedKycStepException).stepName, isNull);
+        expect((reported.single as KycUnsupportedStepException).stepName, isNull);
       },
     );
 

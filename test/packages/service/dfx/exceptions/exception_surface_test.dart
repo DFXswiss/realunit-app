@@ -7,7 +7,7 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/pay_exce
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/sell_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/payment/transfer_exceptions.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/registration_rejected_exception.dart';
-import 'package:realunit_wallet/packages/service/dfx/exceptions/unsupported_kyc_step_exception.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/kyc_unsupported_step_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/packages/wallet/exceptions/signing_cancelled_exception.dart';
@@ -44,7 +44,7 @@ void main() {
       const TransferGasFundingUnavailableException(),
       const TransferConfirmMismatchException(),
       const TransferAlreadyConfirmedException(code: 'TEST', message: 'test'),
-      const UnsupportedKycStepException(KycStepName.statutes),
+      const KycUnsupportedStepException(KycStepName.statutes),
     ];
 
     for (final ex in exceptions) {

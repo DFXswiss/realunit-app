@@ -11,13 +11,13 @@ import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 ///
 /// [stepName] is the API's wire identifier for the step, or null when the API
 /// named no step at all. It carries nothing about the user.
-class UnsupportedKycStepException implements Exception {
+class KycUnsupportedStepException implements Exception {
   final KycStepName? stepName;
 
-  const UnsupportedKycStepException(this.stepName);
+  const KycUnsupportedStepException(this.stepName);
 
   @override
   String toString() =>
-      'UnsupportedKycStepException: no screen for KYC step '
+      'KycUnsupportedStepException: no screen for KYC step '
       '${stepName?.value ?? '<none reported>'}';
 }

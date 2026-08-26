@@ -77,7 +77,12 @@ typedef NonFatalReporter = void Function(Object error);
 void reportNonFatal(Object error) {
   developer.log('non-fatal: $error', name: 'WalletApp', error: error);
   if (crashReportingDsn.isEmpty) return;
-  unawaited(Sentry.captureException(error));
+  try {
+    unawaited(Sentry.captureException(error));
+  } catch (_) {
+    // Best-effort, same as initCrashReporting: a reporting-layer failure must
+    // never propagate into the caller that is reporting through us.
+  }
 }
 
 /// Applies the pinned option set. The guarantee is exactly this list — an
