@@ -62,9 +62,10 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
     try {
       final util = PhoneNumberUtil.instance;
       return util.format(util.parse(value, null), PhoneNumberFormat.e164);
-    } catch (_) {
+    } on NumberParseException {
       // `parse` throws NumberParseException for incomplete input while the user is
       // typing; preserve the raw value and let the API decide validity on submit.
+      // Other exceptions are intentionally not caught.
       return value;
     }
   }
