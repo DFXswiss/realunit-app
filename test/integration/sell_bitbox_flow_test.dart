@@ -450,10 +450,10 @@ void main() {
               return faucetResponse.future;
             }
             if (request.method == 'POST' && path == '/v1/blockchain/balances') {
+              balancesCalls++;
               if (!faucetCompleted) {
                 fail('balances before faucet completed');
               }
-              balancesCalls++;
               balancesBody = jsonDecode(request.body) as Map<String, dynamic>;
               return http.Response(
                 jsonEncode({
