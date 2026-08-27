@@ -99,10 +99,9 @@ void main() {
       expect(cubit.state.maxY, 104.0);
     });
 
-    test('zero-average flat series collapses horizontal lines to a single value', () {
-      // Guards the `deviation <= 0` branch in _calculateHorizontalLines:
-      // when value == 0 the average is 0 and the 5% floor is 0, so the
-      // padded deviation is 0 → all 6 lines fall on `average`.
+    test('zero-average flat series keeps a visible Y-range around 0', () {
+      // average 0 → relative 5% floor is 0 → absolute floor 5 → interval 2
+      // → lines centered on 0, unclamped so the stroke is not on minY.
       final points = [
         _pt(DateTime.utc(2026, 1, 1), 0),
         _pt(DateTime.utc(2026, 2, 1), 0),
@@ -111,10 +110,32 @@ void main() {
       final cubit = PortfolioChartCubit(points);
       cubit.selectPeriod(TimePeriod.all);
 
-      expect(cubit.state.horizontalLineValues, hasLength(6));
-      expect(cubit.state.horizontalLineValues.every((v) => v == 0.0), isTrue);
-      expect(cubit.state.minY, 0.0);
-      expect(cubit.state.maxY, 0.0);
+      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots.every((s) => s.y == 0.0), isTrue);
+      expect(
+        cubit.state.horizontalLineValues,
+        [-6.0, -4.0, -2.0, 0.0, 2.0, 4.0],
+      );
+      expect(cubit.state.minY, -6.0);
+      expect(cubit.state.maxY, 4.0);
+    });
+
+    test('oneWeek all-zero window keeps a visible Y-range around 0', () {
+      final now = DateTime.now();
+      final points = [
+        _pt(now.subtract(const Duration(days: 60)), 10000),
+        _pt(now.subtract(const Duration(days: 3)), 0),
+        _pt(now.subtract(const Duration(days: 1)), 0),
+      ];
+
+      final cubit = PortfolioChartCubit(points);
+      cubit.selectPeriod(TimePeriod.oneWeek);
+
+      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots.every((s) => s.y == 0.0), isTrue);
+      expect(cubit.state.minY < 0, isTrue);
+      expect(cubit.state.maxY > 0, isTrue);
+      expect(cubit.state.minY < cubit.state.maxY, isTrue);
     });
 
     test('selectPeriod to the same period is a no-op (no emit)', () async {

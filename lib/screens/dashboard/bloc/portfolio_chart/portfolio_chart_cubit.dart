@@ -128,8 +128,12 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
       (min - average).abs(),
     );
 
-    // Add padding (20% extra space) and ensure minimum range for visual clarity
-    final paddedDeviation = math.max(maxDeviation * 1.2, average * 0.05);
+    // Add padding (20% extra space) and ensure minimum range for visual clarity.
+    // `average * 0.05` is 0 when the series is all zeros, which used to collapse
+    // minY/maxY and hide the LineChart; fall back to 5.0 currency units then.
+    final relativeFloor = average.abs() * 0.05;
+    final minFloor = relativeFloor > 0 ? relativeFloor : 5.0;
+    final paddedDeviation = math.max(maxDeviation * 1.2, minFloor);
 
     // Calculate rounded horizontal line values centered around average
     final horizontalLineValues = _calculateHorizontalLines(paddedDeviation, average);
@@ -164,8 +168,11 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
     // Center the lines around the average by rounding it to the nearest interval
     final centerLine = (average / interval).round() * interval;
 
-    // Position the bottom line so the center is roughly in the middle
-    final bottomLine = math.max(0.0, centerLine - 3 * interval);
+    // Position the bottom line so the center is roughly in the middle.
+    // Keep minY >= 0 for positive holdings; an all-zero series must be allowed
+    // below 0 so the stroke is not clipped to the axis.
+    final unclampedBottom = centerLine - 3 * interval;
+    final bottomLine = average > 0 ? math.max(0.0, unclampedBottom) : unclampedBottom;
 
     return List.generate(lineCount, (i) => bottomLine + i * interval);
   }
