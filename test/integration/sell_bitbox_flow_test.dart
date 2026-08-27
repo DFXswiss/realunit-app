@@ -23,6 +23,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
@@ -411,6 +412,127 @@ void main() {
         expect(creds.signCallCount, 2);
 
         await cubit.close();
+      },
+    );
+
+    // Pins the low-ETH path this file's other happy path skips: ethBalance
+    // below requiredGasEth → DFX API faucet → balance poll → full sell.
+    test(
+      'happy: faucet hop then full swap + deposit when ethBalance < requiredGasEth',
+      () {
+        fakeAsync((async) {
+          void drain() {
+            for (var i = 0; i < 40; i++) {
+              async.flushMicrotasks();
+              async.elapse(Duration.zero);
+            }
+          }
+
+          var faucetCalls = 0;
+          String? faucetPath;
+          var faucetCompleted = false;
+          var balancesCalls = 0;
+          Map<String, dynamic>? balancesBody;
+          var unsignedCalls = 0;
+          var broadcastCalls = 0;
+          var confirmCalls = 0;
+          final broadcastBodies = <Map<String, dynamic>>[];
+
+          final client = MockClient((request) async {
+            final path = request.url.path;
+            if (request.method == 'POST' && path == '/v1/faucet') {
+              faucetCalls++;
+              faucetPath = path;
+              faucetCompleted = true;
+              return http.Response(
+                jsonEncode({'txId': '0xfaucet', 'amount': 0.01}),
+                200,
+              );
+            }
+            if (request.method == 'POST' && path == '/v1/blockchain/balances') {
+              balancesCalls++;
+              balancesBody = jsonDecode(request.body) as Map<String, dynamic>;
+              return http.Response(
+                jsonEncode({
+                  'balances': [
+                    {'balance': 0.001},
+                  ],
+                }),
+                200,
+              );
+            }
+            if (path.endsWith('/unsigned-transactions')) {
+              if (!faucetCompleted) {
+                fail('unsigned-transactions before faucet completed');
+              }
+              unsignedCalls++;
+              return http.Response(
+                jsonEncode({'swap': _rawSwap, 'deposit': _rawDeposit}),
+                200,
+              );
+            }
+            if (path.endsWith('/broadcast')) {
+              if (!faucetCompleted) {
+                fail('broadcast before faucet completed');
+              }
+              broadcastCalls++;
+              broadcastBodies.add(jsonDecode(request.body) as Map<String, dynamic>);
+              return http.Response(jsonEncode({'txHash': '0xtx-$broadcastCalls'}), 200);
+            }
+            if (path.endsWith('/confirm')) {
+              if (!faucetCompleted) {
+                fail('confirm before faucet completed');
+              }
+              confirmCalls++;
+              return http.Response('{}', 200);
+            }
+            fail('unexpected request: ${request.url}');
+          });
+
+          when(() => appStore.httpClient).thenReturn(client);
+          final sellService = RealUnitSellPaymentInfoService(appStore, walletService);
+          final realFaucet = DfxFaucetService(appStore, walletService);
+          final realBlockchain = DfxBlockchainApiService(appStore, walletService);
+
+          final cubit = SellBitboxCubit(
+            paymentInfo: _info(ethBalance: 0),
+            faucetService: realFaucet,
+            blockchainService: realBlockchain,
+            sellService: sellService,
+            appStore: appStore,
+          )..start();
+
+          // start() microtask + faucet POST → WaitingForEth + 5s poll timer.
+          drain();
+          async.elapse(const Duration(seconds: 5));
+          drain();
+
+          expect(cubit.state, isA<SellBitboxEthReady>());
+          expect(faucetCalls, 1);
+          expect(faucetPath, '/v1/faucet');
+          expect(balancesCalls, greaterThanOrEqualTo(1));
+          expect(balancesBody!['address'], appStore.primaryAddress);
+          expect(balancesBody!['blockchain'], 'Ethereum');
+          expect(balancesBody!['assetIds'], contains(111));
+
+          cubit.proceedToSwap();
+          drain();
+          cubit.confirmSwap();
+          drain();
+          cubit.confirmDeposit();
+          drain();
+
+          expect(cubit.state, isA<SellBitboxSuccess>());
+          expect(creds.signCallCount, 2);
+          expect(unsignedCalls, 1);
+          expect(broadcastCalls, 2);
+          expect(confirmCalls, 1);
+          expect(broadcastBodies[0]['unsignedTx'], _rawSwap);
+          expect(broadcastBodies[1]['unsignedTx'], _rawDeposit);
+
+          cubit.close();
+          async.flushTimers();
+        });
       },
     );
   });
