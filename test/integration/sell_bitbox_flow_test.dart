@@ -20,6 +20,7 @@
 // They run headless (no device, no simulator), so they live under
 // `test/integration/` and run as part of `flutter test`.
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -417,6 +418,8 @@ void main() {
 
     // Pins the low-ETH path this file's other happy path skips: ethBalance
     // below requiredGasEth → DFX API faucet → balance poll → full sell.
+    // The faucet HTTP response is held behind a Completer so the test can
+    // prove the cubit awaits requestFaucet() before installing the 5s poll.
     test(
       'happy: faucet hop then full swap + deposit when ethBalance < requiredGasEth',
       () {
@@ -431,6 +434,7 @@ void main() {
           var faucetCalls = 0;
           String? faucetPath;
           var faucetCompleted = false;
+          final faucetResponse = Completer<http.Response>();
           var balancesCalls = 0;
           Map<String, dynamic>? balancesBody;
           var unsignedCalls = 0;
@@ -443,13 +447,12 @@ void main() {
             if (request.method == 'POST' && path == '/v1/faucet') {
               faucetCalls++;
               faucetPath = path;
-              faucetCompleted = true;
-              return http.Response(
-                jsonEncode({'txId': '0xfaucet', 'amount': 0.01}),
-                200,
-              );
+              return faucetResponse.future;
             }
             if (request.method == 'POST' && path == '/v1/blockchain/balances') {
+              if (!faucetCompleted) {
+                fail('balances before faucet completed');
+              }
               balancesCalls++;
               balancesBody = jsonDecode(request.body) as Map<String, dynamic>;
               return http.Response(
@@ -502,14 +505,32 @@ void main() {
             appStore: appStore,
           )..start();
 
-          // start() microtask + faucet POST → WaitingForEth + 5s poll timer.
+          // Faucet handler entered; cubit still awaiting; poll timer not installed.
           drain();
+          expect(faucetCalls, 1);
+          expect(faucetPath, '/v1/faucet');
+          expect(cubit.state, isA<SellBitboxRequestingFaucet>());
+
+          // Elapsing 5s while faucet is still open must NOT hit balances —
+          // that would mean the poll timer was started before requestFaucet returned.
+          async.elapse(const Duration(seconds: 5));
+          drain();
+          expect(balancesCalls, 0);
+
+          faucetCompleted = true;
+          faucetResponse.complete(
+            http.Response(
+              jsonEncode({'txId': '0xfaucet', 'amount': 0.01}),
+              200,
+            ),
+          );
+          drain();
+          expect(cubit.state, isA<SellBitboxWaitingForEth>());
+
           async.elapse(const Duration(seconds: 5));
           drain();
 
           expect(cubit.state, isA<SellBitboxEthReady>());
-          expect(faucetCalls, 1);
-          expect(faucetPath, '/v1/faucet');
           expect(balancesCalls, greaterThanOrEqualTo(1));
           expect(balancesBody!['address'], appStore.primaryAddress);
           expect(balancesBody!['blockchain'], 'Ethereum');
