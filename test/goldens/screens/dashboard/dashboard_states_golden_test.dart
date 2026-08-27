@@ -18,6 +18,7 @@ import 'package:realunit_wallet/screens/dashboard/bloc/balance_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/dashboard_bloc.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/pending_transactions_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/dashboard_page.dart';
+import 'package:realunit_wallet/screens/dashboard/widgets/time_period_selection_button.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/styles/currency.dart';
 
@@ -246,6 +247,74 @@ void main() {
             ],
           ),
         );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    // Recent zeros so 1W/1M/3M/1J still have spots (collapse), not an empty
+    // window. Dates are relative to now(); the empty plot has no date axis.
+    List<PortfolioValuePoint> recentZeroHistory() {
+      final now = DateTime.now();
+      return [
+        for (final days in [6, 4, 2, 0])
+          PortfolioValuePoint(
+            value: BigInt.zero,
+            balance: BigInt.zero,
+            time: now.subtract(Duration(days: days)),
+          ),
+      ];
+    }
+
+    Future<void Function()?> tapPeriod(WidgetTester tester, String label) async {
+      await tester.tap(find.widgetWithText(TimePeriodSelectionButton, label));
+      await tester.pump();
+      return null;
+    }
+
+    goldenTest(
+      'portfolio history all-zero 1W collapses the chart',
+      fileName: 'dashboard_portfolio_chart_zero_collapsed_1w',
+      constraints: phoneConstraints,
+      whilePerforming: (tester) => tapPeriod(tester, '1W'),
+      builder: () {
+        when(() => dashboardBloc.state)
+            .thenReturn(dashboardState(history: recentZeroHistory()));
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'portfolio history all-zero 1M collapses the chart',
+      fileName: 'dashboard_portfolio_chart_zero_collapsed_1m',
+      constraints: phoneConstraints,
+      whilePerforming: (tester) => tapPeriod(tester, '1M'),
+      builder: () {
+        when(() => dashboardBloc.state)
+            .thenReturn(dashboardState(history: recentZeroHistory()));
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'portfolio history all-zero 3M collapses the chart',
+      fileName: 'dashboard_portfolio_chart_zero_collapsed_3m',
+      constraints: phoneConstraints,
+      whilePerforming: (tester) => tapPeriod(tester, '3M'),
+      builder: () {
+        when(() => dashboardBloc.state)
+            .thenReturn(dashboardState(history: recentZeroHistory()));
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'portfolio history all-zero 1J collapses the chart',
+      fileName: 'dashboard_portfolio_chart_zero_collapsed_1j',
+      constraints: phoneConstraints,
+      whilePerforming: (tester) => tapPeriod(tester, '1J'),
+      builder: () {
+        when(() => dashboardBloc.state)
+            .thenReturn(dashboardState(history: recentZeroHistory()));
         return wrapForGolden(buildSubject());
       },
     );
