@@ -91,13 +91,17 @@ void main() {
 
   // Customer report: older non-zero holdings (outside 1Y so MAX shows a
   // curve) then zeros through now (1W/1M/3M/1J keep a visible zero line).
+  // Times are local midnight so they share the cubit's period window
+  // (`DateTime(now.year, now.month, now.day - N)`); a clock-time remainder
+  // would shift the zero-line by a few pixels between CI runs.
   List<PortfolioValuePoint> customerReportHistory() {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     PortfolioValuePoint pt(int daysAgo, int valueRappen, int shares) =>
         PortfolioValuePoint(
           value: BigInt.from(valueRappen),
           balance: BigInt.from(shares),
-          time: now.subtract(Duration(days: daysAgo)),
+          time: today.subtract(Duration(days: daysAgo)),
         );
     return [
       pt(500, 10000, 100),
