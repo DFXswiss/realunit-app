@@ -265,17 +265,15 @@ void main() {
       ];
     }
 
-    Future<void Function()?> tapPeriod(WidgetTester tester, String label) async {
-      await tester.tap(find.widgetWithText(TimePeriodSelectionButton, label));
-      await tester.pump();
-      return null;
-    }
-
     goldenTest(
       'portfolio history all-zero 1W collapses the chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1w',
       constraints: phoneConstraints,
-      whilePerforming: (tester) => tapPeriod(tester, '1W'),
+      whilePerforming: (tester) async {
+        await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '1W'));
+        await tester.pump();
+        return null;
+      },
       builder: () {
         when(() => dashboardBloc.state)
             .thenReturn(dashboardState(history: recentZeroHistory()));
@@ -287,7 +285,11 @@ void main() {
       'portfolio history all-zero 1M collapses the chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1m',
       constraints: phoneConstraints,
-      whilePerforming: (tester) => tapPeriod(tester, '1M'),
+      whilePerforming: (tester) async {
+        await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '1M'));
+        await tester.pump();
+        return null;
+      },
       builder: () {
         when(() => dashboardBloc.state)
             .thenReturn(dashboardState(history: recentZeroHistory()));
@@ -299,7 +301,11 @@ void main() {
       'portfolio history all-zero 3M collapses the chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_3m',
       constraints: phoneConstraints,
-      whilePerforming: (tester) => tapPeriod(tester, '3M'),
+      whilePerforming: (tester) async {
+        await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '3M'));
+        await tester.pump();
+        return null;
+      },
       builder: () {
         when(() => dashboardBloc.state)
             .thenReturn(dashboardState(history: recentZeroHistory()));
@@ -311,7 +317,11 @@ void main() {
       'portfolio history all-zero 1J collapses the chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1j',
       constraints: phoneConstraints,
-      whilePerforming: (tester) => tapPeriod(tester, '1J'),
+      whilePerforming: (tester) async {
+        await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '1J'));
+        await tester.pump();
+        return null;
+      },
       builder: () {
         when(() => dashboardBloc.state)
             .thenReturn(dashboardState(history: recentZeroHistory()));
