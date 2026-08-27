@@ -36,8 +36,8 @@ import '../../../helper/helper.dart';
 // branches of their `switch`. The default `selectedPeriod` is `TimePeriod.all`
 // (`price_chart_cubit.dart:12`), whose `minX`/`maxX` come purely from the first
 // / last fixture `PricePoint.time`. The customer-report goldens below tap 1W/
-// 1M/3M/1J; those windows use offsets from `now()`, so the empty plot stays
-// stable (no date axis) and MAX still shows the pre-1Y curve.
+// 1M/3M/1J; those windows use offsets from `now()`, so a flat zero-line plot
+// stays stable (no date axis) and MAX still shows the pre-1Y curve.
 
 class _MockDashboardBloc extends MockBloc<DashboardEvent, DashboardState>
     implements DashboardBloc {}
@@ -90,7 +90,7 @@ void main() {
   ];
 
   // Customer report: older non-zero holdings (outside 1Y so MAX shows a
-  // curve) then zeros through now (1W/1M/3M/1J collapse to an empty plot).
+  // curve) then zeros through now (1W/1M/3M/1J keep a visible zero line).
   List<PortfolioValuePoint> customerReportHistory() {
     final now = DateTime.now();
     PortfolioValuePoint pt(int daysAgo, int valueRappen, int shares) =>
@@ -286,7 +286,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 1W — recent zeros collapse the chart',
+      'customer report 1W — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1w',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
@@ -303,7 +303,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 1M — recent zeros collapse the chart',
+      'customer report 1M — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1m',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
@@ -320,7 +320,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 3M — recent zeros collapse the chart',
+      'customer report 3M — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_3m',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
@@ -337,7 +337,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 1J — recent zeros collapse the chart',
+      'customer report 1J — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1j',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
