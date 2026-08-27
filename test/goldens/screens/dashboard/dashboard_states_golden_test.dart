@@ -36,8 +36,8 @@ import '../../../helper/helper.dart';
 // branches of their `switch`. The default `selectedPeriod` is `TimePeriod.all`
 // (`price_chart_cubit.dart:12`), whose `minX`/`maxX` come purely from the first
 // / last fixture `PricePoint.time`. The customer-report goldens below tap 1W/
-// 1M/3M/1J; those windows use offsets from `now()`, so the empty plot stays
-// stable (no date axis) and MAX still shows the pre-1Y curve.
+// 1M/3M/1J; those windows use offsets from `now()`, so a flat zero-line plot
+// stays stable (no date axis) and MAX still shows the pre-1Y curve.
 
 class _MockDashboardBloc extends MockBloc<DashboardEvent, DashboardState>
     implements DashboardBloc {}
@@ -90,14 +90,18 @@ void main() {
   ];
 
   // Customer report: older non-zero holdings (outside 1Y so MAX shows a
-  // curve) then zeros through now (1W/1M/3M/1J collapse to an empty plot).
+  // curve) then zeros through now (1W/1M/3M/1J keep a visible zero line).
+  // Times are local midnight so they share the cubit's period window
+  // (`DateTime(now.year, now.month, now.day - N)`); a clock-time remainder
+  // would shift the zero-line by a few pixels between CI runs.
   List<PortfolioValuePoint> customerReportHistory() {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     PortfolioValuePoint pt(int daysAgo, int valueRappen, int shares) =>
         PortfolioValuePoint(
           value: BigInt.from(valueRappen),
           balance: BigInt.from(shares),
-          time: now.subtract(Duration(days: daysAgo)),
+          time: today.subtract(Duration(days: daysAgo)),
         );
     return [
       pt(500, 10000, 100),
@@ -254,6 +258,27 @@ void main() {
     );
 
     goldenTest(
+      'portfolio history all-zero window keeps a visible chart',
+      fileName: 'dashboard_portfolio_chart_zero',
+      constraints: phoneConstraints,
+      builder: () {
+        when(() => dashboardBloc.state).thenReturn(
+          dashboardState(
+            history: [
+              for (final p in portfolioHistory)
+                PortfolioValuePoint(
+                  value: BigInt.zero,
+                  balance: BigInt.zero,
+                  time: p.time,
+                ),
+            ],
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
       'customer report MAX — older holdings draw a curve then drop to zero',
       fileName: 'dashboard_portfolio_chart_zero_collapsed',
       constraints: phoneConstraints,
@@ -265,7 +290,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 1W — recent zeros collapse the chart',
+      'customer report 1W — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1w',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
@@ -282,7 +307,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 1M — recent zeros collapse the chart',
+      'customer report 1M — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1m',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
@@ -299,7 +324,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 3M — recent zeros collapse the chart',
+      'customer report 3M — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_3m',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
@@ -316,7 +341,7 @@ void main() {
     );
 
     goldenTest(
-      'customer report 1J — recent zeros collapse the chart',
+      'customer report 1J — recent zeros keep a visible zero-line chart',
       fileName: 'dashboard_portfolio_chart_zero_collapsed_1j',
       constraints: phoneConstraints,
       whilePerforming: (tester) async {
