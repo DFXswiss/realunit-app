@@ -99,9 +99,9 @@ void main() {
       expect(cubit.state.maxY, 104.0);
     });
 
-    test('zero-average flat series keeps a visible Y-range around 0', () {
+    test('zero-average flat series keeps a visible Y-range from 0', () {
       // average 0 → relative 5% floor is 0 → absolute floor 5 → interval 2
-      // → lines centered on 0, unclamped so the stroke is not on minY.
+      // → lines start at 0 (holdings never go negative).
       final points = [
         _pt(DateTime.utc(2026, 1, 1), 0),
         _pt(DateTime.utc(2026, 2, 1), 0),
@@ -114,10 +114,10 @@ void main() {
       expect(cubit.state.visibleSpots.every((s) => s.y == 0.0), isTrue);
       expect(
         cubit.state.horizontalLineValues,
-        [-6.0, -4.0, -2.0, 0.0, 2.0, 4.0],
+        [0.0, 2.0, 4.0, 6.0, 8.0, 10.0],
       );
-      expect(cubit.state.minY, -6.0);
-      expect(cubit.state.maxY, 4.0);
+      expect(cubit.state.minY, 0.0);
+      expect(cubit.state.maxY, 10.0);
     });
 
     test('oneWeek all-zero window keeps a visible Y-range around 0', () {
@@ -134,8 +134,8 @@ void main() {
       expect(cubit.state.visibleSpots, hasLength(3));
       expect(cubit.state.visibleSpots.every((s) => s.y == 0.0), isTrue);
       expect(cubit.state.visibleSpots.first.x, cubit.state.minX);
-      expect(cubit.state.minY < 0, isTrue);
-      expect(cubit.state.maxY > 0, isTrue);
+      expect(cubit.state.minY, 0.0);
+      expect(cubit.state.maxY, 10.0);
       expect(cubit.state.minY < cubit.state.maxY, isTrue);
     });
 

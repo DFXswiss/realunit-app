@@ -181,10 +181,8 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
     final centerLine = (average / interval).round() * interval;
 
     // Position the bottom line so the center is roughly in the middle.
-    // Keep minY >= 0 for positive holdings; an all-zero series must be allowed
-    // below 0 so the stroke is not clipped to the axis.
-    final unclampedBottom = centerLine - 3 * interval;
-    final bottomLine = average > 0 ? math.max(0.0, unclampedBottom) : unclampedBottom;
+    // Holdings cannot go negative — never draw a Y-axis below 0.
+    final bottomLine = math.max(0.0, centerLine - 3 * interval);
 
     return List.generate(lineCount, (i) => bottomLine + i * interval);
   }
