@@ -254,6 +254,27 @@ void main() {
     );
 
     goldenTest(
+      'portfolio history all-zero window keeps a visible chart',
+      fileName: 'dashboard_portfolio_chart_zero',
+      constraints: phoneConstraints,
+      builder: () {
+        when(() => dashboardBloc.state).thenReturn(
+          dashboardState(
+            history: [
+              for (final p in portfolioHistory)
+                PortfolioValuePoint(
+                  value: BigInt.zero,
+                  balance: BigInt.zero,
+                  time: p.time,
+                ),
+            ],
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
       'customer report MAX — older holdings draw a curve then drop to zero',
       fileName: 'dashboard_portfolio_chart_zero_collapsed',
       constraints: phoneConstraints,
