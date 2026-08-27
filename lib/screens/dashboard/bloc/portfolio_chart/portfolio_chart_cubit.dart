@@ -81,18 +81,31 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
     );
     final maxX = _prices.last.time.millisecondsSinceEpoch.toDouble();
 
-    // Filter price points to those within the selected time period (between minX and maxX)
-    final visibleSpots = _prices
-        .where(
-          (p) => p.time.millisecondsSinceEpoch >= minX && p.time.millisecondsSinceEpoch <= maxX,
-        )
-        .map(
-          (p) => FlSpot(
-            p.time.millisecondsSinceEpoch.toDouble(),
-            double.parse(formatFixed(p.value, 2)),
-          ),
-        )
-        .toList();
+    // Split into the last sample before the window and the samples inside it.
+    // Chronological `_prices` is the production order from the account API.
+    PortfolioValuePoint? prior;
+    final interior = <PortfolioValuePoint>[];
+    for (final p in _prices) {
+      final x = p.time.millisecondsSinceEpoch.toDouble();
+      if (x < minX) {
+        prior = p;
+      } else if (x <= maxX) {
+        interior.add(p);
+      }
+    }
+
+    double yOf(PortfolioValuePoint p) => double.parse(formatFixed(p.value, 2));
+
+    // Hold the last pre-window value at minX so the stroke spans the selected
+    // period instead of starting at the first interior sample (a 1Y window
+    // whose next point is six months in would otherwise draw a stub).
+    final visibleSpots = <FlSpot>[
+      if (interior.isNotEmpty &&
+          prior != null &&
+          interior.first.time.millisecondsSinceEpoch.toDouble() > minX)
+        FlSpot(minX, yOf(prior)),
+      for (final p in interior) FlSpot(p.time.millisecondsSinceEpoch.toDouble(), yOf(p)),
+    ];
 
     if (visibleSpots.isEmpty) {
       emit(

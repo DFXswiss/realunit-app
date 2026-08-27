@@ -123,7 +123,7 @@ void main() {
     test('oneWeek all-zero window keeps a visible Y-range around 0', () {
       final now = DateTime.now();
       final points = [
-        _pt(now.subtract(const Duration(days: 60)), 10000),
+        _pt(now.subtract(const Duration(days: 60)), 0),
         _pt(now.subtract(const Duration(days: 3)), 0),
         _pt(now.subtract(const Duration(days: 1)), 0),
       ];
@@ -131,8 +131,9 @@ void main() {
       final cubit = PortfolioChartCubit(points);
       cubit.selectPeriod(TimePeriod.oneWeek);
 
-      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots, hasLength(3));
       expect(cubit.state.visibleSpots.every((s) => s.y == 0.0), isTrue);
+      expect(cubit.state.visibleSpots.first.x, cubit.state.minX);
       expect(cubit.state.minY < 0, isTrue);
       expect(cubit.state.maxY > 0, isTrue);
       expect(cubit.state.minY < cubit.state.maxY, isTrue);
@@ -159,8 +160,10 @@ void main() {
       cubit.selectPeriod(TimePeriod.oneWeek);
 
       expect(cubit.state.selectedPeriod, TimePeriod.oneWeek);
-      expect(cubit.state.visibleSpots, hasLength(1));
-      expect(cubit.state.visibleSpots.single.y, 60.0);
+      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots.first.x, cubit.state.minX);
+      expect(cubit.state.visibleSpots.first.y, 50.0);
+      expect(cubit.state.visibleSpots.last.y, 60.0);
     });
 
     test('selectPeriod to oneMonth narrows visibleSpots to the 1-month window', () {
@@ -172,8 +175,10 @@ void main() {
       cubit.selectPeriod(TimePeriod.oneMonth);
 
       expect(cubit.state.selectedPeriod, TimePeriod.oneMonth);
-      expect(cubit.state.visibleSpots, hasLength(1));
-      expect(cubit.state.visibleSpots.single.y, 70.0);
+      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots.first.x, cubit.state.minX);
+      expect(cubit.state.visibleSpots.first.y, 50.0);
+      expect(cubit.state.visibleSpots.last.y, 70.0);
     });
 
     test('selectPeriod to threeMonths narrows visibleSpots to the 3-month window', () {
@@ -185,8 +190,10 @@ void main() {
       cubit.selectPeriod(TimePeriod.threeMonths);
 
       expect(cubit.state.selectedPeriod, TimePeriod.threeMonths);
-      expect(cubit.state.visibleSpots, hasLength(1));
-      expect(cubit.state.visibleSpots.single.y, 80.0);
+      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots.first.x, cubit.state.minX);
+      expect(cubit.state.visibleSpots.first.y, 50.0);
+      expect(cubit.state.visibleSpots.last.y, 80.0);
     });
 
     test('selectPeriod to oneYear narrows visibleSpots to the 1-year window', () {
@@ -198,8 +205,42 @@ void main() {
       cubit.selectPeriod(TimePeriod.oneYear);
 
       expect(cubit.state.selectedPeriod, TimePeriod.oneYear);
-      expect(cubit.state.visibleSpots, hasLength(1));
-      expect(cubit.state.visibleSpots.single.y, 90.0);
+      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots.first.x, cubit.state.minX);
+      expect(cubit.state.visibleSpots.first.y, 50.0);
+      expect(cubit.state.visibleSpots.last.y, 90.0);
+    });
+
+    test('oneYear holds a pre-window zero across a gap so the line spans minX', () {
+      // Customer-shaped 1J: last sample before the window is 0, next interior
+      // sample is months later. Without the hold, the stroke started at 50%.
+      final now = DateTime.now();
+      final cubit = PortfolioChartCubit([
+        _pt(now.subtract(const Duration(days: 370)), 0),
+        _pt(now.subtract(const Duration(days: 180)), 0),
+        _pt(now, 0),
+      ]);
+      cubit.selectPeriod(TimePeriod.oneYear);
+
+      expect(cubit.state.visibleSpots.length, greaterThanOrEqualTo(3));
+      expect(cubit.state.visibleSpots.first.x, cubit.state.minX);
+      expect(cubit.state.visibleSpots.every((s) => s.y == 0.0), isTrue);
+    });
+
+    test('oneYear does not duplicate a sample that already sits on minX', () {
+      final now = DateTime.now();
+      final start = DateTime(now.year - 1, now.month, now.day);
+      final cubit = PortfolioChartCubit([
+        _pt(start.subtract(const Duration(days: 10)), 5000),
+        _pt(start, 6000),
+        _pt(now, 7000),
+      ]);
+      cubit.selectPeriod(TimePeriod.oneYear);
+
+      expect(cubit.state.visibleSpots, hasLength(2));
+      expect(cubit.state.visibleSpots.first.x, start.millisecondsSinceEpoch.toDouble());
+      expect(cubit.state.visibleSpots.first.y, 60.0);
+      expect(cubit.state.visibleSpots.last.y, 70.0);
     });
 
     test('minX is clamped to first price time even when the period predates it', () {
