@@ -16,6 +16,9 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
   // Used only to decompose a seeded value. Input is free-form and not limited to this list.
   // `+41` stays first: it is the fallback default (`prefix ??= prefixes.first`).
   final prefixes = ['+41', '+49', '+43', '+423'];
+  // CH/DE/AT drop a leading national trunk 0. Italy's leading 0 is significant,
+  // and Liechtenstein has no national trunk 0.
+  static const _trunkZeroPrefixes = ['+41', '+49', '+43'];
   String? prefix;
   String? number;
 
@@ -40,13 +43,27 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
     // what the user typed. Fall back to the first prefix; the number field starts empty,
     // so the validator still blocks submit until it is re-entered.
     prefix ??= prefixes.first;
+
+    // Seeded values must use the same trunk-0 composition as later edits.
+    updatePhoneNumber();
   }
 
   void updatePhoneNumber() {
-    if (prefix != null && number != null) {
-      final value = '$prefix$number';
-      widget.controller.value = value;
+    final prefix = this.prefix;
+    final number = this.number;
+    if (prefix == null || number == null) return;
+
+    widget.controller.value = _canonicalize('$prefix$number');
+  }
+
+  static String _canonicalize(String value) {
+    for (final countryPrefix in _trunkZeroPrefixes) {
+      final trunkPrefix = '${countryPrefix}0';
+      if (value.startsWith(trunkPrefix)) {
+        return '$countryPrefix${value.substring(trunkPrefix.length)}';
+      }
     }
+    return value;
   }
 
   @override
@@ -115,7 +132,14 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
                   if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
                     return S.of(context).registerPhoneNumberOnlyDigits;
                   }
-                  // Length is validated by the API (libphonenumber); the client
+                  final canonical = _canonicalize('$prefix$value');
+                  if (_trunkZeroPrefixes.any(
+                    (countryPrefix) => canonical.startsWith('${countryPrefix}0'),
+                  )) {
+                    return S.of(context).registerPhoneNumberInvalid;
+                  }
+                  // Apart from the explicit trunk-zero canonicality check above,
+                  // length is validated by the API (libphonenumber); the client
                   // must not gate on it — see CONTRIBUTING "the API decides".
                   return null;
                 },
