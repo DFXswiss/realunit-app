@@ -227,6 +227,29 @@ void main() {
       },
     );
 
+    // All-zero holdings collapse minY/maxY to 0, so LineChart draws no curve.
+    // This golden pins that empty chart so the defect is visible in review.
+    goldenTest(
+      'portfolio history all-zero window collapses the chart',
+      fileName: 'dashboard_portfolio_chart_zero_collapsed',
+      constraints: phoneConstraints,
+      builder: () {
+        when(() => dashboardBloc.state).thenReturn(
+          dashboardState(
+            history: [
+              for (final p in portfolioHistory)
+                PortfolioValuePoint(
+                  value: BigInt.zero,
+                  balance: BigInt.zero,
+                  time: p.time,
+                ),
+            ],
+          ),
+        );
+        return wrapForGolden(buildSubject());
+      },
+    );
+
     goldenTest(
       'pending transactions section',
       fileName: 'dashboard_pending_transactions',
