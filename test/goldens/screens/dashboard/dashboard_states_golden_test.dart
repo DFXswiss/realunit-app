@@ -271,6 +271,7 @@ void main() {
       whilePerforming: (tester) async {
         await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '1W'));
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
         return null;
       },
       builder: () {
@@ -287,6 +288,7 @@ void main() {
       whilePerforming: (tester) async {
         await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '1M'));
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
         return null;
       },
       builder: () {
@@ -303,6 +305,7 @@ void main() {
       whilePerforming: (tester) async {
         await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '3M'));
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
         return null;
       },
       builder: () {
@@ -319,6 +322,7 @@ void main() {
       whilePerforming: (tester) async {
         await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '1J'));
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
         return null;
       },
       builder: () {
