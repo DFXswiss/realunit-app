@@ -220,7 +220,7 @@ void main() {
       expect(harness.controller.value, '+410791234567');
       expect(isValid, isFalse);
       expect(
-        find.text(_phoneError(tester, (s) => s.registerPhoneNumberInvalid)),
+        find.text(_phoneError(tester, (s) => s.registerPhoneNumberLeadingZero)),
         findsOneWidget,
       );
     });
@@ -256,7 +256,7 @@ void main() {
       expect(harness.controller.value, '+410791234567');
       expect(isValid, isFalse);
       expect(
-        find.text(_phoneError(tester, (s) => s.registerPhoneNumberInvalid)),
+        find.text(_phoneError(tester, (s) => s.registerPhoneNumberLeadingZero)),
         findsOneWidget,
       );
     });

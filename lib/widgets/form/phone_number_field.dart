@@ -136,7 +136,7 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
                   if (_trunkZeroPrefixes.any(
                     (countryPrefix) => canonical.startsWith('${countryPrefix}0'),
                   )) {
-                    return S.of(context).registerPhoneNumberInvalid;
+                    return S.of(context).registerPhoneNumberLeadingZero;
                   }
                   // Apart from the explicit trunk-zero canonicality check above,
                   // length is validated by the API (libphonenumber); the client
