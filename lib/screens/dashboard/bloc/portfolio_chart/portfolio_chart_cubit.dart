@@ -157,9 +157,8 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
     const lineCount = 6;
     const intervalCount = lineCount - 1;
 
-    if (deviation <= 0) {
-      return List.generate(lineCount, (_) => average);
-    }
+    // Callers always pass a positive deviation (relative 5% floor, or 5.0
+    // for an all-zero series). A non-positive value would collapse minY/maxY.
 
     // Calculate an interval that spans the data range
     final rawInterval = (2 * deviation) / intervalCount;
