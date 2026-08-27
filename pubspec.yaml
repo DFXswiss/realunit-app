@@ -44,6 +44,7 @@ dependencies:
   clock: ^1.1.2
   collection: ^1.19.0
   convert: ^3.1.2
+  dlibphonenumber: ^1.1.70
   drift: ^2.32.1
   eth_sig_util_plus: ^0.0.10
   eip7702:

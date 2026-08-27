@@ -177,6 +177,36 @@ void main() {
       expect(isValid, isTrue);
     });
 
+    testWidgets('strips a leading French trunk zero from the national number', (tester) async {
+      final harness = await _pumpPhoneField(tester);
+
+      await tester.enterText(_prefixField(), '33');
+      final isValid = await _enterAndValidate(tester, harness, '0612345678');
+
+      expect(harness.controller.value, '+33612345678');
+      expect(isValid, isTrue);
+    });
+
+    testWidgets('strips a leading UK trunk zero from the national number', (tester) async {
+      final harness = await _pumpPhoneField(tester);
+
+      await tester.enterText(_prefixField(), '44');
+      final isValid = await _enterAndValidate(tester, harness, '07911123456');
+
+      expect(harness.controller.value, '+447911123456');
+      expect(isValid, isTrue);
+    });
+
+    testWidgets('strips a leading Dutch trunk zero from the national number', (tester) async {
+      final harness = await _pumpPhoneField(tester);
+
+      await tester.enterText(_prefixField(), '31');
+      final isValid = await _enterAndValidate(tester, harness, '0612345678');
+
+      expect(harness.controller.value, '+31612345678');
+      expect(isValid, isTrue);
+    });
+
     testWidgets('keeps a leading Italian zero in the stored number', (tester) async {
       // For +39 the leading 0 is significant. Stripping it would make landlines
       // such as 0666982 invalid.
@@ -212,12 +242,21 @@ void main() {
       expect(isValid, isTrue);
     });
 
+    testWidgets('preserves incomplete input when phone-number parsing fails', (tester) async {
+      final harness = await _pumpPhoneField(tester);
+
+      final isValid = await _enterAndValidate(tester, harness, '7');
+
+      expect(harness.controller.value, '+417');
+      expect(isValid, isTrue);
+    });
+
     testWidgets('rejects multiple leading trunk zeros', (tester) async {
       final harness = await _pumpPhoneField(tester);
 
       final isValid = await _enterAndValidate(tester, harness, '00791234567');
 
-      expect(harness.controller.value, '+410791234567');
+      expect(harness.controller.value, '+4100791234567');
       expect(isValid, isFalse);
       expect(
         find.text(_phoneError(tester, (s) => s.registerPhoneNumberLeadingZero)),
@@ -253,7 +292,7 @@ void main() {
       final isValid = harness.formKey.currentState!.validate();
       await tester.pump();
 
-      expect(harness.controller.value, '+410791234567');
+      expect(harness.controller.value, '+4100791234567');
       expect(isValid, isFalse);
       expect(
         find.text(_phoneError(tester, (s) => s.registerPhoneNumberLeadingZero)),

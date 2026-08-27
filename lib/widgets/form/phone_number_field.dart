@@ -1,3 +1,4 @@
+import 'package:dlibphonenumber/dlibphonenumber.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
@@ -16,8 +17,9 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
   // Used only to decompose a seeded value. Input is free-form and not limited to this list.
   // `+41` stays first: it is the fallback default (`prefix ??= prefixes.first`).
   final prefixes = ['+41', '+49', '+43', '+423'];
-  // CH/DE/AT drop a leading national trunk 0. Italy's leading 0 is significant,
-  // and Liechtenstein has no national trunk 0.
+  // Canonicalization uses libphonenumber metadata, not this list. These main-market
+  // prefixes remain only to report a surviving second leading zero in the field
+  // instead of letting the API return a 400.
   static const _trunkZeroPrefixes = ['+41', '+49', '+43'];
   String? prefix;
   String? number;
@@ -57,13 +59,14 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
   }
 
   static String _canonicalize(String value) {
-    for (final countryPrefix in _trunkZeroPrefixes) {
-      final trunkPrefix = '${countryPrefix}0';
-      if (value.startsWith(trunkPrefix)) {
-        return '$countryPrefix${value.substring(trunkPrefix.length)}';
-      }
+    try {
+      final util = PhoneNumberUtil.instance;
+      return util.format(util.parse(value, null), PhoneNumberFormat.e164);
+    } catch (_) {
+      // `parse` throws NumberParseException for incomplete input while the user is
+      // typing; preserve the raw value and let the API decide validity on submit.
+      return value;
     }
-    return value;
   }
 
   @override
