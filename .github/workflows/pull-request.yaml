@@ -342,6 +342,16 @@ jobs:
           name: golden-diffs
           path: test/goldens/**/failures/**
           if-no-files-found: ignore
+      - name: Render goldens for artifact
+        if: failure()
+        run: flutter test test/goldens --update-goldens
+      - name: Upload regenerated baselines
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: golden-baselines
+          path: test/goldens/**/goldens/**
+          if-no-files-found: error
 
   # Runs the bitbox-audit CLI from DFXswiss/bitbox-testkit to surface which
   # of the documented BitBox firmware quirks are statically detected in this
