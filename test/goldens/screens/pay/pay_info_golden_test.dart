@@ -1,4 +1,3 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:realunit_wallet/screens/pay/pay_info_page.dart';
 
 import '../../../helper/helper.dart';
