@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Assemble the 278 handbook screenshots from the visual-regression Golden
+# Assemble the 284 handbook screenshots from the visual-regression Golden
 # baselines. The flat `NN-name.png` output layout matches what
 # docs/handbook/de/index.html links to (`<img src="../screenshots/NN-name.png">`
 # — the relative path resolves to `docs/handbook/screenshots/NN-name.png`).
@@ -316,6 +316,12 @@ MAPPING=(
   "267-debug-auth-page-authenticating=screens/debug_auth/goldens/macos/debug_auth_page_authenticating.png"
   "268-phone-number-field-default=widgets/form/goldens/macos/phone_number_field_default.png"
   "269-dashboard-insider-unlocked=screens/dashboard/goldens/macos/dashboard_insider_unlocked.png"
+  "270-handbook-persona-dca=screens/dashboard/goldens/macos/handbook_persona_dca.png"
+  "271-handbook-persona-lump=screens/dashboard/goldens/macos/handbook_persona_lump.png"
+  "272-handbook-persona-exit=screens/dashboard/goldens/macos/handbook_persona_exit.png"
+  "273-handbook-persona-mix=screens/dashboard/goldens/macos/handbook_persona_mix.png"
+  "274-handbook-persona-scale=screens/dashboard/goldens/macos/handbook_persona_scale.png"
+  "275-handbook-persona-exit-1j=screens/dashboard/goldens/macos/handbook_persona_exit_1j.png"
 )
 
 missing=()

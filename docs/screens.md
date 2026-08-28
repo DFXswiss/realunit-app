@@ -16,7 +16,7 @@ Column meaning:
   screen, or `—` if the screen has no Golden baseline. Each slot is a
   Visual-Regression Golden under `test/goldens/`, mapped to its handbook
   position by `scripts/assemble-handbook-screenshots.sh`. The handbook now
-  covers **all 278 Golden baselines** — every screen **plus every tested
+  covers **all 284 Golden baselines** — every screen **plus every tested
   state variant** (Default / Loading / Error / Snackbar / Dropdown /
   Validation / Confirm / Success / Failure …), including the areas that were
   previously absent: Support (email capture, tickets, chat), Settings
@@ -136,7 +136,7 @@ one shared form-widget baseline (`PhoneNumberField`), which is not a screen.
   `243`–`245`. `SetupPinPage` also backs the `settingsChangePin` route
   (`/settings/security/changePin`) via a second constructor; that reuse has no
   separate Golden and is not given its own row.
-- **Handbook numbering.** Each of the 278 handbook slots is a Visual-Regression
+- **Handbook numbering.** Each of the 284 handbook slots is a Visual-Regression
   Golden under `test/goldens/`, mapped to its handbook position by
   `scripts/assemble-handbook-screenshots.sh`. A parallel Tier-3 Maestro flow
   (`.maestro/handbook/NN-*.yaml`) covers navigation/tap-routing smoke for the
