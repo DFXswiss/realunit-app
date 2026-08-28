@@ -1,12 +1,12 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
+import 'package:realunit_wallet/screens/receive/receive_page.dart';
 import 'package:realunit_wallet/screens/receive/widgets/qr_address_widget.dart';
 import 'package:realunit_wallet/screens/settings_wallet_address/settings_wallet_address_page.dart';
+import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
 import '../../helper/helper.dart';
 
@@ -27,27 +27,16 @@ void main() {
   });
 
   group('$SettingsWalletAddressPage', () {
-    testWidgets('renders initially correctly', (tester) async {
+    testWidgets('builds ReceivePage with QR and Send', (tester) async {
       await tester.pumpApp(const SettingsWalletAddressPage());
 
-      expect(find.byType(SvgPicture), findsOneWidget);
+      expect(find.byType(ReceivePage), findsOneWidget);
       expect(find.byType(QRAddressWidget), findsOneWidget);
       expect(
-        find.byWidgetPredicate(
-          (widget) =>
-              widget is Text && widget.data == S.current.walletAddressDisclaimer,
-        ),
+        find.widgetWithText(AppFilledButton, S.current.send),
         findsOneWidget,
       );
-    });
-
-    testWidgets('displays the address in EIP-55 checksummed form', (tester) async {
-      await tester.pumpApp(const SettingsWalletAddressPage());
-
-      const checksummed = '0x938115B533a0b746428361760A6972dfd06D984a';
-      final qr = tester.widget<QRAddressWidget>(find.byType(QRAddressWidget));
-      expect(qr.subtitle, checksummed);
-      expect(qr.uri, contains(checksummed));
+      expect(find.text(S.current.walletAddressDisclaimer), findsNothing);
     });
   });
 }
