@@ -726,6 +726,26 @@
         border-radius: 8px;
         padding: 14px 16px;
       }
+      #spec-80 .persona-trades {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 8px 0 0;
+      }
+      #spec-80 .persona-trades th,
+      #spec-80 .persona-trades td {
+        border-bottom: 1px solid var(--line-2);
+        padding: 4px 8px;
+        text-align: left;
+      }
+      #spec-80 .persona-trades th {
+        color: var(--ink-3);
+        font-weight: 600;
+      }
+      #spec-80 .persona-trades td.num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
       #geo-filter-live .geo-toolbar {
         display: flex;
         flex-wrap: wrap;
@@ -1113,6 +1133,9 @@
             </li>
             <li>
               <a href="#spec-79"><span class="spec-num">79</span>Insider-Freischaltung — Bezahlen &amp; Senden</a>
+            </li>
+            <li>
+              <a href="#spec-80"><span class="spec-num">80</span>Testkunden — Bestandsentwicklung</a>
             </li>
             <li>
               <a href="#spec-geo"><span class="spec-num">G</span>Aktientoken — Geo-Filter</a>
@@ -8137,6 +8160,228 @@
                 <b>Verkaufen</b> erscheinen zusätzlich <b>Bezahlen</b> und <b>Senden</b>.
                 Golden-Quelle: <code>dashboard_insider_unlocked.png</code> aus
                 <code>dashboard_golden_test.dart</code>.
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <hr class="sep" />
+
+        <details id="spec-80" class="spec" open>
+          <summary>
+            <div class="spec-head">
+              <div class="lhs">
+                <h2><span class="num">80</span>Testkunden — Bestandsentwicklung</h2>
+                <div class="file">test/goldens/screens/dashboard/handbook_persona_*</div>
+              </div>
+              <div class="rhs">
+                <b>6 Screens</b>
+                <div class="links">
+                  <a
+                    href="https://github.com/RealUnitCH/app/tree/develop/test/goldens/screens/dashboard"
+                    >Goldens ↗</a
+                  >
+                </div>
+              </div>
+            </div>
+          </summary>
+          <p class="spec-intro">
+            Fünf synthetische Testkunden (keine Live-Konten) mit unterschiedlichem
+            Kaufverhalten. Jede Historie hat mindestens zehn Bestandswechsel innerhalb
+            eines Jahres, Stand der Tabellen <b>28.08.2026</b>. Die Diagramme sind
+            Golden-Baselines der MAX-Ansicht; bei K3 zusätzlich 1J nach dem Verkauf auf 0.
+            Unter <b>Bestand</b> erscheinen die drei jüngsten On-Chain-Transfers
+            (<b>Letzte Transaktionen</b>) — bei Bestand 0 (K3) blendet das Dashboard
+            diese Karte aus. Die Kurve ist der Marktwert in CHF (Stückzahl × REALU-Preis
+            des jeweiligen Tages), nicht die reine Stückzahl.
+          </p>
+
+          <div class="tests cols-1">
+            <div class="test" id="270-handbook-persona-dca">
+              <div class="head">
+                <a class="name permalink" href="#270-handbook-persona-dca">270-handbook-persona-dca</a>
+                <button class="copy-link" type="button" data-target="270-handbook-persona-dca" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">handbook_persona_dca.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/270-handbook-persona-dca.png"
+                  alt="K1 Monatskäufer — MAX-Treppe aus zwölf gleichen Käufen"
+                />
+              </div>
+              <div class="desc">
+                <b>K1 Monatskäufer.</b> Zwölf gleiche Käufe à 80 REALU, Bestand 960.
+                <table class="persona-trades">
+                  <thead><tr><th>Datum</th><th>Richtung</th><th class="num">Δ REALU</th><th class="num">Bestand</th></tr></thead>
+                  <tbody>
+                    <tr><td>2025-09-27</td><td>Kauf</td><td class="num">+80</td><td class="num">80</td></tr>
+                    <tr><td>2025-10-27</td><td>Kauf</td><td class="num">+80</td><td class="num">160</td></tr>
+                    <tr><td>2025-11-26</td><td>Kauf</td><td class="num">+80</td><td class="num">240</td></tr>
+                    <tr><td>2025-12-26</td><td>Kauf</td><td class="num">+80</td><td class="num">320</td></tr>
+                    <tr><td>2026-01-25</td><td>Kauf</td><td class="num">+80</td><td class="num">400</td></tr>
+                    <tr><td>2026-02-24</td><td>Kauf</td><td class="num">+80</td><td class="num">480</td></tr>
+                    <tr><td>2026-03-26</td><td>Kauf</td><td class="num">+80</td><td class="num">560</td></tr>
+                    <tr><td>2026-04-25</td><td>Kauf</td><td class="num">+80</td><td class="num">640</td></tr>
+                    <tr><td>2026-05-25</td><td>Kauf</td><td class="num">+80</td><td class="num">720</td></tr>
+                    <tr><td>2026-06-24</td><td>Kauf</td><td class="num">+80</td><td class="num">800</td></tr>
+                    <tr><td>2026-07-24</td><td>Kauf</td><td class="num">+80</td><td class="num">880</td></tr>
+                    <tr><td>2026-08-23</td><td>Kauf</td><td class="num">+80</td><td class="num">960</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="test" id="271-handbook-persona-lump">
+              <div class="head">
+                <a class="name permalink" href="#271-handbook-persona-lump">271-handbook-persona-lump</a>
+                <button class="copy-link" type="button" data-target="271-handbook-persona-lump" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">handbook_persona_lump.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/271-handbook-persona-lump.png"
+                  alt="K2 Einmalkauf — MAX mit einem grossen Sprung und kleinen Nachkäufen"
+                />
+              </div>
+              <div class="desc">
+                <b>K2 Einmalkauf.</b> Ein Lump von 5000 REALU, danach neun Nachkäufe à 50, Bestand 5450.
+                <table class="persona-trades">
+                  <thead><tr><th>Datum</th><th>Richtung</th><th class="num">Δ REALU</th><th class="num">Bestand</th></tr></thead>
+                  <tbody>
+                    <tr><td>2025-09-22</td><td>Kauf</td><td class="num">+5000</td><td class="num">5000</td></tr>
+                    <tr><td>2025-11-01</td><td>Kauf</td><td class="num">+50</td><td class="num">5050</td></tr>
+                    <tr><td>2025-12-01</td><td>Kauf</td><td class="num">+50</td><td class="num">5100</td></tr>
+                    <tr><td>2025-12-31</td><td>Kauf</td><td class="num">+50</td><td class="num">5150</td></tr>
+                    <tr><td>2026-01-30</td><td>Kauf</td><td class="num">+50</td><td class="num">5200</td></tr>
+                    <tr><td>2026-03-01</td><td>Kauf</td><td class="num">+50</td><td class="num">5250</td></tr>
+                    <tr><td>2026-03-31</td><td>Kauf</td><td class="num">+50</td><td class="num">5300</td></tr>
+                    <tr><td>2026-04-30</td><td>Kauf</td><td class="num">+50</td><td class="num">5350</td></tr>
+                    <tr><td>2026-05-30</td><td>Kauf</td><td class="num">+50</td><td class="num">5400</td></tr>
+                    <tr><td>2026-07-29</td><td>Kauf</td><td class="num">+50</td><td class="num">5450</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="test" id="272-handbook-persona-exit">
+              <div class="head">
+                <a class="name permalink" href="#272-handbook-persona-exit">272-handbook-persona-exit</a>
+                <button class="copy-link" type="button" data-target="272-handbook-persona-exit" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">handbook_persona_exit.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/272-handbook-persona-exit.png"
+                  alt="K3 Verkauf auf 0 — MAX steigt und fällt auf die Null-Linie"
+                />
+              </div>
+              <div class="desc">
+                <b>K3 Verkauf auf 0.</b> Acht Käufe, dann vier Verkäufe auf Bestand 0.
+                MAX zeigt den Anstieg und den Abverkauf; die Null-Linie bleibt sichtbar.
+                <table class="persona-trades">
+                  <thead><tr><th>Datum</th><th>Richtung</th><th class="num">Δ REALU</th><th class="num">Bestand</th></tr></thead>
+                  <tbody>
+                    <tr><td>2025-10-12</td><td>Kauf</td><td class="num">+200</td><td class="num">200</td></tr>
+                    <tr><td>2025-11-11</td><td>Kauf</td><td class="num">+200</td><td class="num">400</td></tr>
+                    <tr><td>2025-12-11</td><td>Kauf</td><td class="num">+150</td><td class="num">550</td></tr>
+                    <tr><td>2026-01-10</td><td>Kauf</td><td class="num">+150</td><td class="num">700</td></tr>
+                    <tr><td>2026-02-09</td><td>Kauf</td><td class="num">+100</td><td class="num">800</td></tr>
+                    <tr><td>2026-03-11</td><td>Kauf</td><td class="num">+100</td><td class="num">900</td></tr>
+                    <tr><td>2026-04-10</td><td>Kauf</td><td class="num">+80</td><td class="num">980</td></tr>
+                    <tr><td>2026-05-10</td><td>Kauf</td><td class="num">+80</td><td class="num">1060</td></tr>
+                    <tr><td>2026-06-09</td><td>Verkauf</td><td class="num">−200</td><td class="num">860</td></tr>
+                    <tr><td>2026-07-09</td><td>Verkauf</td><td class="num">−300</td><td class="num">560</td></tr>
+                    <tr><td>2026-08-03</td><td>Verkauf</td><td class="num">−300</td><td class="num">260</td></tr>
+                    <tr><td>2026-08-18</td><td>Verkauf</td><td class="num">−260</td><td class="num">0</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="test" id="275-handbook-persona-exit-1j">
+              <div class="head">
+                <a class="name permalink" href="#275-handbook-persona-exit-1j">275-handbook-persona-exit-1j</a>
+                <button class="copy-link" type="button" data-target="275-handbook-persona-exit-1j" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">handbook_persona_exit_1j.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/275-handbook-persona-exit-1j.png"
+                  alt="K3 Verkauf auf 0 — 1J mit Abverkauf innerhalb des Jahres"
+                />
+              </div>
+              <div class="desc">
+                Dieselbe K3-Historie in der Ansicht <b>1J</b>. Der Abverkauf liegt
+                innerhalb des Jahresfensters, der Chart bleibt nach dem letzten
+                Verkauf eine sichtbare Null-Linie (Achse 0…10).
+              </div>
+            </div>
+
+            <div class="test" id="273-handbook-persona-mix">
+              <div class="head">
+                <a class="name permalink" href="#273-handbook-persona-mix">273-handbook-persona-mix</a>
+                <button class="copy-link" type="button" data-target="273-handbook-persona-mix" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">handbook_persona_mix.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/273-handbook-persona-mix.png"
+                  alt="K4 Mix — MAX mit Käufen und Teilverkäufen"
+                />
+              </div>
+              <div class="desc">
+                <b>K4 Mix.</b> Acht Käufe und vier Teilverkäufe, Bestand 600.
+                <table class="persona-trades">
+                  <thead><tr><th>Datum</th><th>Richtung</th><th class="num">Δ REALU</th><th class="num">Bestand</th></tr></thead>
+                  <tbody>
+                    <tr><td>2025-10-02</td><td>Kauf</td><td class="num">+150</td><td class="num">150</td></tr>
+                    <tr><td>2025-11-01</td><td>Kauf</td><td class="num">+150</td><td class="num">300</td></tr>
+                    <tr><td>2025-12-01</td><td>Verkauf</td><td class="num">−50</td><td class="num">250</td></tr>
+                    <tr><td>2025-12-31</td><td>Kauf</td><td class="num">+200</td><td class="num">450</td></tr>
+                    <tr><td>2026-01-30</td><td>Kauf</td><td class="num">+100</td><td class="num">550</td></tr>
+                    <tr><td>2026-03-01</td><td>Verkauf</td><td class="num">−100</td><td class="num">450</td></tr>
+                    <tr><td>2026-03-31</td><td>Kauf</td><td class="num">+80</td><td class="num">530</td></tr>
+                    <tr><td>2026-04-30</td><td>Kauf</td><td class="num">+80</td><td class="num">610</td></tr>
+                    <tr><td>2026-05-30</td><td>Verkauf</td><td class="num">−60</td><td class="num">550</td></tr>
+                    <tr><td>2026-06-29</td><td>Kauf</td><td class="num">+40</td><td class="num">590</td></tr>
+                    <tr><td>2026-07-29</td><td>Kauf</td><td class="num">+40</td><td class="num">630</td></tr>
+                    <tr><td>2026-08-23</td><td>Verkauf</td><td class="num">−30</td><td class="num">600</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="test" id="274-handbook-persona-scale">
+              <div class="head">
+                <a class="name permalink" href="#274-handbook-persona-scale">274-handbook-persona-scale</a>
+                <button class="copy-link" type="button" data-target="274-handbook-persona-scale" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+                <span class="src">handbook_persona_scale.png</span>
+              </div>
+              <div class="img">
+                <img
+                  src="../screenshots/274-handbook-persona-scale.png"
+                  alt="K5 Aufstocken — MAX mit steigenden Kaufraten"
+                />
+              </div>
+              <div class="desc">
+                <b>K5 Aufstocken.</b> Zwölf steigende Käufe (40 … 260 REALU), Bestand 1800.
+                <table class="persona-trades">
+                  <thead><tr><th>Datum</th><th>Richtung</th><th class="num">Δ REALU</th><th class="num">Bestand</th></tr></thead>
+                  <tbody>
+                    <tr><td>2025-09-27</td><td>Kauf</td><td class="num">+40</td><td class="num">40</td></tr>
+                    <tr><td>2025-10-27</td><td>Kauf</td><td class="num">+60</td><td class="num">100</td></tr>
+                    <tr><td>2025-11-26</td><td>Kauf</td><td class="num">+80</td><td class="num">180</td></tr>
+                    <tr><td>2025-12-26</td><td>Kauf</td><td class="num">+100</td><td class="num">280</td></tr>
+                    <tr><td>2026-01-25</td><td>Kauf</td><td class="num">+120</td><td class="num">400</td></tr>
+                    <tr><td>2026-02-24</td><td>Kauf</td><td class="num">+140</td><td class="num">540</td></tr>
+                    <tr><td>2026-03-26</td><td>Kauf</td><td class="num">+160</td><td class="num">700</td></tr>
+                    <tr><td>2026-04-25</td><td>Kauf</td><td class="num">+180</td><td class="num">880</td></tr>
+                    <tr><td>2026-05-25</td><td>Kauf</td><td class="num">+200</td><td class="num">1080</td></tr>
+                    <tr><td>2026-06-24</td><td>Kauf</td><td class="num">+220</td><td class="num">1300</td></tr>
+                    <tr><td>2026-07-24</td><td>Kauf</td><td class="num">+240</td><td class="num">1540</td></tr>
+                    <tr><td>2026-08-23</td><td>Kauf</td><td class="num">+260</td><td class="num">1800</td></tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
