@@ -10,6 +10,7 @@ import 'package:realunit_wallet/screens/send/cubits/send_process/send_process_cu
 import 'package:realunit_wallet/screens/send/cubits/send_recipient/send_recipient_cubit.dart';
 import 'package:realunit_wallet/screens/send/send_amount_page.dart';
 import 'package:realunit_wallet/screens/send/send_confirm_page.dart';
+import 'package:realunit_wallet/screens/send/send_info_page.dart';
 import 'package:realunit_wallet/screens/send/send_process_page.dart';
 import 'package:realunit_wallet/screens/send/send_recipient_page.dart';
 
@@ -35,6 +36,15 @@ void main() {
   setUpAll(() {
     registerFallbackValue(BigInt.zero);
     stubMobileScannerChannel();
+  });
+
+  group('$SendInfoPage', () {
+    goldenTest(
+      'shareholder transfer disclosure',
+      fileName: 'send_info_page',
+      constraints: phoneConstraints,
+      builder: () => wrapForGolden(const SendInfoPage()),
+    );
   });
 
   group('$SendRecipientView', () {

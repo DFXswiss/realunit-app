@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
-import 'package:realunit_wallet/screens/pay/pay_scan_page.dart';
+import 'package:realunit_wallet/screens/pay/pay_info_page.dart';
 import 'package:realunit_wallet/setup/routing/router_config.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 
@@ -18,8 +18,8 @@ void main() {
   late _MockHomeBloc homeBloc;
 
   setUpAll(() {
-    // PayScanPage embeds a MobileScanner; the stub keeps the headless camera
-    // preview deterministic and free of MissingPluginException.
+    // /pay lands on PayInfoPage (no camera). The stub stays so a later
+    // Continue onto PayScanPage in other tests does not throw MissingPluginException.
     stubMobileScannerChannel();
   });
 
@@ -49,14 +49,13 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the pay route builds PayScanPage', (tester) async {
+  testWidgets('the pay route builds PayInfoPage', (tester) async {
     await pumpRouter(tester);
 
     routerConfig.goNamed(AppRoutes.pay);
     await tester.pumpAndSettle();
 
-    expect(find.byType(PayScanPage), findsOneWidget);
-    expect(find.byType(PayScanView), findsOneWidget);
+    expect(find.byType(PayInfoPage), findsOneWidget);
 
     // Restore the router to its initial location so the global singleton
     // does not leak the /pay location into any later test.
@@ -81,7 +80,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(
-        tester.widget<PayScanPage>(find.byType(PayScanPage)).initialPayload,
+        tester.widget<PayInfoPage>(find.byType(PayInfoPage)).initialPayload,
         'lightning:LNURL1DP68GURN8GHJ7VF3XGENJVE5UMD',
       );
 
@@ -101,7 +100,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(
-        tester.widget<PayScanPage>(find.byType(PayScanPage)).initialPayload,
+        tester.widget<PayInfoPage>(find.byType(PayInfoPage)).initialPayload,
         isNull,
       );
 
