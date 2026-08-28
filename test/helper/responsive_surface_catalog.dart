@@ -145,13 +145,6 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
         'lib/screens/settings_user_data/subpages/edit_address/settings_edit_address_page.dart',
   ),
   ResponsiveSurface(
-    id: 'settings_wallet_address_page',
-    description: 'Wallet address QR page (sticky Send CTA when insider-unlocked)',
-    matrixTestPath:
-        'test/screens/settings_wallet_address/settings_wallet_address_responsive_matrix_test.dart',
-    productionPath: 'lib/screens/settings_wallet_address/settings_wallet_address_page.dart',
-  ),
-  ResponsiveSurface(
     id: 'settings_edit_name_page',
     description: 'Settings edit name form',
     matrixTestPath:
@@ -298,7 +291,7 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     matrixTestPath: 'test/screens/pin/pin_sheets_responsive_matrix_test.dart',
     productionPath: 'lib/screens/pin/widgets/enable_biometric_bottom_sheet.dart',
   ),
-  // Migration covers 40 surfaces total (bitbox_connect_sheet + 39 above). No
+  // Migration covers 39 surfaces total (bitbox_connect_sheet + 38 above). No
   // further known candidates remain from the prior sweep. welcome_page was
   // reviewed and found safe (scrolls end-to-end, no separate sticky CTA) — not
   // a migration candidate. Not exhaustive — review responsibility for every
