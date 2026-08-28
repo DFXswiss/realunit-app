@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
+import 'package:realunit_wallet/screens/receive/receive_page.dart';
 import 'package:realunit_wallet/screens/receive/widgets/qr_address_widget.dart';
-import 'package:realunit_wallet/screens/settings_wallet_address/settings_wallet_address_page.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
@@ -32,22 +31,23 @@ void main() {
 
   Finder sendButton() => find.widgetWithText(AppFilledButton, S.current.send);
 
-  group('$SettingsWalletAddressPage', () {
-    testWidgets('renders logo, QR, disclaimer and Send', (tester) async {
-      await tester.pumpApp(const SettingsWalletAddressPage());
+  group('$ReceivePage', () {
+    testWidgets('bottom-sheet variant renders QR and Send', (tester) async {
+      await tester.pumpApp(const ReceivePage());
 
-      expect(find.byType(SvgPicture), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
       expect(find.byType(QRAddressWidget), findsOneWidget);
-      expect(find.text(S.current.walletAddressDisclaimer), findsOneWidget);
       expect(sendButton(), findsOneWidget);
     });
 
-    testWidgets('QR uses EIP-55 checksummed address', (tester) async {
-      await tester.pumpApp(const SettingsWalletAddressPage());
+    testWidgets('full-page variant renders AppBar back, QR and Send',
+        (tester) async {
+      await tester.pumpApp(const ReceivePage(isBottomSheet: false));
 
-      final qr = tester.widget<QRAddressWidget>(find.byType(QRAddressWidget));
-      expect(qr.subtitle, '0x938115B533a0b746428361760A6972dfd06D984a');
-      expect(qr.uri, 'ethereum:0x938115B533a0b746428361760A6972dfd06D984a');
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+      expect(find.byType(QRAddressWidget), findsOneWidget);
+      expect(sendButton(), findsOneWidget);
     });
 
     testWidgets('tapping Send pushes the send route', (tester) async {
@@ -57,7 +57,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, _) => const SettingsWalletAddressPage(),
+            builder: (_, _) => const ReceivePage(),
           ),
           GoRoute(
             name: AppRoutes.send,
