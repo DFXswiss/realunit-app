@@ -74,5 +74,24 @@ void main() {
       ));
       expect(tester.takeException(), isNull);
     });
+
+    testWidgets('address row shrink-wraps so the parent Column can center it',
+        (tester) async {
+      await tester.pumpWidget(_host(
+        const QRAddressWidget(uri: 'ethereum:$_address', subtitle: _address),
+      ));
+
+      final row = tester.widget<Row>(
+        find.descendant(
+          of: find.byType(InkWell),
+          matching: find.byType(Row),
+        ),
+      );
+      expect(row.mainAxisSize, MainAxisSize.min);
+
+      final inkSize = tester.getSize(find.byType(InkWell));
+      final screenWidth = tester.getSize(find.byType(Scaffold)).width;
+      expect(inkSize.width, lessThan(screenWidth));
+    });
   });
 }

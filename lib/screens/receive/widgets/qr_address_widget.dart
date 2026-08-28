@@ -31,6 +31,7 @@ class QRAddressWidget extends StatelessWidget {
         child: Container(
           padding: const .all(8.0),
           child: Row(
+            mainAxisSize: .min,
             crossAxisAlignment: .center,
             spacing: 20.0,
             children: [
@@ -58,6 +59,7 @@ class QRAddressWidget extends StatelessWidget {
                     ],
                   ),
                   style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: .center,
                 ),
               ),
               const Icon(
