@@ -1,21 +1,34 @@
+import 'dart:math' as math;
+
 import 'package:realunit_wallet/models/portfolio_value_point.dart';
 
 /// Frozen handbook personas — synthetic, not live accounts.
 ///
 /// Each history has ≥10 balance changes inside a 1-year window. Times are
 /// local midnight so MAX (first/last fixture) and 1J (`DateTime.now()`
-/// window) stay pixel-stable. Value is shares × 153 rappen (same unit price
-/// as the existing dashboard portfolio golden).
+/// window) stay pixel-stable.
 ///
-/// As-of date for the handbook trade tables: 2026-08-28.
+/// Chart Y is mark-to-market CHF (shares × REALU price at that date), not
+/// share count. The spot price path ends at 153 rappen so the last point
+/// matches `balance * DashboardState.price`. As-of date for the handbook
+/// trade tables: 2026-08-28.
 DateTime _today() {
   final now = DateTime.now();
   return DateTime(now.year, now.month, now.day);
 }
 
+/// REALU price in rappen. 153 today, ~118 a year ago, with a mid-year
+/// peak and dip so a flat holding is not a straight line.
+int _priceRappen(int daysAgo) {
+  final t = daysAgo / 360.0;
+  final trend = 153 - 35 * t;
+  final wave = 28 * math.sin(t * 2 * math.pi);
+  return (trend + wave).round().clamp(90, 200);
+}
+
 PortfolioValuePoint _pt(int daysAgo, int shares) {
   return PortfolioValuePoint(
-    value: BigInt.from(shares * 153),
+    value: BigInt.from(shares * _priceRappen(daysAgo)),
     balance: BigInt.from(shares),
     time: _today().subtract(Duration(days: daysAgo)),
   );
@@ -35,6 +48,7 @@ List<PortfolioValuePoint> personaDcaHistory() => [
       _pt(65, 800),
       _pt(35, 880),
       _pt(5, 960),
+      _pt(0, 960),
     ];
 
 /// K2 Einmalkauf — one +5000 lump, then nine +50 top-ups, holding 5450.
@@ -50,6 +64,7 @@ List<PortfolioValuePoint> personaLumpHistory() => [
       _pt(120, 5350),
       _pt(90, 5400),
       _pt(30, 5450),
+      _pt(0, 5450),
     ];
 
 /// K3 Verkauf auf 0 — eight buys then four sells to zero.
@@ -86,6 +101,7 @@ List<PortfolioValuePoint> personaMixHistory() => [
       _pt(60, 590),
       _pt(30, 630),
       _pt(5, 600),
+      _pt(0, 600),
     ];
 
 /// K5 Aufstocken — twelve rising buys, holding 1800.
@@ -102,4 +118,5 @@ List<PortfolioValuePoint> personaScaleHistory() => [
       _pt(65, 1300),
       _pt(35, 1540),
       _pt(5, 1800),
+      _pt(0, 1800),
     ];
