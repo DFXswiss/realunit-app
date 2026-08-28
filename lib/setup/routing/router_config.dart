@@ -14,14 +14,14 @@ import 'package:realunit_wallet/screens/kyc/kyc_page_manager.dart';
 import 'package:realunit_wallet/screens/legal/legal_disclaimer_page.dart';
 import 'package:realunit_wallet/screens/legal/subpages/legal_document_page.dart';
 import 'package:realunit_wallet/screens/onboarding/onboarding_completed_page.dart';
-import 'package:realunit_wallet/screens/pay/pay_scan_page.dart';
+import 'package:realunit_wallet/screens/pay/pay_info_page.dart';
 import 'package:realunit_wallet/screens/pin/setup_pin_page.dart';
 import 'package:realunit_wallet/screens/pin/verify_pin_page.dart';
 import 'package:realunit_wallet/screens/receive/receive_page.dart';
 import 'package:realunit_wallet/screens/restore_wallet/restore_wallet_page.dart';
 import 'package:realunit_wallet/screens/sell/sell_page.dart';
 import 'package:realunit_wallet/screens/sell_bitbox/sell_bitbox_page.dart';
-import 'package:realunit_wallet/screens/send/send_recipient_page.dart';
+import 'package:realunit_wallet/screens/send/send_info_page.dart';
 import 'package:realunit_wallet/screens/settings/settings_page.dart';
 import 'package:realunit_wallet/screens/settings_contact/settings_contact_page.dart';
 import 'package:realunit_wallet/screens/settings_currencies/settings_currencies_page.dart';
@@ -180,7 +180,7 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       name: AppRoutes.pay,
       path: '/pay',
-      builder: (_, state) => PayScanPage(
+      builder: (_, state) => PayInfoPage(
         initialPayload: state.extra is String ? state.extra as String : null,
       ),
     ),
@@ -188,7 +188,7 @@ final GoRouter routerConfig = GoRouter(
     GoRoute(
       name: AppRoutes.send,
       path: '/send',
-      builder: (_, _) => const SendRecipientPage(),
+      builder: (_, _) => const SendInfoPage(),
     ),
 
     GoRoute(
