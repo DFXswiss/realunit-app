@@ -41,6 +41,7 @@ class _MockApiConfig extends Mock implements ApiConfig {}
 
 void main() {
   const walletAddress = '0xcabd3f4b10a7089986e708d19140bfc98e5880c0';
+  const counterparty = '0x00000000000000000000000000000000000000aa';
 
   late _MockDashboardBloc dashboardBloc;
   late _MockBalanceCubit balanceCubit;
@@ -109,9 +110,42 @@ void main() {
         child: const DashboardView(),
       );
 
+  /// Dashboard shows the three newest on-chain transfers under Bestand
+  /// (`watchTransfersOfAssetsLimit(..., 3)`), newest first. Zero-delta
+  /// hold points are not trades.
+  List<Transaction> latestDashboardTxs(List<PortfolioValuePoint> history) {
+    var prev = BigInt.zero;
+    final trades = <Transaction>[];
+    for (var i = 0; i < history.length; i++) {
+      final point = history[i];
+      final delta = point.balance - prev;
+      prev = point.balance;
+      if (delta == BigInt.zero) continue;
+      final inbound = delta > BigInt.zero;
+      trades.add(
+        Transaction(
+          height: 100 + i,
+          txId: '0x${i.toRadixString(16).padLeft(8, '0')}',
+          chainId: 1,
+          senderAddress: inbound ? counterparty : walletAddress,
+          receiverAddress: inbound ? walletAddress : counterparty,
+          amount: delta.abs(),
+          asset: realUnitAsset,
+          type: TransactionTypes.tokenTransfer,
+          note: null,
+          data: null,
+          timestamp: point.time,
+        ),
+      );
+    }
+    return trades.reversed.take(3).toList();
+  }
+
   void stubHistory(List<PortfolioValuePoint> history) {
     when(() => dashboardBloc.state).thenReturn(dashboardState(history));
     when(() => balanceCubit.state).thenReturn(balanceFor(history));
+    when(() => transactionRepository.watchTransactionsOfAssets(any(), any(), any()))
+        .thenAnswer((_) => Stream.value(latestDashboardTxs(history)));
   }
 
   group('handbook personas', () {
