@@ -36,10 +36,11 @@ class SettingsWalletAddressPage extends StatelessWidget {
             vertical: 12.0,
           ),
           child: ScrollableActionsLayout(
-            centerBody: true,
+            // QR + disclaimer is taller than a small phone at large text
+            // scale; do not pin the body to the leftover viewport height
+            // (centerBody) or the Column overflows instead of scrolling.
             body: Column(
               spacing: 40.0,
-              mainAxisAlignment: .center,
               children: [
                 Column(
                   spacing: 16.0,
