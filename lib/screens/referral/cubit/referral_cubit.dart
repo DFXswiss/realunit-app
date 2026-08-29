@@ -95,7 +95,6 @@ class ReferralCubit extends Cubit<ReferralState> {
     final summary = switch (current) {
       ReferralOverviewLoaded(:final summary) => summary,
       ReferralCreateReady(:final summary) => summary,
-      ReferralCreating(:final summary) => summary,
       _ => null,
     };
     if (summary == null) return;
