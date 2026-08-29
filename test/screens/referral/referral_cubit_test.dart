@@ -917,4 +917,165 @@ void main() {
       ReferralFailure(message: referralUnavailableMessage),
     ],
   );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'acceptTerms maps a timed-out POST back to the checkbox',
+    build: () {
+      when(() => service.acceptTerms()).thenThrow(TimeoutException('accept'));
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    act: (cubit) => cubit.acceptTerms(),
+    expect: () => [
+      ReferralTermsAccepting(summary: _needsTerms),
+      ReferralNeedsTerms(
+        summary: _needsTerms,
+        errorMessage: referralUnavailableMessage,
+      ),
+    ],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'acceptTerms maps a failed summary refresh to the failure copy',
+    build: () {
+      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.getSummary()).thenThrow(
+        const ApiException(code: 'SERVER_ERROR', message: 'down'),
+      );
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    act: (cubit) => cubit.acceptTerms(),
+    expect: () => [
+      ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralFailure(message: referralUnavailableMessage),
+    ],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'acceptTerms maps a timed-out summary refresh to the failure copy',
+    build: () {
+      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.getSummary()).thenThrow(TimeoutException('summary'));
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    act: (cubit) => cubit.acceptTerms(),
+    expect: () => [
+      ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralFailure(message: referralUnavailableMessage),
+    ],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'createInvite maps a timed-out POST to the name-entry form',
+    build: () {
+      when(
+        () => service.createInvite(guestName: 'Alice'),
+      ).thenThrow(TimeoutException('create'));
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralCreateReady(summary: _eligible),
+    act: (cubit) => cubit.createInvite(guestName: 'Alice'),
+    expect: () => [
+      ReferralCreating(summary: _eligible, guestName: 'Alice'),
+      const ReferralCreateReady(
+        summary: _eligible,
+        errorMessage: referralUnavailableMessage,
+      ),
+    ],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'refreshOverview maps a failed summary to failure when tiles are not shown',
+    build: () {
+      when(() => service.getSummary()).thenThrow(
+        const ApiException(code: 'SERVER_ERROR', message: 'down'),
+      );
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralInviteCreated(
+      summary: _eligible,
+      invite: const ReferralCreatedInviteDto(
+        code: 'AB12',
+        url: 'https://realunit.app/invite/AB12',
+        guestName: 'Alice',
+      ),
+    ),
+    act: (cubit) => cubit.refreshOverview(),
+    expect: () => const [
+      ReferralFailure(message: referralUnavailableMessage),
+    ],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'refreshOverview keeps overview tiles when summary times out',
+    build: () {
+      when(() => service.getSummary()).thenThrow(TimeoutException('summary'));
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    act: (cubit) => cubit.refreshOverview(),
+    expect: () => <ReferralState>[],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'refreshOverview maps a timed-out summary to failure when tiles are not shown',
+    build: () {
+      when(() => service.getSummary()).thenThrow(TimeoutException('summary'));
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralInviteCreated(
+      summary: _eligible,
+      invite: const ReferralCreatedInviteDto(
+        code: 'AB12',
+        url: 'https://realunit.app/invite/AB12',
+        guestName: 'Alice',
+      ),
+    ),
+    act: (cubit) => cubit.refreshOverview(),
+    expect: () => const [
+      ReferralFailure(message: referralUnavailableMessage),
+    ],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'reloadInvites keeps the current overview when the list times out',
+    build: () {
+      when(() => service.getInvites()).thenThrow(TimeoutException('invites'));
+      return ReferralCubit(service);
+    },
+    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    act: (cubit) => cubit.reloadInvites(),
+    expect: () => [
+      ReferralOverviewLoaded(
+        summary: _eligible,
+        invites: const [],
+        invitesLoading: true,
+      ),
+      const ReferralOverviewLoaded(
+        summary: _eligible,
+        invites: [],
+        invitesError: referralUnavailableMessage,
+      ),
+    ],
+  );
+
+  blocTest<ReferralCubit, ReferralState>(
+    'load shows overview counts when the invite list times out',
+    build: () {
+      when(() => service.getSummary()).thenAnswer((_) async => _eligible);
+      when(() => service.getInvites()).thenThrow(TimeoutException('invites'));
+      return ReferralCubit(service);
+    },
+    act: (cubit) => cubit.load(),
+    expect: () => [
+      const ReferralLoading(),
+      const ReferralOverviewLoaded(
+        summary: _eligible,
+        invites: [],
+        invitesError: referralUnavailableMessage,
+      ),
+    ],
+  );
 }
