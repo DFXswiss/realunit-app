@@ -44,15 +44,19 @@
 #   when the CLI tee-log or `--debug-output` maestro.log matches the
 #   driver hang/death class. `IOSDriverTimeoutException` matches
 #   anywhere in the file. ConnectException / `Failed to connect to
-#   /127.0.0.1:7001` / `Connection refused` / `Connection reset` only
+#   /127.0.0.1:7001` / `Connection refused` / `Connection reset` /
+#   `UnknownFailure` HTTP 500 on `:7001/deviceInfo` only
 #   count from the first `Running flow ` line onward (inclusive) —
 #   every iOS start logs those strings during the XCTest installer
 #   status-check *before* the flow. If `Running flow ` is absent the
 #   whole file is searched (driver never came up). Maestro often
 #   disguises XCUITest-driver death as a later assertion failure on
 #   stdout while the ConnectException lives only in the debug log.
-#   Assertion failures without those patterns are NEVER retried —
-#   those are real regressions and must surface as red CI checks.
+#   A hung JVM after that 500 is killed per attempt
+#   (`MAESTRO_ATTEMPT_TIMEOUT_SEC`) so the job does not sit until
+#   GitHub cancels the workflow. Assertion failures without those
+#   patterns are NEVER retried — those are real regressions and
+#   must surface as red CI checks.
 #
 # Usage:
 #   scripts/run-handbook-flows.sh                    # run ALL handbook flows
@@ -191,6 +195,11 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 # driver-startup-timeout per failed attempt, which still fits inside
 # the workflow's 60 min envelope.
 MAESTRO_MAX_ATTEMPTS="${MAESTRO_MAX_ATTEMPTS:-3}"
+# Cap a single `maestro test` so a JVM that prints Exception-in-main
+# and then never exits cannot consume the remaining job budget.
+# 8 min is above a healthy flow (typically 1–3 min) and below the
+# 40 min hang seen when :7001/deviceInfo returns HTTP 500.
+MAESTRO_ATTEMPT_TIMEOUT_SEC="${MAESTRO_ATTEMPT_TIMEOUT_SEC:-480}"
 
 # Maestro's `--debug-output` writes per-attempt view-hierarchy.json +
 # screenshot + maestro.log into the given directory. On flow failure
@@ -262,11 +271,80 @@ is_driver_hang_or_death() {
     -e 'java.net.ConnectException' \
     -e 'Connection refused' \
     -e 'Connection reset' \
+    -e 'UnknownFailure' \
+    -e '127.0.0.1:7001/deviceInfo' \
     "$haystack" || rc=$?
   if [ -n "$tmp" ]; then
     rm -f "$tmp"
   fi
   return "$rc"
+}
+
+# Run one `maestro test`, tee to $1, kill the process group if it
+# outlives MAESTRO_ATTEMPT_TIMEOUT_SEC. Exit 124 on timeout so the
+# retry path can treat it as driver hang/death.
+run_maestro_attempt() {
+  local log="$1"
+  shift
+  MAESTRO_ATTEMPT_TIMEOUT_SEC="$MAESTRO_ATTEMPT_TIMEOUT_SEC" \
+    /usr/bin/python3 - "$log" "$@" <<'PY'
+import os, select, signal, subprocess, sys, time
+
+log_path = sys.argv[1]
+cmd = sys.argv[2:]
+timeout = int(os.environ.get("MAESTRO_ATTEMPT_TIMEOUT_SEC", "480"))
+log = open(log_path, "w", encoding="utf-8", errors="replace")
+p = subprocess.Popen(
+    cmd,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    start_new_session=True,
+    text=True,
+    bufsize=1,
+)
+deadline = time.monotonic() + timeout
+try:
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            try:
+                os.killpg(p.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            p.wait()
+            msg = "\nmaestro attempt timed out after %ss\n" % timeout
+            sys.stdout.write(msg)
+            log.write(msg)
+            log.close()
+            sys.exit(124)
+        if p.stdout is None:
+            break
+        ready, _, _ = select.select([p.stdout], [], [], min(1.0, remaining))
+        if ready:
+            line = p.stdout.readline()
+            if line:
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                log.write(line)
+                continue
+            if p.poll() is not None:
+                break
+        elif p.poll() is not None:
+            rest = p.stdout.read()
+            if rest:
+                sys.stdout.write(rest)
+                log.write(rest)
+            break
+finally:
+    if p.poll() is None:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        p.wait()
+log.close()
+sys.exit(p.returncode or 0)
+PY
 }
 
 suite_start=$(date +%s)
@@ -286,8 +364,11 @@ for flow in "${flows[@]}"; do
     attempt_start=$(date +%s)
     flow_log="$TMP_DIR/$base.attempt-$attempt.log"
     debug_dir="$MAESTRO_DEBUG_ROOT/$base-attempt-$attempt"
-    if "$MAESTRO" test --reinstall-driver="$reinstall_driver" \
-         --debug-output "$debug_dir" --flatten-debug-output "$flow" 2>&1 | tee "$flow_log"; then
+    maestro_rc=0
+    run_maestro_attempt "$flow_log" \
+      "$MAESTRO" test --reinstall-driver="$reinstall_driver" \
+      --debug-output "$debug_dir" --flatten-debug-output "$flow" || maestro_rc=$?
+    if [ "$maestro_rc" -eq 0 ]; then
       echo "  attempt $attempt passed in $(fmt_duration $(( $(date +%s) - attempt_start )))"
       # Driver is up after a successful invocation — keep reusing it
       # (a prior retry may have flipped this to true for a reinstall).
@@ -298,9 +379,11 @@ for flow in "${flows[@]}"; do
     # tee-log AND `--debug-output` maestro.log: driver death is often
     # reported on stdout as a later assertion failure (`Assert that
     # "Start" is visible`) while ConnectException lives only in the
-    # debug log. Assertion failures without these patterns are real
+    # debug log. A timed-out hung JVM (exit 124) is the same class.
+    # Assertion failures without these patterns are real
     # regressions and must surface red — never retry them.
-    if { is_driver_hang_or_death "$flow_log" || \
+    if { [ "$maestro_rc" -eq 124 ] || \
+         is_driver_hang_or_death "$flow_log" || \
          is_driver_hang_or_death "$debug_dir/maestro.log"; } && \
        [ "$attempt" -lt "$MAESTRO_MAX_ATTEMPTS" ]; then
       echo "  driver hang/death on attempt $attempt of $MAESTRO_MAX_ATTEMPTS after $(fmt_duration $(( $(date +%s) - attempt_start ))); restarting simulator and retrying"
