@@ -49,6 +49,8 @@ def upload_sentry_symbols(marketing_version:, version_code:)
       UI.user_error!("Sentry upload: no dSYMs found under build/ios/archive")
     end
 
+    # Same stuck-assemble pair as Android: files already on the server
+    # and assemble cannot finish. Continue so TestFlight still runs.
     max_attempts = 3
     attempt = 0
     begin
