@@ -584,6 +584,62 @@ void main() {
         isFalse,
       );
     });
+
+    test('EN share text falls back to DE copyText', () {
+      final dto = ReferralInviteDto.fromJson({
+        'id': 1,
+        'code': 'AB12',
+        'url': 'https://realunit.app/invite/AB12',
+        'guestName': 'Alice',
+        'status': 'Open',
+        'created': '2026-08-24T10:00:00Z',
+        'copyText': 'Hey Alice, Björn lädt dich ein',
+        'copyTextEn': 'Hey Alice, Björn is inviting you',
+      });
+      expect(dto.copyTextForLocale('en'), 'Hey Alice, Björn is inviting you');
+      expect(dto.copyTextForLocale('de'), 'Hey Alice, Björn lädt dich ein');
+
+      final fallback = ReferralInviteDto.fromJson({
+        'id': 2,
+        'code': 'CD34',
+        'url': 'https://realunit.app/invite/CD34',
+        'guestName': 'Bob',
+        'status': 'Open',
+        'created': '2026-08-24T10:00:00Z',
+        'copyText': 'Hey Bob, Björn lädt dich ein',
+        'copyTextEn': '',
+      });
+      expect(fallback.copyTextForLocale('en'), 'Hey Bob, Björn lädt dich ein');
+    });
+
+    test('throws when code is missing or blank', () {
+      expect(
+        () => ReferralInviteDto.fromJson({
+          'id': 1,
+          'url': 'https://realunit.app/invite/AB12',
+          'guestName': 'Alice',
+          'status': 'Open',
+          'created': '2026-08-24T10:00:00Z',
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            'referral invite missing fields',
+          ),
+        ),
+      );
+      expect(
+        () => ReferralInviteDto.fromJson({
+          'id': 2,
+          'code': '   ',
+          'guestName': 'Bob',
+          'status': 'Open',
+          'created': '2026-08-24T10:00:00Z',
+        }),
+        throwsA(isA<FormatException>()),
+      );
+    });
   });
 
   group('$ReferralPayoutDto.fromJson', () {
