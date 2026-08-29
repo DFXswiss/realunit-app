@@ -238,4 +238,100 @@ void main() {
     );
     expect(spentTitle, 'Code bereits eingelöst');
   });
+
+  testWidgets('maps remaining tokens to localized DE copy', (tester) async {
+    late String unavailable;
+    late String notEligible;
+    late String needsTerms;
+    late String guestName;
+    late String spent;
+    late String selfReferral;
+    late String alreadyBound;
+    late String alreadyRegistered;
+    late String invalid;
+    late String invalidTitle;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        home: Builder(
+          builder: (context) {
+            unavailable = localizedReferralError(
+              context,
+              referralUnavailableMessage,
+            );
+            notEligible = localizedReferralError(
+              context,
+              referralNotEligibleMessage,
+            );
+            needsTerms = localizedReferralError(
+              context,
+              referralNeedsTermsMessage,
+            );
+            guestName = localizedReferralError(
+              context,
+              referralGuestNameMessage,
+            );
+            spent = localizedReferralError(context, referralSpentMessage);
+            selfReferral = localizedReferralError(
+              context,
+              referralSelfReferralMessage,
+            );
+            alreadyBound = localizedReferralError(
+              context,
+              referralAlreadyBoundMessage,
+            );
+            alreadyRegistered = localizedReferralError(
+              context,
+              referralAlreadyRegisteredMessage,
+            );
+            invalid = localizedReferralError(context, referralInvalidMessage);
+            invalidTitle = localizedReferralErrorTitle(context, 'nope');
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    expect(
+      unavailable,
+      'Wir konnten den Code gerade nicht prüfen. Bitte versuche es später erneut.',
+    );
+    expect(
+      notEligible,
+      'Das Empfehlungsprogramm steht verifizierten Aktionären mit dem erforderlichen Bestand zur Verfügung.',
+    );
+    expect(
+      needsTerms,
+      'Bitte zuerst die Teilnahmebedingungen akzeptieren.',
+    );
+    expect(
+      guestName,
+      'Bitte den Vornamen der eingeladenen Person eingeben.',
+    );
+    expect(
+      spent,
+      'Dieser Einladungs- oder Promo-Code wurde bereits verwendet.',
+    );
+    expect(
+      selfReferral,
+      'Du kannst deine eigene Einladung nicht einlösen.',
+    );
+    expect(
+      alreadyBound,
+      'Du hast bereits einen Einladungs- oder Promo-Code eingelöst.',
+    );
+    expect(
+      alreadyRegistered,
+      'Diese Einladung gilt nur für neue Kundinnen und Kunden.',
+    );
+    expect(invalid, 'Dieser Code ist ungültig oder abgelaufen.');
+    expect(invalidTitle, 'Link ungültig oder abgelaufen');
+  });
 }
