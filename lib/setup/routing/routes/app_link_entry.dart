@@ -439,6 +439,10 @@ void appLinkOnException(
   GoRouter router,
 ) {
   if (state.uri.scheme == appLinkScheme) return;
+  // https / intent / android-app / ios-app App Links for /invite and /promo
+  // stash in [appLinkSchemeRedirect] then fall through unmatched — same no-op
+  // as the custom scheme. Do not assert: those URIs are OS-delivered.
+  if (extractReferralInviteCode(state.uri) != null) return;
   // A non-scheme URL that matches no route is a programming error. Installing
   // onException removes go_router's default error screen, so fail loud where
   // tests and debug builds can see it; in release the user stays on the
