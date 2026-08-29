@@ -116,7 +116,6 @@ is_driver_hang_or_death() {
     -e 'java.net.ConnectException' \
     -e 'Connection refused' \
     -e 'Connection reset' \
-    -e 'UnknownFailure' \
     -e 'deviceInfo failed, code: 500' \
     "$haystack" || rc=$?
   if [ -n "$tmp" ]; then
@@ -147,6 +146,11 @@ if [ "${1:-}" = '--matcher-self-test' ]; then
     > "$tmp"
   if is_driver_hang_or_death "$tmp"; then
     echo 'deviceInfo URL without failure must not match' >&2
+    exit 1
+  fi
+  printf '%s\n' 'Running flow 01-welcome' 'UnknownFailure(errorResponse=unrelated)' > "$tmp"
+  if is_driver_hang_or_death "$tmp"; then
+    echo 'UnknownFailure without deviceInfo 500 must not match' >&2
     exit 1
   fi
   printf '%s\n' 'java.net.ConnectException: Connection refused' > "$tmp"
