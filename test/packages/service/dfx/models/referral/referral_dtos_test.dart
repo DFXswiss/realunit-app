@@ -813,6 +813,29 @@ void main() {
       });
       expect(dto.copyTextForLocale('en'), 'Hey Alice, Björn lädt dich ein');
     });
+
+    test('throws when code is missing or blank', () {
+      expect(
+        () => ReferralCreatedInviteDto.fromJson({
+          'url': 'https://realunit.app/invite/AB12',
+          'guestName': 'Alice',
+        }),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            'referral created invite missing fields',
+          ),
+        ),
+      );
+      expect(
+        () => ReferralCreatedInviteDto.fromJson({
+          'code': '   ',
+          'guestName': 'Alice',
+        }),
+        throwsA(isA<FormatException>()),
+      );
+    });
   });
 
   group('$ReferralCodeLookupDto.fromJson', () {
