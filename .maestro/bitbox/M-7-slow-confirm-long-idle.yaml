@@ -1,0 +1,173 @@
+# M-7 — Slow-confirm long-idle (>60 s) mid-page sign on Android.
+#
+# PROVES (Tier-3 only):
+#   * The Android-side read-timeout extension to 60 s actually applies
+#     to a real BLE session against the BitBox. Default Android BLE
+#     read-timeout is 10 s; the realunit-app's `BitboxService` must
+#     extend it (in `lib/packages/hardware_wallet/bitbox.dart`) so that
+#     a user can take longer than 10 s to confirm a sign page on the
+#     device without the client tearing down the session.
+#   * After a 65 s idle wait (user just staring at the device, hasn't
+#     pressed the confirm button yet), the client does NOT raise a
+#     timeout. When the user finally presses, the page advances
+#     cleanly.
+#
+# DOES NOT PROVE:
+#   * iOS-side behaviour (iOS has a much more permissive default; the
+#     timeout extension is mostly an Android concern).
+#   * BLE dedup -- see M-3.
+#   * Anything multi-page beyond the one slow-confirm checkpoint.
+#
+# REQUIRED-KEYS (TODO):
+#   * Same key set as M-2 / M-3, but mirrored to the Android build
+#     of realunit-app. Today the app's widget keys are platform-shared
+#     so adding them on iOS gets them on Android for free.
+#
+# BLOCKED (partial):
+#   * Self-hosted runner has the Android device cabled but NOT yet
+#     the Android build of realunit-app installed in CI. Operator
+#     must `flutter build apk --debug` + `adb install` once per
+#     branch under test until the workflow ships the Android build
+#     step. Tracked under the workflow's Android-job conditional —
+#     today it falls back to a precondition-fail with a clear message.
+#
+# OPERATOR PRECONDITIONS:
+#   * Android device cabled, `adb devices` shows it, screen unlocked.
+#   * realunit-app-debug.apk installed and the wallet paired to the
+#     BitBox via a prior M-1-equivalent flow (Android version).
+#   * Operator deliberately waits 65 s before pressing the BitBox
+#     button on page 5 — this is THE test action; without it the
+#     flow does not exercise the timeout.
+#
+# HARDWARE: BitBox 02 Nova + Android device.
+# EXPECTED RUNTIME: ~10 min (4 normal pages + 65 s idle + 9 more pages).
+# GATE: scheduled-daily.
+appId: swiss.realunit.app
+---
+# Android driver -- Maestro inspects the platform via the connected
+# device. Failure-mode: if Maestro is driving iOS by default, the
+# launchApp + appId match still works but the platform-specific
+# behaviour (10 s timeout) is not exercised. The workflow MUST set
+# MAESTRO_DEVICE_ID to an Android serial when invoking this flow.
+- runScript: |
+    set -e
+    if ! adb devices 2>/dev/null | grep -q "device$"; then
+      echo "M-7-PRECONDITION-FAILED: no Android device reachable via adb"
+      echo "  required: USB-cable an Android phone to the runner"
+      echo "  this flow is BLOCKED until the runner has Android wired."
+      exit 1
+    fi
+    echo "M-7: Android device available"
+    adb devices
+
+- launchApp:
+    appId: swiss.realunit.app
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Überspringen"
+    commands:
+      - tapOn:
+          text: "Überspringen"
+          optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*RealUnit kaufen.*"
+    timeout: 30000
+
+- tapOn:
+    text: "RealUnit kaufen"
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible:
+        text: ".*Betrag.*|.*Menge.*"
+    commands:
+      - assertVisible:
+          text: "M-7-PRECONDITION-FAILED: KYC already completed; reset wallet to retry"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Eröffnungsprozess.*|.*KYC.*|.*Registrierung.*"
+    timeout: 60000
+
+- tapOn:
+    text: "Weiter"
+    optional: true
+
+# Pages 1..4 normally.
+- repeat:
+    times: 4
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: ".*bestätigen Sie.*BitBox.*|.*Anmeldung bestätigen.*"
+          timeout: 60000
+      - waitForAnimationToEnd
+
+# === PAGE 5: THE 65-SECOND IDLE ===
+#
+# Sitting on page 5's confirm hint. The operator deliberately waits
+# 65 seconds before pressing the BitBox button. Maestro simulates the
+# wait via an overlong swipe (Maestro's only sleep primitive).
+- extendedWaitUntil:
+    visible:
+      text: ".*bestätigen Sie.*BitBox.*"
+    timeout: 60000
+
+- runScript: |
+    echo "M-7: STARTING-65S-IDLE ts=$(date -u +%s)"
+    echo "M-7: operator MUST NOT press the BitBox button for 65 seconds"
+    echo "M-7: if you press early, the timeout extension is NOT exercised"
+
+- swipe:
+    start: 50%, 50%
+    end: 50%, 50%
+    duration: 65000
+
+- runScript: |
+    echo "M-7: 65S-IDLE-DONE ts=$(date -u +%s)"
+
+# === THE INVARIANT ===
+#
+# The client MUST NOT have raised a timeout during the 65 s window.
+# Observable: the sign sheet still shows the page 5 confirm hint
+# (NOT the BitBox-disconnected error, NOT a stale "Verbindung
+# verloren" snackbar).
+- assertVisible:
+    text: ".*bestätigen Sie.*BitBox.*"
+
+- assertNotVisible:
+    text: ".*BitBox.*nicht verbunden.*"
+- assertNotVisible:
+    text: ".*Verbindung.*verloren.*"
+- assertNotVisible:
+    text: ".*Verbindung.*unterbrochen.*"
+
+- runScript: |
+    echo "M-7: TIMEOUT-EXTENSION-OK still on page 5 after 65 s idle"
+    echo "M-7: operator may now press the BitBox confirm button"
+
+# Operator confirms page 5. Pages 6..13 finish normally.
+- repeat:
+    times: 9
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: ".*abgeschlossen.*"
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  text: ".*bestätigen Sie.*BitBox.*"
+                timeout: 60000
+            - waitForAnimationToEnd
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Eröffnungsprozess.*abgeschlossen.*|.*Verifikation abgeschlossen.*"
+    timeout: 120000
+- assertVisible:
+    text: ".*abgeschlossen.*"

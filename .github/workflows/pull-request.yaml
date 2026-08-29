@@ -344,10 +344,17 @@ jobs:
           path: test/goldens/**/failures/**
           if-no-files-found: ignore
 
-  # Runs the bitbox-audit CLI from DFXswiss/bitbox-testkit to surface which
-  # of the documented BitBox firmware quirks are statically detected in this
-  # repo and which still need runtime coverage. Intentionally non-blocking
-  # and not part of required_status_checks — purely informational.
+  # Runs the bitbox-audit CLI from DFXswiss/bitbox-testkit against the
+  # production BitBox/signing surface. The whole repository contains generated
+  # UI localization (`lib/generated/i18n.dart`) with legitimate non-ASCII copy
+  # and BitBox-facing screen text; scanning `.` therefore produces E1 false
+  # positives because those strings are not signed payload fields. The payload
+  # risk lives under `lib/packages/**` (hardware wallet, signers, DFX services,
+  # SignPipeline), so this job scopes the static audit there and relies on the
+  # Flutter tests for dynamic payload invariants.
+  #
+  # Intentionally non-blocking and not part of required_status_checks — purely
+  # informational until bitbox-audit can ingest Flutter test results directly.
   bitbox-audit:
     name: BitBox quirks audit
     # Same guard pattern as `build`: skip drafts, always run on push/dispatch.
@@ -371,10 +378,23 @@ jobs:
         continue-on-error: true
         run: |
           set -euo pipefail
-          "$(go env GOPATH)/bin/bitbox-audit" \
-            --repo . \
+          {
+            echo "# BitBox audit scope"
+            echo
+            echo "Static scope: \`lib/packages/**\`."
+            echo
+            echo "Generated localization is excluded because UI copy is not a signed EIP-712 payload. Payload risk is covered by SignPipeline, Eip712Signer, BitboxCredentials, and DFX service tests in the main Analyze & Test job."
+            echo
+          } > bitbox-audit-report.md
+          AUDIT_BIN="$(go env GOPATH)/bin/bitbox-audit"
+          if [ ! -x "${AUDIT_BIN}" ]; then
+            echo "bitbox-audit binary not found after install step; see job logs." >> bitbox-audit-report.md
+            exit 1
+          fi
+          "${AUDIT_BIN}" \
+            --repo lib/packages \
             --format markdown \
-            --output bitbox-audit-report.md
+            >> bitbox-audit-report.md
 
       - name: Inline report into run summary
         if: always()

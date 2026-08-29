@@ -78,6 +78,8 @@ dependencies:
   url_launcher: ^6.3.1
   web3dart: ^2.7.1
   # The following adds the Cupertino Icons font to your application.
+  # Pin to an existing DFX remote tag so clean CI checkouts can resolve the
+  # BitBox simulator/testkit APIs without relying on local .dart_tool state.
   bitbox_flutter:
     git:
       url: https://github.com/DFXswiss/bitbox_flutter.git

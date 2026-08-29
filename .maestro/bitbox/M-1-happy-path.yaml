@@ -1,0 +1,183 @@
+# M-1 — Happy path: pair -> unlock -> ETH sign -> verify.
+#
+# PROVES (Tier-3 only):
+#   * BitBox 02 Nova BLE handshake against the realunit-app on a real iPhone
+#     completes the full pair / channel-hash-confirm / pairing dance end-to-end.
+#   * The ETH sign envelope produced by the firmware is consumable by the
+#     Dart-side `BitboxService.signEthMessage` pipeline (Tier-2 covers the
+#     envelope-shape but cannot validate the firmware-side state machine).
+#   * Basic timing is within the 2 min target: deviation > 50 % flags a
+#     regression worth a journal entry.
+#
+# DOES NOT PROVE:
+#   * BLE init-frame retransmit dedup contract — see M-3.
+#   * 13-page multi-page state machine — see M-2 / M-3.
+#   * Channel-hash spoof defence — see M-5.
+#   * Static-pubkey mismatch detection after factory-reset — see M-6.
+#   * 60 s read-timeout extension on Android — see M-7.
+#
+# REQUIRED-KEYS (TODO before this flow is selector-stable):
+#   * Key('maestro-welcome-bitbox-card') on the WelcomeCard for BitBox in
+#     lib/screens/welcome/welcome_page.dart.
+#   * Key('maestro-bitbox-connect-confirm') on the ConnectContent's
+#     onConfirm AppFilledButton when state == BitboxCheckHash.
+#   * Key('maestro-bitbox-pair-channel-hash') on the channelHash Text in
+#     ConnectBitboxView (lines 84-88).
+#   * Key('maestro-bitbox-finish-setup') on the ConnectContent's onConfirm
+#     button when state == BitboxConnected.
+#   * Key('maestro-dashboard-buy-button') on the "RealUnit kaufen" button.
+#
+# OPERATOR PRECONDITIONS:
+#   * BitBox 02 Nova powered + BLE-discoverable.
+#   * iPhone freshly `simctl erase`d OR previous run's wallet wiped via
+#     Settings -> Delete wallet.
+#   * Operator within arm's reach of the BitBox to confirm pairing-code on
+#     the device screen.
+#
+# HARDWARE: BitBox 02 Nova + iOS device.
+# EXPECTED RUNTIME: ~2 min.
+# GATE: PR-gate (parallel-safe under hardware mutex).
+appId: swiss.realunit.app
+---
+# Fresh app launch from a clean state. clearState only clears
+# NSUserDefaults; the per-runner `scripts/run-bitbox-flows.sh` (mirror
+# of run-handbook-flows.sh) does a full `simctl erase` for genuine
+# clean state.
+- launchApp:
+    appId: swiss.realunit.app
+    clearState: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Start"
+    timeout: 30000
+
+# Welcome -> Start -> pick the BitBox card on the second step.
+# The card-tap is gated against the connect-sheet not yet showing and
+# re-tapped on tap-loss (Maestro/XCUITest tap-loss on Apple Silicon + iOS
+# 26, mobile-dev-inc/maestro#3137 — same mitigation as the handbook flows).
+- repeat:
+    times: 3
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: ".*Digitale Wallet.*"
+          commands:
+            - tapOn:
+                text: "Start"
+                optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*Digitale Wallet.*"
+    timeout: 30000
+
+# Tap the BitBox card. The card's title is the localised "BitBox" string.
+- repeat:
+    times: 3
+    commands:
+      - runFlow:
+          when:
+            notVisible: "BitBox verbinden"
+          commands:
+            - tapOn:
+                text: "BitBox"
+                optional: true
+
+# Connect sheet should now be open and the cubit kicks the BLE handshake.
+# The "Gerät gefunden" string fires once the BitBox is discovered and the
+# device is showing the pairing code on its e-ink screen.
+- extendedWaitUntil:
+    visible: "BitBox verbinden"
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      text: ".*Gerät gefunden.*|.*Code mit dem.*"
+    timeout: 45000
+
+# At this point the BitBox screen and the iPhone show the same channel-hash.
+# We do NOT assert byte-equality of the code here — Maestro cannot read the
+# e-ink screen — we rely on the operator's physical confirmation. What we
+# CAN assert is that the channel-hash text rendered (i.e. cubit reached
+# state BitboxCheckHash, not BitboxNotConnected).
+- assertVisible:
+    text: ".*Code mit dem.*BitBox-Gerät.*"
+
+# Operator confirms physically on the BitBox (their job, not Maestro's),
+# THEN taps "Bestätigen" in the app. Operator presence is a precondition,
+# documented in the flow header — this is not a pretend-pass: without a
+# human operator the BitBox's own button press never happens and the flow
+# fails at the next extendedWaitUntil.
+- repeat:
+    times: 3
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: ".*Verbindung erfolgreich.*|.*Verbunden.*"
+          commands:
+            - tapOn:
+                text: "Bestätigen"
+                optional: true
+
+# BitBox is paired; the cubit emits BitboxConnected. Operator confirms
+# the final "follow last instructions on BitBox" step.
+- extendedWaitUntil:
+    visible:
+      text: ".*Verbindung erfolgreich.*|.*Verbunden.*"
+    timeout: 60000
+
+- repeat:
+    times: 3
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: ".*RealUnit kaufen.*"
+          commands:
+            - tapOn:
+                text: "Bestätigen"
+                optional: true
+
+# Dashboard reached -- pairing happy path is green.
+- extendedWaitUntil:
+    visible:
+      text: ".*RealUnit kaufen.*"
+    timeout: 60000
+
+# Now exercise the ETH sign path. The "RealUnit kaufen" CTA leads into
+# the buy flow which gates on a signature-prompt to the BitBox. This is
+# the minimal real-hardware sign — one page, one confirm.
+- tapOn:
+    text: "RealUnit kaufen"
+- waitForAnimationToEnd
+
+# Drive forward to the sign step. Wallet-attestation signature first
+# fires; on a BitBox-paired wallet this lands directly on the device
+# screen ("Bitte bestätigen Sie die Anmeldeanfrage").
+- extendedWaitUntil:
+    visible:
+      text: ".*Anmeldung bestätigen.*|.*bestätigen Sie die Anmeldeanfrage.*"
+    timeout: 60000
+
+# Operator confirms the sign on the BitBox (physical step). If the
+# signature failed the app shows "Anmeldung nicht abgeschlossen" — we
+# assert the success path here; failure makes the run RED.
+- extendedWaitUntil:
+    visible:
+      text: ".*Anmeldung nicht abgeschlossen.*|.*RealUnit kaufen.*|.*Betrag.*"
+    timeout: 90000
+- runFlow:
+    when:
+      visible: ".*Anmeldung nicht abgeschlossen.*"
+    commands:
+      # Sign failed on device -> M-1 RED. Maestro lacks a native fail()
+      # primitive, but assertVisible against a string the failure path
+      # cannot produce forces the runner to fail with a clear log line.
+      - assertVisible:
+          text: "M-1-FAIL: signature capture failed on device"
+
+# Sign success path lands back on the buy flow / dashboard. Both are
+# acceptable terminal states for the happy path; either one proves the
+# end-to-end pipeline.
+- assertVisible:
+    text: ".*RealUnit kaufen.*|.*Betrag.*|.*Menge.*"

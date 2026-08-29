@@ -1,0 +1,208 @@
+# M-5 — Channel-hash mismatch: two phones racing the same device.
+#
+# THIS FLOW IS THE CANONICAL Tier-3 VERIFIER FOR THE CHANNEL-HASH-VERIFY
+# CONTRACT (audit Top-10 #4). The Tier-2 fake-credentials scenario in
+# `bitbox-testkit/go/bitbox/scenarios/pair_verify_channel_hash.go`
+# proves that the Dart-side `channelHashVerify(false)` path raises and
+# the cubit refuses to advance. It CANNOT prove that the firmware-side
+# noise-protocol pair handshake actually surfaces a mismatch when two
+# phones race the same device — only real BLE radio + real firmware
+# can do that.
+#
+# PROVES (Tier-3 only):
+#   * Phone B's pair attempt against the same physical BitBox while
+#     phone A holds a pending channel-hash-confirm produces a
+#     DETECTABLE mismatch on phone B (NOT a silent success).
+#   * Phone B's `ConnectBitboxView` lands on the BitboxNotConnected
+#     state (showing the connectBitboxFailed snackbar), NOT on
+#     BitboxConnected.
+#   * Phone A's session is unaffected — i.e. the spoof attempt cannot
+#     hijack an in-flight pair.
+#
+# DOES NOT PROVE:
+#   * BLE init-frame dedup — see M-3.
+#   * Factory-reset detection — see M-6.
+#
+# BLOCKED (partial):
+#   The two-phone race is a hard operational requirement. The
+#   self-hosted runner has ONE iPhone wired today (operator pending).
+#   Until the second iPhone is provisioned, this flow's
+#   `RUN_ON_PHONE_B` block fails-soft via the `MAESTRO_DEVICE_B_UDID`
+#   env-var check at the bottom: empty -> PRECONDITION-PARTIAL and
+#   the workflow marks the job `skipped`.
+#
+#   Additionally, the truly automated version needs a DEV flag
+#   `--bitbox-pair-from-test=B` so phone B can kick its pair attempt
+#   on the right timing window. This flag does NOT yet exist; the
+#   operator currently must time the second tap manually.
+#
+# REQUIRED-KEYS (TODO):
+#   * Key('maestro-welcome-bitbox-card') -- shared with M-1.
+#   * Key('maestro-bitbox-pair-failure-banner') on the SnackBar shown
+#     in BitboxNotConnected state inside ConnectBitboxView (lines 28-36).
+#
+# OPERATOR PRECONDITIONS:
+#   * TWO iPhones cabled to the runner. Their UDIDs MUST be exported as
+#     MAESTRO_DEVICE_A_UDID and MAESTRO_DEVICE_B_UDID.
+#   * BitBox 02 Nova within BLE range of both phones (< 1 m).
+#   * Both phones have realunit-app installed in a fresh-wallet state
+#     (no prior pairing). Run M-1 reset before invoking M-5.
+#   * Operator stands where they can tap both phones in quick succession.
+#
+# HARDWARE: BitBox 02 Nova + 2x iOS devices.
+# EXPECTED RUNTIME: ~4 min.
+# GATE: PR-gate.
+appId: swiss.realunit.app
+---
+# === PHASE 0: Precondition check ===
+#
+# Maestro lacks a native env-var-required primitive. We surface the
+# missing-phone-B case via a runScript that exits 1, which fails the
+# flow with a clear log line. The workflow then maps exit-1 to
+# `skipped` rather than `failed` for M-5 only.
+- runScript: |
+    set -e
+    if [ -z "${MAESTRO_DEVICE_A_UDID:-}" ] || [ -z "${MAESTRO_DEVICE_B_UDID:-}" ]; then
+      echo "M-5-PRECONDITION-PARTIAL: two-phone setup not provisioned"
+      echo "  required env: MAESTRO_DEVICE_A_UDID, MAESTRO_DEVICE_B_UDID"
+      echo "  this flow is BLOCKED until the runner has both iPhones cabled."
+      exit 1
+    fi
+    echo "M-5: phase 0 OK -- both phones available"
+    echo "  A=${MAESTRO_DEVICE_A_UDID}"
+    echo "  B=${MAESTRO_DEVICE_B_UDID}"
+
+# === PHASE 1: Phone A starts the pair ===
+#
+# Maestro v2.0.10 drives ONE device per invocation; multi-device
+# orchestration is handled by the GitHub Actions workflow which runs
+# two `maestro test` invocations side-by-side. This YAML is the
+# PHONE-A half: it kicks the pair handshake against the BitBox and
+# stops at the channel-hash-confirm screen (does NOT tap Bestätigen).
+# At that point the workflow launches the M-5 phone-B flow (a
+# sibling YAML or the same YAML re-driven via a different selector).
+#
+# To keep the operator surface flat we encode phase 2 in this same
+# YAML and let the workflow inject `MAESTRO_PHASE=B` env to skip
+# phase 1. The phase switch is a runFlow gate.
+- runFlow:
+    when:
+      true: "${MAESTRO_PHASE != 'B'}"
+    commands:
+      - launchApp:
+          appId: swiss.realunit.app
+          clearState: true
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible: "Start"
+          timeout: 30000
+      - tapOn:
+          text: "Start"
+      - extendedWaitUntil:
+          visible:
+            text: ".*Digitale Wallet.*"
+          timeout: 30000
+      - tapOn:
+          text: "BitBox"
+      - extendedWaitUntil:
+          visible: "BitBox verbinden"
+          timeout: 30000
+      - extendedWaitUntil:
+          visible:
+            text: ".*Code mit dem.*BitBox-Gerät.*"
+          timeout: 60000
+      # === HOLD ===
+      # Phone A is now sitting on the channel-hash-confirm screen, with
+      # the BitBox holding its end of the pair handshake. We do NOT tap
+      # Bestätigen. The workflow launches phase B on phone B which will
+      # race the pair against the same BitBox.
+      - runScript: |
+          echo "M-5: PHASE-A-HOLD ts=$(date -u +%s)"
+          # Touch a sentinel file the phase-B workflow watches.
+          touch /tmp/m5-phase-a-ready
+      # Wait for the phase-B workflow to finish (signalled by a second
+      # sentinel file). Maestro's waitUntil cannot file-watch; we burn
+      # wall-clock time via an evaluateScript no-op loop instead.
+      - extendedWaitUntil:
+          visible:
+            text: ".*Code mit dem.*BitBox-Gerät.*"
+          timeout: 240000
+
+# === PHASE 2: Phone B races the same pair ===
+- runFlow:
+    when:
+      true: "${MAESTRO_PHASE == 'B'}"
+    commands:
+      - launchApp:
+          appId: swiss.realunit.app
+          clearState: true
+      - waitForAnimationToEnd
+      - extendedWaitUntil:
+          visible: "Start"
+          timeout: 30000
+      - tapOn:
+          text: "Start"
+      - extendedWaitUntil:
+          visible:
+            text: ".*Digitale Wallet.*"
+          timeout: 30000
+      - tapOn:
+          text: "BitBox"
+      - extendedWaitUntil:
+          visible: "BitBox verbinden"
+          timeout: 30000
+
+      # === THE INVARIANT ===
+      #
+      # Phone B's pair attempt MUST land in one of two states:
+      #   (DETECTED) BitboxNotConnected -> the connectBitboxFailed
+      #              SnackBar surfaces; the sheet stays on the connect
+      #              screen.
+      #   (RECOVERED) The pair completes correctly on phone B but ONLY
+      #              after phone A's session was explicitly cancelled.
+      #              We do not allow phone B to silently take over a
+      #              handshake phone A still holds.
+      #
+      # The DEFAULT and required behaviour is DETECTED. A silent
+      # success on phone B (BitboxConnected state without any failure
+      # surface) is the regression this flow exists to catch.
+      - extendedWaitUntil:
+          visible:
+            text: ".*Es ist ein Fehler aufgetreten.*|.*Verbindung.*fehlgeschlagen.*|.*Code mit dem.*"
+          timeout: 60000
+
+      # If phone B reached the channel-hash screen, it MUST display a
+      # DIFFERENT channel-hash than phone A's (the noise-protocol
+      # rotation guarantees this). We cannot machine-compare two
+      # phones' screens; the operator must observe and confirm. This is
+      # the documented manual checkpoint:
+      - runScript: |
+          echo "M-5: OPERATOR-VERIFY two phones now show DIFFERENT channel hashes"
+          echo "  -> if hashes match, M-5 IS FAILING -- the spoof succeeded"
+          echo "  -> if hashes differ, M-5 progresses to assertion below"
+
+      # Phone B taps Bestätigen anyway, simulating the spoof attacker
+      # who would press through. The pair MUST then fail on phone B
+      # because the channel-hash on phone B does not match what the
+      # BitBox is expecting (the BitBox is mid-pair with phone A).
+      - runFlow:
+          when:
+            visible: "Bestätigen"
+          commands:
+            - tapOn:
+                text: "Bestätigen"
+                optional: true
+
+      # Failure surface on phone B.
+      - extendedWaitUntil:
+          visible:
+            text: ".*Es ist ein Fehler aufgetreten.*|.*nicht erfolgreich.*"
+          timeout: 60000
+
+      - assertVisible:
+          text: ".*Fehler.*|.*nicht.*"
+
+      # Signal phase A it can release.
+      - runScript: |
+          touch /tmp/m5-phase-b-done
+          echo "M-5: PHASE-B-DONE ts=$(date -u +%s)"

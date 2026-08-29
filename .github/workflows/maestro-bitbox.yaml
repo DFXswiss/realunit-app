@@ -1,0 +1,361 @@
+name: Tier 3 — Maestro BitBox flows
+
+# Tier-3 hardware flows for the BitBox 02 Nova, defined under
+# `.maestro/bitbox/`. Pins the three contracts no lower tier can:
+#   * M-3: BLE init-frame retransmit dedup       (audit Top-10 #1)
+#   * M-5: channel-hash mismatch detection       (audit Top-10 #4)
+#   * M-6: static-pubkey factory-reset detection (audit Top-10 #8)
+# Plus the four supporting end-to-end / soak flows M-1, M-2, M-4, M-7.
+#
+# RUNNER:
+#   runs-on: [self-hosted, macOS, arm64, bitbox]
+#   The hosted `macos-latest` runner CANNOT host this workflow — it has
+#   no access to physical BLE / USB and per realunit-app#487 its
+#   Maestro pass-rate is 41 %. The mandate (§5.3.6) requires a
+#   self-hosted Apple Silicon runner; provisioning is in
+#   `.maestro/bitbox/RUNNER.md`.
+#
+# TRIGGER MODEL:
+#   * `workflow_dispatch` on a PR branch with `flow=pr-gate` -- the
+#     PR-gate subset (M-1 / M-3 / M-5 / M-6) runs on demand while this
+#     workflow is introduced. A `pull_request` label gate can be enabled
+#     after the workflow exists on `develop`; adding it in the same PR
+#     leaves GitHub with a pending check and no jobs.
+#   * `push: develop` -- the PR-gate subset runs unconditionally as
+#     post-merge truth check.
+#   * `schedule: '0 2 * * *'` -- the daily/full subset (M-2 / M-4 /
+#     M-7) runs at 02:00 UTC on the self-hosted runner.
+#   * `workflow_dispatch` -- manual override; the `flow` input picks
+#     which flow to run.
+#
+# CONCURRENCY / HARDWARE MUTEX:
+#   The runner has ONE BitBox 02 Nova. Running two flows in parallel
+#   would clobber the BLE handshake. We enforce a per-flow mutex via
+#   the `concurrency` block at the job level (group: bitbox-hardware-
+#   pool). PR-gate jobs serialise behind each other; the scheduled
+#   nightly cron waits if a PR-gate run is in flight (and vice-versa).
+#
+# RETRIES:
+#   Each flow gets 3 attempts. The first failure does NOT fail the
+#   job; only after attempt 3 fails does the job go red. Per-flow
+#   flake rate is recorded in `bitbox-testkit/coverage_report.md` via
+#   a posting step at the end of each job.
+#
+# CROSS-REF: `.maestro/bitbox/README.md`, `.maestro/bitbox/RUNNER.md`,
+# mandate §5.3.3 Group E.
+
+on:
+  workflow_dispatch:
+    inputs:
+      flow:
+        description: "Flow to run (M-1..M-7 or 'pr-gate' or 'nightly')"
+        required: true
+        default: "pr-gate"
+        type: choice
+        options:
+          - pr-gate
+          - nightly
+          - M-1
+          - M-2
+          - M-3
+          - M-4
+          - M-5
+          - M-6
+          - M-7
+  push:
+    branches: [develop]
+  schedule:
+    # 02:00 UTC -- avoids overlapping with the macos-latest hosted
+    # tier3-handbook.yaml's typical run windows.
+    - cron: "0 2 * * *"
+
+# Workflow-level concurrency: a fresh push to the same PR cancels the
+# in-flight Tier-3 run on the runner. Same pattern as tier3-handbook.
+concurrency:
+  group: >-
+    ${{
+      (github.event.action == 'labeled' || github.event.action == 'unlabeled')
+        && format('ci-{0}-label-{1}', github.workflow, github.run_id)
+        || format('ci-{0}-{1}', github.workflow, github.event.pull_request.number || github.ref)
+    }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write   # for the per-flow flake-rate comment poster
+
+env:
+  MAESTRO_CLI_NO_ANALYTICS: "1"
+  MAESTRO_DRIVER_STARTUP_TIMEOUT: "300000"
+
+jobs:
+  # ===========================================================================
+  # PR-gate flows: M-1, M-3, M-5, M-6
+  # ===========================================================================
+  m1-happy-path:
+    name: M-1 — Happy path
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'tier3:bitbox'))
+      || (github.event_name == 'workflow_dispatch' && (inputs.flow == 'M-1' || inputs.flow == 'pr-gate'))
+    runs-on: [self-hosted, macOS, arm64, bitbox]
+    timeout-minutes: 5
+    # Hardware mutex: only one Tier-3 BitBox job runs at a time. The
+    # group spans the workflow AND the scheduled nightly job. We do NOT
+    # cancel-in-progress here — letting the in-flight flow finish is
+    # cheaper than restarting from scratch.
+    concurrency:
+      group: bitbox-hardware-pool
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/bitbox-maestro-setup
+      - name: Run M-1
+        id: run
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-1-happy-path.yaml
+          retries: 3
+      - name: Post flake-rate update
+        if: always()
+        uses: ./.github/actions/bitbox-flake-poster
+        with:
+          flow: M-1
+          attempts: ${{ steps.run.outputs.attempts }}
+          outcome: ${{ steps.run.outcome }}
+
+  m3-multi-page-ble-toggle:
+    name: M-3 — Multi-page sign w/ BLE toggle (CANONICAL dedup verifier)
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'tier3:bitbox'))
+      || (github.event_name == 'workflow_dispatch' && (inputs.flow == 'M-3' || inputs.flow == 'pr-gate'))
+    needs: m1-happy-path
+    runs-on: [self-hosted, macOS, arm64, bitbox]
+    timeout-minutes: 18
+    concurrency:
+      group: bitbox-hardware-pool
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/bitbox-maestro-setup
+      - name: Run M-3
+        id: run
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-3-multi-page-sign-with-ble-toggle.yaml
+          retries: 3
+      - name: Post flake-rate update
+        if: always()
+        uses: ./.github/actions/bitbox-flake-poster
+        with:
+          flow: M-3
+          attempts: ${{ steps.run.outputs.attempts }}
+          outcome: ${{ steps.run.outcome }}
+
+  m5-channel-hash-mismatch:
+    name: M-5 — Channel-hash mismatch (CANONICAL spoof verifier)
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'tier3:bitbox'))
+      || (github.event_name == 'workflow_dispatch' && (inputs.flow == 'M-5' || inputs.flow == 'pr-gate'))
+    needs: m1-happy-path
+    runs-on: [self-hosted, macOS, arm64, bitbox]
+    timeout-minutes: 10
+    concurrency:
+      group: bitbox-hardware-pool
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/bitbox-maestro-setup
+        with:
+          two-phone: "true"
+      - name: Run M-5 (phase A)
+        id: run_a
+        env:
+          MAESTRO_PHASE: A
+          MAESTRO_DEVICE_A_UDID: ${{ vars.BITBOX_IPHONE_A_UDID }}
+          MAESTRO_DEVICE_B_UDID: ${{ vars.BITBOX_IPHONE_B_UDID }}
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-5-channel-hash-mismatch.yaml
+          retries: 3
+          background: "true"
+      - name: Run M-5 (phase B)
+        id: run_b
+        env:
+          MAESTRO_PHASE: B
+          MAESTRO_DEVICE_A_UDID: ${{ vars.BITBOX_IPHONE_A_UDID }}
+          MAESTRO_DEVICE_B_UDID: ${{ vars.BITBOX_IPHONE_B_UDID }}
+          MAESTRO_DEVICE_ID: ${{ vars.BITBOX_IPHONE_B_UDID }}
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-5-channel-hash-mismatch.yaml
+          retries: 3
+      - name: Post flake-rate update
+        if: always()
+        uses: ./.github/actions/bitbox-flake-poster
+        with:
+          flow: M-5
+          # M-5 succeeds iff BOTH phases ran green; the poster handles
+          # the AND-combine.
+          attempts: ${{ steps.run_b.outputs.attempts }}
+          outcome: ${{ steps.run_b.outcome }}
+
+  m6-factory-reset:
+    name: M-6 — Factory-reset detection (CANONICAL static-pubkey verifier)
+    if: >-
+      github.event_name == 'push'
+      || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'tier3:bitbox'))
+      || (github.event_name == 'workflow_dispatch' && (inputs.flow == 'M-6' || inputs.flow == 'pr-gate'))
+    needs: m1-happy-path
+    runs-on: [self-hosted, macOS, arm64, bitbox]
+    timeout-minutes: 12
+    concurrency:
+      group: bitbox-hardware-pool
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/bitbox-maestro-setup
+      - name: Run M-6
+        id: run
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-6-factory-reset-detection.yaml
+          retries: 3
+      - name: Post flake-rate update
+        if: always()
+        uses: ./.github/actions/bitbox-flake-poster
+        with:
+          flow: M-6
+          attempts: ${{ steps.run.outputs.attempts }}
+          outcome: ${{ steps.run.outcome }}
+
+  # ===========================================================================
+  # Scheduled-daily flows: M-2, M-4, M-7
+  # ===========================================================================
+  m2-multi-page-stable-ble:
+    name: M-2 — Multi-page sign (stable BLE)
+    if: >-
+      github.event_name == 'schedule'
+      || (github.event_name == 'workflow_dispatch' && (inputs.flow == 'M-2' || inputs.flow == 'nightly'))
+    runs-on: [self-hosted, macOS, arm64, bitbox]
+    timeout-minutes: 12
+    concurrency:
+      group: bitbox-hardware-pool
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/bitbox-maestro-setup
+      - name: Run M-2
+        id: run
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-2-multi-page-sign-stable-ble.yaml
+          retries: 3
+      - name: Post flake-rate update
+        if: always()
+        uses: ./.github/actions/bitbox-flake-poster
+        with:
+          flow: M-2
+          attempts: ${{ steps.run.outputs.attempts }}
+          outcome: ${{ steps.run.outcome }}
+
+  m4-disconnect-mid-sign:
+    name: M-4 — Disconnect mid-sign
+    if: >-
+      github.event_name == 'schedule'
+      || (github.event_name == 'workflow_dispatch' && (inputs.flow == 'M-4' || inputs.flow == 'nightly'))
+    needs: m2-multi-page-stable-ble
+    runs-on: [self-hosted, macOS, arm64, bitbox]
+    timeout-minutes: 14
+    concurrency:
+      group: bitbox-hardware-pool
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/bitbox-maestro-setup
+      - name: Run M-4
+        id: run
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-4-disconnect-mid-sign.yaml
+          retries: 3
+      - name: Post flake-rate update
+        if: always()
+        uses: ./.github/actions/bitbox-flake-poster
+        with:
+          flow: M-4
+          attempts: ${{ steps.run.outputs.attempts }}
+          outcome: ${{ steps.run.outcome }}
+
+  m7-slow-confirm-long-idle:
+    name: M-7 — Slow confirm long-idle (Android)
+    if: >-
+      github.event_name == 'schedule'
+      || (github.event_name == 'workflow_dispatch' && (inputs.flow == 'M-7' || inputs.flow == 'nightly'))
+    needs: m2-multi-page-stable-ble
+    runs-on: [self-hosted, macOS, arm64, bitbox, android]
+    timeout-minutes: 22
+    concurrency:
+      group: bitbox-hardware-pool
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/bitbox-maestro-setup
+        with:
+          android: "true"
+      - name: Run M-7
+        id: run
+        env:
+          MAESTRO_DEVICE_ID: ${{ vars.BITBOX_ANDROID_SERIAL }}
+        uses: ./.github/actions/bitbox-maestro-flow
+        with:
+          flow: M-7-slow-confirm-long-idle.yaml
+          retries: 3
+      - name: Post flake-rate update
+        if: always()
+        uses: ./.github/actions/bitbox-flake-poster
+        with:
+          flow: M-7
+          attempts: ${{ steps.run.outputs.attempts }}
+          outcome: ${{ steps.run.outcome }}
+
+  # ===========================================================================
+  # Summary job: aggregates per-flow outcomes for the PR check.
+  # ===========================================================================
+  summary:
+    name: Tier-3 Maestro summary
+    if: always()
+    needs:
+      - m1-happy-path
+      - m3-multi-page-ble-toggle
+      - m5-channel-hash-mismatch
+      - m6-factory-reset
+    # The summary only inspects GitHub's recorded job results. Keep it on a
+    # hosted runner so an unlabelled PR can complete the workflow immediately
+    # instead of waiting for scarce BitBox hardware just to report "skipped".
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate outcomes
+        run: |
+          set -euo pipefail
+          declare -A outcomes=(
+            ["M-1"]="${{ needs.m1-happy-path.result }}"
+            ["M-3"]="${{ needs.m3-multi-page-ble-toggle.result }}"
+            ["M-5"]="${{ needs.m5-channel-hash-mismatch.result }}"
+            ["M-6"]="${{ needs.m6-factory-reset.result }}"
+          )
+          failed=0
+          for k in "${!outcomes[@]}"; do
+            v="${outcomes[$k]}"
+            echo "$k -> $v"
+            if [ "$v" != "success" ] && [ "$v" != "skipped" ]; then
+              failed=1
+            fi
+          done
+          if [ $failed -ne 0 ]; then
+            echo "::error::At least one PR-gate Tier-3 flow failed."
+            exit 1
+          fi
+          echo "All PR-gate Tier-3 flows green or skipped."

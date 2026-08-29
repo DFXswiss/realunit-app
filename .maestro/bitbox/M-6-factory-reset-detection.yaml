@@ -1,0 +1,215 @@
+# M-6 — Factory-reset BitBox between two sessions: static-pubkey-mismatch
+# detection.
+#
+# THIS FLOW IS THE CANONICAL Tier-3 VERIFIER FOR THE FACTORY-RESET
+# DETECTION CONTRACT (audit Top-10 #8). The Tier-2 scenario in
+# `bitbox-testkit/go/bitbox/scenarios/static_pubkey_mismatch.go` proves
+# that when the Dart-side `BitboxCredentials` receives a different
+# static pubkey than the one it cached, it rejects the connection and
+# forces re-pair. It CANNOT prove that a REAL firmware-side factory
+# reset actually rotates the static pubkey — only real hardware can.
+#
+# PROVES (Tier-3 only):
+#   * After a real factory-reset on the BitBox 02 Nova, the device's
+#     noise-protocol static pubkey is DIFFERENT from the cached one.
+#   * The realunit-app detects this mismatch on the next pair attempt
+#     and refuses to silently reuse the old credentials.
+#   * The user is FORCED through a re-pair flow (channel-hash confirm
+#     again) — there is no path where the app silently writes to a
+#     different keypair than the one the user paired with originally.
+#
+# DOES NOT PROVE:
+#   * Channel-hash mismatch spoof — see M-5.
+#   * BLE init-frame dedup — see M-3.
+#
+# BLOCKED (partial):
+#   The factory-reset on the BitBox 02 Nova is a hold-the-button
+#   physical action. The mandate calls for either:
+#     (a) Programmatic factory-reset via a `bitbox-cli factory-reset`
+#         path wired into the runner. The CLI exists upstream
+#         (`bitbox02-api-go` ships it) but is NOT yet integrated into
+#         the runner. Tracked under BL-017.
+#     (b) A DEV-only realunit-app rebuild with `BITBOX_DEV_RESET=1`
+#         exposing an in-app "wipe paired device" debug screen.
+#   Neither is shipped. Until one is, M-6 prompts the operator via a
+#   runScript log line and a 30 s pause — the operator must perform the
+#   physical reset during that window. If the operator skips it, the
+#   second pair sees the same static pubkey, the mismatch detection
+#   does NOT fire, and the flow FAILS (= regression-or-operator-error;
+#   the journal entry must say which).
+#
+# REQUIRED-KEYS (TODO):
+#   * Key('maestro-welcome-bitbox-card') -- shared with M-1.
+#   * Key('maestro-bitbox-static-pubkey-mismatch-banner') on the UI
+#     surface that announces "this device has changed identity".
+#     (NOTE: this banner does not exist today; see additional BLOCKER
+#     below.)
+#
+# ADDITIONAL BLOCKER:
+#   The realunit-app today does NOT surface the static-pubkey-mismatch
+#   case as a distinct UI state. The mismatch falls through to the
+#   generic BitboxNotConnected error path. This means M-6 today can
+#   only verify the WEAKER invariant: after factory-reset, the app
+#   does NOT silently reconnect (it fails). The STRONGER invariant —
+#   user sees a clear "this is a different device" message — depends
+#   on the surface that BL-019 + the lifecycle work tracks shipping.
+#
+# OPERATOR PRECONDITIONS:
+#   * Operator standing next to the BitBox with the device manual
+#     open to the "factory reset" page (hold reset button procedure).
+#   * Fresh wallet on the iPhone (run M-1 reset first).
+#   * BitBox firmware >= 9.21.0.
+#
+# HARDWARE: BitBox 02 Nova + iOS device.
+# EXPECTED RUNTIME: ~5 min.
+# GATE: PR-gate.
+appId: swiss.realunit.app
+---
+# === PHASE 1: Initial pair ===
+- launchApp:
+    appId: swiss.realunit.app
+    clearState: true
+- waitForAnimationToEnd
+- extendedWaitUntil:
+    visible: "Start"
+    timeout: 30000
+
+- tapOn:
+    text: "Start"
+- extendedWaitUntil:
+    visible:
+      text: ".*Digitale Wallet.*"
+    timeout: 30000
+
+- tapOn:
+    text: "BitBox"
+- extendedWaitUntil:
+    visible: "BitBox verbinden"
+    timeout: 30000
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Code mit dem.*BitBox-Gerät.*"
+    timeout: 60000
+
+# Operator confirms on device + taps Bestätigen in-app.
+- tapOn:
+    text: "Bestätigen"
+- extendedWaitUntil:
+    visible:
+      text: ".*Verbindung erfolgreich.*|.*Verbunden.*"
+    timeout: 60000
+
+- tapOn:
+    text: "Bestätigen"
+- extendedWaitUntil:
+    visible:
+      text: ".*RealUnit kaufen.*"
+    timeout: 60000
+
+# Phase 1 cached the BitBox's static pubkey in the Dart-side
+# BitboxCredentials. We have a known-good baseline.
+- runScript: |
+    echo "M-6: PHASE-1-PAIRED ts=$(date -u +%s)"
+    echo "M-6: BitBox static-pubkey is now cached in app credentials"
+
+# === PHASE 2: FACTORY-RESET ===
+#
+# Operator action required. The flow waits up to 90 s for the operator
+# to perform the reset; the wait is implemented as an extendedWaitUntil
+# against a no-op condition that absolutely cannot be satisfied during
+# the window, forcing the timer to elapse fully. (We deliberately do
+# NOT short-circuit on any visible-condition here: the operator may
+# not have completed the reset yet when the app starts surfacing
+# disconnect.)
+- runScript: |
+    echo "M-6: ACTION-REQUIRED-FACTORY-RESET ts=$(date -u +%s)"
+    echo "  -> Operator: hold the BitBox reset button for 10 seconds NOW."
+    echo "  -> The device should erase + reboot. Wait for the welcome screen."
+    echo "  -> You have 90 seconds before the flow continues."
+
+# 90 s wall-clock wait via a no-op swipe (Maestro lacks native sleep).
+- swipe:
+    start: 50%, 50%
+    end: 50%, 50%
+    duration: 90000
+
+- runScript: |
+    echo "M-6: ASSUMING-FACTORY-RESET-DONE ts=$(date -u +%s)"
+
+# === PHASE 3: Re-pair attempt ===
+#
+# Force the app to re-attempt the pair. Easiest path is to power-cycle
+# the wallet's BitBox connection via the reconnect sheet. The operator
+# triggers this via the "BitBox kaufen" button -> sign-in retry which
+# the app drives automatically.
+#
+# We approach it more cleanly: re-open the BitBox connect sheet
+# explicitly via the buy CTA, which fires a credentials check.
+- tapOn:
+    text: "RealUnit kaufen"
+- waitForAnimationToEnd
+
+# === THE INVARIANT ===
+#
+# On a factory-reset device, the static-pubkey check inside
+# BitboxCredentials MUST detect the mismatch. The app MUST NOT
+# silently reconnect using the old credentials.
+#
+# Required terminal states (one of):
+#   (HARD) A clear "device-identity-changed" UI surface (does not
+#          exist today — see additional blocker above).
+#   (SOFT) The generic connectBitboxFailed snackbar plus the user is
+#          forced back through the channel-hash-confirm screen with
+#          a fresh hash.
+#
+# Forbidden terminal state:
+#   (SILENT-RECONNECT) The app proceeds with sign as if nothing
+#                      happened. This is the regression M-6 catches.
+- extendedWaitUntil:
+    visible:
+      text: ".*Es ist ein Fehler aufgetreten.*|.*Code mit dem.*BitBox-Gerät.*|.*nicht verbunden.*|.*Geräteidentität.*geändert.*"
+    timeout: 90000
+
+# If we reached the channel-hash screen, this MUST be a DIFFERENT hash
+# than what phase 1 showed (the static pubkey rotated, so the noise
+# protocol's session keys are different and the channel-hash is too).
+# The flow cannot byte-compare; the operator confirms.
+- runFlow:
+    when:
+      visible:
+        text: ".*Code mit dem.*BitBox-Gerät.*"
+    commands:
+      - runScript: |
+          echo "M-6: SOFT-PATH channel-hash screen reached after reset"
+          echo "  -> Operator: confirm the channel-hash is NEW (different from phase 1)"
+          echo "  -> If the hash is identical, the mismatch detection FAILED"
+
+      # Push through the re-pair to prove the SOFT path completes
+      # cleanly (not stuck).
+      - tapOn:
+          text: "Bestätigen"
+      - extendedWaitUntil:
+          visible:
+            text: ".*Verbindung erfolgreich.*|.*Verbunden.*"
+          timeout: 60000
+
+- runFlow:
+    when:
+      visible:
+        text: ".*Es ist ein Fehler aufgetreten.*|.*nicht verbunden.*"
+    commands:
+      - runScript: |
+          echo "M-6: ERROR-PATH connectBitboxFailed surfaced after reset"
+          echo "  -> this is the current minimum-acceptable behaviour"
+
+# Acceptable: any non-silent terminal state. We assert that we are
+# NOT on the "RealUnit kaufen" / "Betrag" buy screen (which would
+# indicate a silent reconnect).
+- assertNotVisible:
+    text: ".*Betrag.*"
+- assertNotVisible:
+    text: ".*signMessageGet.*"
+
+- runScript: |
+    echo "M-6: PHASE-3-RESULT mismatch detection surfaced (HARD or SOFT)"

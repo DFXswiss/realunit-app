@@ -1,0 +1,204 @@
+# M-3 — Multi-page sign WITH BLE toggle on page 6/13.
+#
+# THIS FLOW IS THE CANONICAL Tier-3 VERIFIER FOR THE BLE INIT-FRAME
+# RETRANSMIT DEDUP CONTRACT. Without it, the BL-001 dedup logic (the
+# bug pinned in `audit-bitbox-2026-05-23/AUDIT.md` Top-10 #1, the
+# 2026-05-14 regression in `bitbox_flutter` `seenPackets.removeAll`-
+# before-`contains`) is unprotected at the hardware-truth layer. No
+# Tier-2 scenario can model this — the iOS BLE link drop / re-establish
+# happens at the radio layer, below where any in-process fake can reach.
+#
+# PROVES (Tier-3 only):
+#   * BLE init-frame retransmit DEDUP — after a real BLE link drop the
+#     iOS stack retransmits init frames; the Dart-side deduper must
+#     drop the duplicates, NOT crash, NOT advance past a half-confirmed
+#     page, NOT silently restart the sign from page 1.
+#   * Pages 7..13 confirm successfully AFTER the BLE drop on page 6 —
+#     i.e. the sign session survives the radio event.
+#   * The final envelope hash matches the M-2 fixture; the BLE drop
+#     does not alter the firmware-side cumulative hash.
+#
+# DOES NOT PROVE:
+#   * Channel-hash spoof defence — see M-5.
+#   * Factory-reset detection — see M-6.
+#   * 60 s Android read-timeout extension — see M-7.
+#
+# BLOCKED (partial):
+#   iOS does not expose a CLI to programmatically toggle BLE from outside
+#   an app. We use `xcrun simctl status_bar override bluetooth-state` as
+#   a status-bar proxy — this is NOT a real BLE drop. The REAL drop is
+#   performed by the operator physically toggling airplane mode on the
+#   iPhone at the page-6 checkpoint. Until realunit-app ships a
+#   DEV-only `--toggle-ble-from-test` flag (BL-017 backlog), this flow
+#   requires that human step. Failure to operate it correctly is
+#   logged in the journal as PRECONDITION-FAILED (not a green pass).
+#
+# REQUIRED-KEYS (TODO):
+#   * Same key set as M-2, plus:
+#   * Key('maestro-sign-page-index-{N}') where N = 1..13 on the
+#     in-app per-page hint widget. This is mandatory for this flow —
+#     text-based selectors cannot distinguish page 6 from page 7.
+#
+# OPERATOR PRECONDITIONS:
+#   * KYC NOT yet completed on the wallet under test (i.e. M-2 was
+#     reset since its last run, or this is a fresh wallet).
+#   * Operator holds the iPhone with airplane-mode shortcut ready in
+#     Control Centre.
+#   * BitBox firmware >= 9.21.0.
+#   * The cassette under `bitbox-testkit/go/bitbox/cassettes/
+#     kyc-registration-fw-9.21.0.vcr` is available for envelope-hash
+#     cross-check.
+#
+# HARDWARE: BitBox 02 Nova + iOS device.
+# EXPECTED RUNTIME: ~8 min (M-2 + 30 s BLE-drop + 30 s recovery).
+# GATE: PR-gate.
+appId: swiss.realunit.app
+---
+- launchApp:
+    appId: swiss.realunit.app
+- waitForAnimationToEnd
+
+- runFlow:
+    when:
+      visible: "Überspringen"
+    commands:
+      - tapOn:
+          text: "Überspringen"
+          optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*RealUnit kaufen.*"
+    timeout: 30000
+
+- tapOn:
+    text: "RealUnit kaufen"
+- waitForAnimationToEnd
+
+# Same precondition guard as M-2.
+- runFlow:
+    when:
+      visible:
+        text: ".*Betrag.*|.*Menge.*"
+    commands:
+      - assertVisible:
+          text: "M-3-PRECONDITION-FAILED: KYC already completed; reset wallet to retry"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Eröffnungsprozess.*|.*KYC.*|.*Registrierung.*"
+    timeout: 60000
+
+- tapOn:
+    text: "Weiter"
+    optional: true
+
+# Pages 1..5 confirm normally; operator presses the BitBox button each
+# time. This is exactly the M-2 path through page 5.
+- repeat:
+    times: 5
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: ".*bestätigen Sie.*BitBox.*|.*Anmeldung bestätigen.*"
+          timeout: 60000
+      - waitForAnimationToEnd
+
+# === PAGE 6: THE BLE DROP ===
+#
+# At this point we are sitting on page 6's confirm hint. We DO NOT
+# press the BitBox button yet. Instead we:
+#   1. Simulate the BLE link drop (status-bar override AND ideally a
+#      real airplane-mode toggle by the operator).
+#   2. Wait 5 s for the iOS stack to surface the disconnect.
+#   3. Restore BLE.
+#   4. Wait for the app to reconnect (it should — the cubit drives
+#      reconnect automatically).
+#   5. Resume the sign from page 6 (NOT page 1).
+#
+# The Tier-3 invariant is: after step 5, the firmware-side state
+# machine accepts the page 6 confirm and continues to pages 7..13,
+# producing the same envelope as M-2. If instead the sign restarts
+# from page 1, the deduper is broken and the flow lands at page 13
+# having actually re-signed pages 1..5 — which is the very regression
+# this flow is meant to catch.
+- extendedWaitUntil:
+    visible:
+      text: ".*bestätigen Sie.*BitBox.*"
+    timeout: 60000
+
+# BLE drop via simctl proxy. Real drop is operator-driven — see header.
+- runScript: |
+    xcrun simctl status_bar booted override --bluetoothMode failed
+    # Real device airplane-mode is operator-driven; log the moment:
+    echo "M-3: BLE-DROP-MOMENT page=6 ts=$(date -u +%s)"
+
+# 5 s real-time wait for the disconnect to surface. extendedWaitUntil
+# would be wrong here — we are NOT waiting for a UI element, we are
+# explicitly burning wall-clock time for the iOS BLE stack to time out.
+- swipe:
+    start: 50%, 50%
+    end: 50%, 50%
+    duration: 5000
+# That's a no-op swipe used as a 5 s sleep; Maestro lacks a native
+# wait-for-N-seconds primitive that does not key off a UI condition.
+
+# Restore BLE.
+- runScript: |
+    xcrun simctl status_bar booted clear
+    echo "M-3: BLE-RESTORE-MOMENT page=6 ts=$(date -u +%s)"
+
+# Wait for the app to re-establish the BLE link. The cubit emits
+# BitboxConnecting -> BitboxConnected; the sign sheet either resumes
+# automatically (target behaviour) OR shows a reconnect prompt.
+- extendedWaitUntil:
+    visible:
+      text: ".*bestätigen Sie.*BitBox.*|.*erneut verbinden.*|.*Verbindung.*unterbrochen.*"
+    timeout: 60000
+
+# If the reconnect prompt appeared (i.e. the app did NOT auto-resume),
+# walk through the re-pair UI.
+- runFlow:
+    when:
+      visible:
+        text: ".*erneut verbinden.*|.*Verbindung.*unterbrochen.*"
+    commands:
+      - tapOn:
+          text: "BitBox erneut verbinden"
+          optional: true
+      - extendedWaitUntil:
+          visible:
+            text: ".*Code mit dem.*BitBox-Gerät.*"
+          timeout: 60000
+      - tapOn:
+          text: "Bestätigen"
+          optional: true
+      - extendedWaitUntil:
+          visible:
+            text: ".*bestätigen Sie.*BitBox.*"
+          timeout: 60000
+
+# Operator confirms page 6 on the device NOW.
+- waitForAnimationToEnd
+
+# Pages 7..13 confirm normally.
+- repeat:
+    times: 7
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: ".*abgeschlossen.*|.*Verifikation abgeschlossen.*"
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  text: ".*bestätigen Sie.*BitBox.*|.*Anmeldung bestätigen.*"
+                timeout: 60000
+            - waitForAnimationToEnd
+
+# All 13 pages confirmed despite the BLE drop -- DEDUP CONTRACT GREEN.
+- extendedWaitUntil:
+    visible:
+      text: ".*Eröffnungsprozess.*abgeschlossen.*|.*Verifikation abgeschlossen.*"
+    timeout: 120000
+- assertVisible:
+    text: ".*abgeschlossen.*"

@@ -1,0 +1,100 @@
+name: BitBox Maestro flow runner
+description: |
+  Runs one .maestro/bitbox/M-*.yaml flow against the real BitBox 02 Nova
+  hardware on the self-hosted runner. Retries up to `retries` times if
+  the failure mode is recoverable (IOSDriverTimeoutException, XCTest
+  driver crash). Assertion failures are NEVER retried -- those are
+  real regressions and must surface as red checks.
+
+inputs:
+  flow:
+    description: "Filename under .maestro/bitbox/ (e.g. M-1-happy-path.yaml)"
+    required: true
+  retries:
+    description: "Max attempts (default 3)"
+    required: false
+    default: "3"
+  background:
+    description: "Run in background (for the M-5 two-phase case)"
+    required: false
+    default: "false"
+
+outputs:
+  attempts:
+    description: "Number of attempts taken"
+    value: ${{ steps.run.outputs.attempts }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run Maestro flow
+      id: run
+      shell: bash
+      env:
+        FLOW: ${{ inputs.flow }}
+        MAX_ATTEMPTS: ${{ inputs.retries }}
+        BACKGROUND: ${{ inputs.background }}
+      run: |
+        set -euo pipefail
+        MAESTRO="${MAESTRO:-$HOME/.maestro/bin/maestro}"
+        FLOW_PATH=".maestro/bitbox/${FLOW}"
+        if [ ! -f "$FLOW_PATH" ]; then
+          echo "::error::flow file not found: $FLOW_PATH"
+          exit 1
+        fi
+
+        run_once () {
+          local attempt="$1"
+          local log="/tmp/maestro-${FLOW%.yaml}-attempt-${attempt}.log"
+          echo "=== ATTEMPT $attempt :: $FLOW ==="
+          if [ "$BACKGROUND" = "true" ]; then
+            "$MAESTRO" test "$FLOW_PATH" --debug-output "/tmp/maestro-debug-${attempt}" >"$log" 2>&1 &
+            echo $! > "/tmp/maestro-${FLOW%.yaml}-bg.pid"
+            sleep 2
+            return 0
+          fi
+          if "$MAESTRO" test "$FLOW_PATH" --debug-output "/tmp/maestro-debug-${attempt}" 2>&1 | tee "$log"; then
+            return 0
+          fi
+          # Recoverable failure modes: only IOSDriverTimeoutException +
+          # XCTestCase initialisation failures get a retry. Assertion
+          # failures fall through.
+          if grep -qE "IOSDriverTimeoutException|XCTestCase init failed|driver startup timeout" "$log"; then
+            echo "::warning::recoverable Maestro failure on attempt $attempt; will retry"
+            return 1
+          fi
+          # Assertion / other failures: hard-fail, do NOT retry.
+          echo "::error::non-recoverable failure (assertion or unknown) on attempt $attempt"
+          return 2
+        }
+
+        attempts=0
+        while [ $attempts -lt $MAX_ATTEMPTS ]; do
+          attempts=$((attempts+1))
+          rc=0
+          run_once "$attempts" || rc=$?
+          if [ $rc -eq 0 ]; then
+            echo "attempts=$attempts" >> "$GITHUB_OUTPUT"
+            echo "::notice::$FLOW green on attempt $attempts"
+            exit 0
+          fi
+          if [ $rc -eq 2 ]; then
+            echo "attempts=$attempts" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          # rc == 1 -> recoverable, loop
+        done
+        echo "attempts=$attempts" >> "$GITHUB_OUTPUT"
+        echo "::error::$FLOW exhausted $MAX_ATTEMPTS attempts"
+        exit 1
+
+    - name: Upload Maestro artefacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: maestro-${{ inputs.flow }}-${{ github.run_id }}-${{ github.run_attempt }}
+        path: |
+          /tmp/maestro-debug-*
+          /tmp/maestro-*.log
+        if-no-files-found: warn
+        retention-days: 14

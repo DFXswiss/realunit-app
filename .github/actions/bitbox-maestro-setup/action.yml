@@ -1,0 +1,97 @@
+name: BitBox Maestro setup
+description: |
+  Pre-flight setup for Tier-3 BitBox Maestro flows on the self-hosted
+  Apple Silicon runner. Builds the iOS Runner.app (and the Android APK
+  if requested), boots the primary iPhone simulator (and the secondary
+  if requested), installs the app, and verifies Maestro version pin.
+
+  Does NOT physically reset the BitBox -- that is per-flow responsibility
+  in the flow's docblock.
+
+inputs:
+  android:
+    description: "Build + install the Android APK in addition to iOS"
+    required: false
+    default: "false"
+  two-phone:
+    description: "Boot + install on the secondary iPhone for M-5"
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Flutter setup
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: "3.41.6"
+        channel: stable
+        cache: true
+
+    - name: Flutter pub get + generators
+      shell: bash
+      run: |
+        set -euo pipefail
+        flutter pub get
+        dart run tool/generate_localization.dart
+        dart run tool/generate_release_info.dart
+        flutter pub run build_runner build
+
+    - name: Cache iOS DerivedData + Pods
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData
+          ios/Pods
+        key: ios-derived-data-${{ runner.os }}-bitbox-${{ hashFiles('pubspec.lock', 'ios/Podfile.lock') }}
+        restore-keys: |
+          ios-derived-data-${{ runner.os }}-bitbox-
+
+    - name: Build iOS simulator app
+      shell: bash
+      run: flutter build ios --simulator --debug
+
+    - name: Build Android APK
+      if: inputs.android == 'true'
+      shell: bash
+      run: flutter build apk --debug
+
+    - name: Verify Maestro pin
+      shell: bash
+      run: |
+        set -euo pipefail
+        MAESTRO_VERSION="$(cat .maestro-version)"
+        if [ -z "$MAESTRO_VERSION" ]; then
+          echo "::error::.maestro-version missing"; exit 1
+        fi
+        INSTALLED="$($HOME/.maestro/bin/maestro --version 2>&1 | tail -n1 || echo none)"
+        echo "Maestro: installed=$INSTALLED expected=$MAESTRO_VERSION"
+        if [ "$INSTALLED" != "$MAESTRO_VERSION" ]; then
+          echo "::warning::Maestro version drift; runner may need provisioning"
+        fi
+
+    - name: Verify BitBox hardware reachable
+      shell: bash
+      run: |
+        set +e
+        # On the self-hosted runner the BitBox CLI (if installed) lists
+        # the device. If absent, skip the check with a warning rather
+        # than fail -- the per-flow logic surfaces the real failure.
+        if command -v bitbox-cli >/dev/null 2>&1; then
+          bitbox-cli ls 2>&1 || echo "::warning::bitbox-cli ls failed -- check device power"
+        else
+          echo "::notice::bitbox-cli not installed on runner; relying on per-flow detection"
+        fi
+        # iOS sims booted?
+        xcrun simctl list devices booted
+
+    - name: Verify Android device (if requested)
+      if: inputs.android == 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        adb devices
+        if ! adb devices | grep -q "device$"; then
+          echo "::error::Android device not reachable; M-7 will fail PRECONDITION"
+          exit 1
+        fi

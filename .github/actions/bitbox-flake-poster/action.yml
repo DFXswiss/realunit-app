@@ -1,0 +1,136 @@
+name: BitBox flake-rate poster
+description: |
+  Updates the trailing-30-day per-flow flake-rate in
+  bitbox-testkit/coverage_report.md. Designed to run from realunit-app
+  but writing to a sibling repo via the GITHUB_TOKEN.
+
+  Behaviour:
+    - On every run, appends one row to a per-flow rolling log
+      .maestro/bitbox/flake-log.jsonl (committed back to the realunit-app
+      repo on `push: develop` runs ONLY -- PR runs do not commit).
+    - Posts a comment on the PR (if `pull_request` event) with the
+      single-flow attempt count + outcome.
+    - On scheduled / push runs, also computes the trailing-30-day green
+      rate and writes it to bitbox-testkit/coverage_report.md via a
+      cross-repo dispatch (NOT implemented yet -- this action stubs the
+      cross-repo write; the audit BL-100 cross-repo workflow finalises
+      that wire-up).
+
+inputs:
+  flow:
+    description: "Flow short ID (M-1, M-2, ...)"
+    required: true
+  attempts:
+    description: "Attempts taken in this run"
+    required: true
+  outcome:
+    description: "Step outcome: success | failure | skipped"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Append flake log
+      shell: bash
+      env:
+        FLOW: ${{ inputs.flow }}
+        ATTEMPTS: ${{ inputs.attempts }}
+        OUTCOME: ${{ inputs.outcome }}
+      run: |
+        set -euo pipefail
+        LOG=".maestro/bitbox/flake-log.jsonl"
+        mkdir -p "$(dirname "$LOG")"
+        ts="$(date -u +%FT%TZ)"
+        entry='{"ts":"'"$ts"'","flow":"'"$FLOW"'","attempts":'"$ATTEMPTS"',"outcome":"'"$OUTCOME"'","sha":"'"${GITHUB_SHA:-}"'","run":"'"${GITHUB_RUN_ID:-}"'"}'
+        echo "$entry" >> "$LOG"
+        echo "appended: $entry"
+
+    - name: Compute trailing-30-day flake-rate
+      id: rate
+      shell: bash
+      env:
+        FLOW: ${{ inputs.flow }}
+      run: |
+        set -euo pipefail
+        LOG=".maestro/bitbox/flake-log.jsonl"
+        if [ ! -f "$LOG" ]; then
+          echo "rate=unknown" >> "$GITHUB_OUTPUT"
+          echo "n=0" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        # Last 30 d window. Rate = greens / total (entries with attempts == 1)
+        # are unambiguous greens; > 1 attempts is a flake-but-recovered.
+        cutoff="$(date -u -v-30d +%FT%TZ 2>/dev/null || date -u -d '30 days ago' +%FT%TZ)"
+        python3 - <<PY
+        import json, os, sys
+        cutoff = "$cutoff"
+        flow = "${FLOW}"
+        path = "$LOG"
+        total = 0; green = 0; flake = 0; fail = 0
+        with open(path) as f:
+            for line in f:
+                e = json.loads(line)
+                if e["flow"] != flow:
+                    continue
+                if e["ts"] < cutoff:
+                    continue
+                total += 1
+                if e["outcome"] == "success" and int(e["attempts"]) == 1:
+                    green += 1
+                elif e["outcome"] == "success":
+                    green += 1; flake += 1
+                elif e["outcome"] == "skipped":
+                    total -= 1  # don't count skipped
+                else:
+                    fail += 1
+        rate = "n/a" if total == 0 else "%.1f%%" % (100.0 * green / total)
+        flake_rate = "n/a" if total == 0 else "%.1f%%" % (100.0 * flake / total)
+        gh_out = os.environ["GITHUB_OUTPUT"]
+        with open(gh_out, "a") as o:
+            o.write("rate=%s\n" % rate)
+            o.write("flake_rate=%s\n" % flake_rate)
+            o.write("n=%d\n" % total)
+        print("flow=%s total=%d green=%d flake=%d fail=%d rate=%s flake_rate=%s" %
+              (flow, total, green, flake, fail, rate, flake_rate))
+        PY
+
+    - name: PR-comment with flake rate
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const flow = '${{ inputs.flow }}';
+          const attempts = '${{ inputs.attempts }}';
+          const outcome = '${{ inputs.outcome }}';
+          const rate = '${{ steps.rate.outputs.rate }}';
+          const flake = '${{ steps.rate.outputs.flake_rate }}';
+          const n = '${{ steps.rate.outputs.n }}';
+          const body = [
+            '### Tier-3 Maestro flow `' + flow + '`',
+            '',
+            '| Metric | Value |',
+            '|---|---|',
+            '| This run outcome | `' + outcome + '` |',
+            '| Attempts this run | `' + attempts + '` |',
+            '| Trailing-30-day green rate | `' + rate + '` (n=' + n + ') |',
+            '| Trailing-30-day flake rate | `' + flake + '` |',
+            '',
+            'Source: `.maestro/bitbox/flake-log.jsonl` (this PR).',
+          ].join('\n');
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body
+          });
+
+    - name: Note cross-repo coverage update (stub)
+      if: github.event_name == 'push' || github.event_name == 'schedule'
+      shell: bash
+      run: |
+        # The audit BL-100 cross-repo-audit workflow + the
+        # coverage-honesty.yaml workflow in bitbox-testkit pull this
+        # per-flow flake-rate when they next run. We do NOT push to
+        # bitbox-testkit directly from here -- cross-repo writes are
+        # gated through that workflow's own permissions.
+        echo "::notice::flake log updated; bitbox-testkit/coverage_report.md will pick this up on its next run"

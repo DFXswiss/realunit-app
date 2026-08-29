@@ -1,0 +1,131 @@
+# M-2 — Multi-page (13-page KYC registration) sign on stable BLE.
+#
+# PROVES (Tier-3 only):
+#   * Firmware-side multi-page state machine accepts every one of the
+#     13 EIP-712 pages of the real KYC registration payload, in order,
+#     and emits a valid signature envelope at the end.
+#   * Dart-side `SignPipeline` correctly drives all 13 page-confirm
+#     round-trips without dropping a frame or hitting the 60 s read
+#     timeout (M-7 covers the slow-confirm timeout edge specifically).
+#   * The cumulative envelope hash matches the Tier-2 fixture under
+#     `bitbox-testkit/go/bitbox/cassettes/kyc-registration-fw-9.21.0.vcr`.
+#
+# DOES NOT PROVE:
+#   * The dedup contract under a real BLE link drop -- see M-3.
+#   * The disconnect-recovery path -- see M-4.
+#   * That non-ASCII characters in the payload survive transliteration
+#     (the realunit-app#487 umlaut bug regression test lives at Tier-1).
+#
+# REQUIRED-KEYS (TODO):
+#   * Key('maestro-kyc-start-registration') on the KYC registration entry
+#     button in lib/screens/kyc/steps/registration/kyc_registration_page.dart.
+#   * Key('maestro-bitbox-sign-page-confirm') on the in-app "Auf BitBox
+#     bestätigen" hint inside the sign sheet (so the flow can wait for
+#     each page transition without matching strings).
+#   * Key('maestro-kyc-registration-complete') on the post-sign success
+#     screen.
+#
+# OPERATOR PRECONDITIONS:
+#   * M-1 must have run green within the last 24 h on this hardware OR
+#     the operator must reset + re-pair manually first.
+#   * Operator must be physically present to push the BitBox confirm
+#     button 13 times in succession.
+#   * BitBox firmware >= 9.21.0 (older firmware has a 12-page cap).
+#
+# HARDWARE: BitBox 02 Nova + iOS device.
+# EXPECTED RUNTIME: ~5 min (13 pages * ~20 s per page including device
+# confirm + BLE round-trip).
+# GATE: scheduled-daily (long runtime; not PR-blocking).
+appId: swiss.realunit.app
+---
+# Resume from the wallet-loaded state. Unlike M-1 we do NOT clearState:
+# the assumption is the BitBox is already paired and the wallet is open.
+# This is the canonical "already-onboarded user signing KYC" path.
+- launchApp:
+    appId: swiss.realunit.app
+- waitForAnimationToEnd
+
+# If a stale biometric prompt is showing, skip it (same pattern as
+# handbook/11-dashboard.yaml).
+- runFlow:
+    when:
+      visible: "Überspringen"
+    commands:
+      - tapOn:
+          text: "Überspringen"
+          optional: true
+- extendedWaitUntil:
+    visible:
+      text: ".*RealUnit kaufen.*"
+    timeout: 30000
+
+# Enter the buy/sell flow which triggers KYC registration on the first
+# real interaction. KYC registration is the canonical 13-page payload
+# documented in the mandate Appendix B.
+- tapOn:
+    text: "RealUnit kaufen"
+- waitForAnimationToEnd
+
+# KYC initiation. If the user already has a partial KYC, the app jumps
+# to wherever they left off; we assume a fresh KYC start here. If the
+# screen is the post-KYC buy form instead, M-2 cannot exercise its
+# subject and must abort with PRECONDITION-FAILED.
+- runFlow:
+    when:
+      visible:
+        text: ".*Betrag.*|.*Menge.*"
+    commands:
+      - assertVisible:
+          text: "M-2-PRECONDITION-FAILED: KYC already completed on this wallet; reset wallet to retry"
+
+- extendedWaitUntil:
+    visible:
+      text: ".*Eröffnungsprozess.*|.*KYC.*|.*Registrierung.*"
+    timeout: 60000
+
+# Walk through the KYC registration form, then trigger the multi-page
+# sign. The form-walk is not the subject of this flow — every flow
+# captured under handbook/* already covers the form drivers. Here we
+# only care about the moment the sign sheet appears.
+- tapOn:
+    text: "Weiter"
+    optional: true
+
+# The sign sheet appears once registration is committed. Pages 1..13
+# are emitted sequentially; each one shows a confirm hint on the iPhone
+# and the page content on the BitBox screen. The flow walks them.
+#
+# We use `repeat: { times: 13 }` and inside the loop wait for the
+# success terminal state. Each loop iteration corresponds to one page
+# confirm from the operator's perspective. The body of the loop:
+#   - waits for the per-page "bestätigen Sie auf der BitBox" hint
+#   - the operator presses the BitBox button in physical reality
+#   - Maestro waits up to 30 s for the hint to disappear (= page
+#     advanced)
+- repeat:
+    times: 13
+    commands:
+      - runFlow:
+          when:
+            notVisible:
+              text: ".*Eröffnungsprozess.*abgeschlossen.*|.*Verifikation abgeschlossen.*|.*RealUnit kaufen.*"
+          commands:
+            # Wait for the sign-page hint to be on screen, then wait for
+            # it to disappear (= operator confirmed the page on device).
+            - extendedWaitUntil:
+                visible:
+                  text: ".*bestätigen Sie.*BitBox.*|.*Anmeldung bestätigen.*"
+                timeout: 60000
+            # The Dart-side BitboxService.signEthMessage call returns
+            # once the device emits the page's response frame; the UI
+            # updates to either the next page's hint OR the terminal
+            # success screen. We sleep briefly to let the frame land.
+            - waitForAnimationToEnd
+
+# All 13 pages confirmed. Assert the success screen.
+- extendedWaitUntil:
+    visible:
+      text: ".*Eröffnungsprozess.*abgeschlossen.*|.*Verifikation abgeschlossen.*"
+    timeout: 120000
+- assertVisible:
+    text: ".*abgeschlossen.*"

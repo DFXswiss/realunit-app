@@ -11,6 +11,31 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _script = 'tool/generate_release_info.dart';
 
+String _dartExecutable() {
+  final flutterRoot = Platform.environment['FLUTTER_ROOT'];
+  if (flutterRoot != null && flutterRoot.isNotEmpty) {
+    final candidate = File('$flutterRoot/bin/cache/dart-sdk/bin/dart');
+    if (candidate.existsSync()) return candidate.path;
+  }
+
+  final currentExecutable = File(Platform.resolvedExecutable);
+  final executableName = currentExecutable.uri.pathSegments.last;
+  if (executableName == 'dart' || executableName == 'dart.exe') {
+    return currentExecutable.path;
+  }
+
+  var dir = currentExecutable.parent;
+  for (var i = 0; i < 6; i++) {
+    final candidate = File('${dir.path}/bin/cache/dart-sdk/bin/dart');
+    if (candidate.existsSync()) return candidate.path;
+    final parent = dir.parent;
+    if (parent.path == dir.path) break;
+    dir = parent;
+  }
+
+  return 'dart';
+}
+
 class _ReleaseInfo {
   _ReleaseInfo(this.tag, this.marketing, this.versionCode);
   final String tag;
@@ -31,7 +56,7 @@ Future<_ReleaseInfo> _run({String? tag}) async {
       if (tag != null) '--tag=$tag',
       '--output=${outputFile.path}',
     ];
-    final result = await Process.run('dart', args);
+    final result = await Process.run(_dartExecutable(), args);
     expect(
       result.exitCode,
       0,
@@ -54,7 +79,7 @@ Future<ProcessResult> _runRaw(List<String> extraArgs) {
   // a non-zero exit so the file is never written anyway.
   final tempDir = Directory.systemTemp.createTempSync('release_info_test_');
   final outputFile = File('${tempDir.path}/release_info.dart');
-  return Process.run('dart', [
+  return Process.run(_dartExecutable(), [
     _script,
     ...extraArgs,
     '--output=${outputFile.path}',
