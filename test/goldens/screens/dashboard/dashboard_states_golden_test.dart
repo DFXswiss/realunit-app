@@ -1,3 +1,4 @@
+import 'package:alchemist/alchemist.dart' as alchemist;
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,8 +12,10 @@ import 'package:realunit_wallet/models/transaction.dart';
 import 'package:realunit_wallet/packages/config/api_config.dart';
 import 'package:realunit_wallet/packages/repository/transaction_repository.dart';
 import 'package:realunit_wallet/packages/service/app_store.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/packages/utils/default_assets.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/balance_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -21,6 +24,7 @@ import 'package:realunit_wallet/screens/dashboard/dashboard_page.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/time_period_selection_button.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/styles/currency.dart';
+import 'package:realunit_wallet/styles/language.dart';
 
 import '../../../helper/helper.dart';
 
@@ -208,6 +212,9 @@ void main() {
     getIt.registerSingleton<AppStore>(appStore);
     getIt.registerSingleton<RealUnitPdfService>(_MockRealUnitPdfService());
     getIt.registerSingleton<TransactionRepository>(transactionRepository);
+    getIt.registerSingleton<RealUnitReferralService>(
+      MockRealUnitReferralService(),
+    );
   });
 
   tearDownAll(() async => GetIt.instance.reset());
@@ -398,6 +405,55 @@ void main() {
         when(() => balanceCubit.state).thenReturn(heldBalance());
         when(() => transactionRepository.watchTransactionsOfAssets(any(), any(), any()))
             .thenAnswer((_) => Stream.value(recentTransactions));
+        return wrapForGolden(buildSubject());
+      },
+    );
+
+    goldenTest(
+      'Empfehlungen card and prize in latest transactions',
+      fileName: 'dashboard_referral_entry_and_payout',
+      constraints: phoneConstraints,
+      pumpBeforeTest: (tester) async {
+        await alchemist.precacheImages(tester);
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('Empfehlungen'));
+        await tester.pumpAndSettle();
+      },
+      builder: () {
+        when(() => settingsBloc.state).thenReturn(
+          const SettingsState(language: Language.de),
+        );
+        when(() => balanceCubit.state).thenReturn(heldBalance());
+        final referral = MockRealUnitReferralService();
+        when(() => referral.getSummary()).thenAnswer(
+          (_) async => const ReferralSummaryDto(
+            eligible: true,
+            termsAccepted: true,
+            openCount: 0,
+            creditedCount: 0,
+            realuSum: 0,
+            chfSum: 0,
+          ),
+        );
+        if (GetIt.instance.isRegistered<RealUnitReferralService>()) {
+          GetIt.instance.unregister<RealUnitReferralService>();
+        }
+        GetIt.instance.registerSingleton<RealUnitReferralService>(referral);
+        final prize = Transaction(
+          height: 0,
+          txId: 'referral-payout-7',
+          chainId: realUnitAsset.chainId,
+          senderAddress: kReferralPayoutSenderAddress,
+          receiverAddress: walletAddress,
+          amount: BigInt.from(20),
+          asset: realUnitAsset,
+          type: TransactionTypes.referralPayout,
+          note: '',
+          data: '246.50',
+          timestamp: DateTime.utc(2026, 8, 24, 10),
+        );
+        when(() => transactionRepository.watchTransactionsOfAssets(any(), any(), any()))
+            .thenAnswer((_) => Stream.value([prize, recentTransactions.first]));
         return wrapForGolden(buildSubject());
       },
     );

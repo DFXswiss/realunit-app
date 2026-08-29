@@ -11,6 +11,7 @@ import 'package:realunit_wallet/packages/repository/transaction_repository.dart'
 import 'package:realunit_wallet/packages/service/app_store.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/packages/utils/default_assets.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/balance_cubit.dart';
 import 'package:realunit_wallet/screens/dashboard/bloc/dashboard_bloc.dart';
@@ -73,6 +74,9 @@ void main() {
     getIt.registerSingleton<AppStore>(appStore);
     getIt.registerSingleton<RealUnitPdfService>(_MockRealUnitPdfService());
     getIt.registerSingleton<TransactionRepository>(transactionRepository);
+    getIt.registerSingleton<RealUnitReferralService>(
+      MockRealUnitReferralService(),
+    );
   });
 
   tearDownAll(() async => GetIt.instance.reset());

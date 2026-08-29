@@ -4,4 +4,32 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Staging App Links. Kept out of the release autoVerify filter so a
+         missing https://dev.realunit.app/.well-known/assetlinks.json cannot
+         fail Play verification for realunit.app. -->
+    <application>
+        <activity android:name=".MainActivity">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="dev.realunit.app"
+                    android:pathPrefix="/invite/"/>
+                <data
+                    android:scheme="https"
+                    android:host="dev.realunit.app"
+                    android:pathPrefix="/promo/"/>
+                <data
+                    android:scheme="https"
+                    android:host="dev.realunit.app"
+                    android:path="/invite"/>
+                <data
+                    android:scheme="https"
+                    android:host="dev.realunit.app"
+                    android:path="/promo"/>
+            </intent-filter>
+        </activity>
+    </application>
 </manifest>

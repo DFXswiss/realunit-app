@@ -18,6 +18,7 @@ import 'package:realunit_wallet/screens/transaction_history/cubits/receipt/trans
 import 'package:realunit_wallet/screens/transaction_history/transaction_history_page.dart';
 import 'package:realunit_wallet/screens/transaction_history/widgets/transaction_history_download_button.dart';
 import 'package:realunit_wallet/screens/transaction_history/widgets/transaction_history_row.dart';
+import 'package:realunit_wallet/styles/language.dart';
 import 'package:realunit_wallet/widgets/date_picker_field.dart';
 
 import '../../../helper/helper.dart';
@@ -151,6 +152,36 @@ void main() {
           TransactionHistoryFilterState(all: transactions, filtered: transactions),
         );
         return withClock(pinnedClock, () => wrapForGolden(buildSubject()));
+      },
+    );
+
+    goldenTest(
+      'referral prize with frozen CHF',
+      fileName: 'transaction_history_page_referral_payout',
+      constraints: phoneConstraints,
+      builder: () {
+        when(() => settingsBloc.state).thenReturn(
+          const SettingsState(language: Language.de),
+        );
+        final prize = Transaction(
+          height: 0,
+          txId: 'referral-payout-7',
+          chainId: realUnitAsset.chainId,
+          senderAddress: kReferralPayoutSenderAddress,
+          receiverAddress: walletAddress,
+          amount: BigInt.from(20),
+          asset: realUnitAsset,
+          type: TransactionTypes.referralPayout,
+          note: '',
+          data: '246.50',
+          timestamp: DateTime.utc(2026, 8, 24, 10),
+        );
+        return withClock(pinnedClock, () {
+          when(() => filterCubit.state).thenReturn(
+            TransactionHistoryFilterState(all: [prize], filtered: [prize]),
+          );
+          return wrapForGolden(buildSubject());
+        });
       },
     );
 

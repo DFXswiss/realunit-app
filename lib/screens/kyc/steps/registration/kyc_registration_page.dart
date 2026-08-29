@@ -24,8 +24,11 @@ import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registrati
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_submit/kyc_registration_submit_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_address_step.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_personal_step.dart';
+import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart';
+import 'package:realunit_wallet/screens/kyc/steps/registration/stash_resolved_referral_code.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_tax_step.dart';
 import 'package:realunit_wallet/setup/di.dart';
+import 'package:realunit_wallet/setup/routing/referral_pending_code.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 
 class KycRegistrationPage extends StatelessWidget {
@@ -76,6 +79,8 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
   final phoneCtrl = ValueNotifier<String?>(null);
   final nationalityCtrl = ValueNotifier<Country?>(null);
   final birthdayCtrl = ValueNotifier<String?>(null);
+  final referralCodeCtrl = TextEditingController();
+  String? _resolvedReferralCode;
 
   final addressStreetCtrl = TextEditingController();
   final addressStreetNumberCtrl = TextEditingController();
@@ -97,6 +102,17 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
         curve: Curves.easeOut,
       );
     });
+
+    // Prefill a deeplink-stashed invite/promo code (same field for both).
+    // Do not refill after Skip/Next — the stash still binds post-auth.
+    unawaited(
+      peekPendingReferralCode().then((code) {
+        if (!mounted || code == null || code.isEmpty) return;
+        final step = context.read<KycRegistrationStepCubit>().state.step;
+        if (step != KycRegistrationStep.referral) return;
+        if (referralCodeCtrl.text.isEmpty) referralCodeCtrl.text = code;
+      }),
+    );
 
     // Seed the form synchronously from whatever the parent cubit handed in.
     // The non-country scalars are available immediately; the two country
@@ -202,6 +218,10 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
       body: BlocListener<KycRegistrationSubmitCubit, KycRegistrationSubmitState>(
         listener: (context, state) async {
           if (state is KycRegistrationSubmitSuccess) {
+            // Persist a looked-up invite/promo code for post-auth bind.
+            // Skip / invalid lookup leaves any prior deeplink stash untouched.
+            unawaited(stashResolvedReferralCode(_resolvedReferralCode));
+
             // The submit cubit only emits Success after a successful EIP-712
             // sign through `_signEip712`, regardless of the resulting backend
             // status (completed, pendingReview, forwardingFailed,
@@ -275,7 +295,12 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
                   PageView(
                     controller: _pageController,
                     physics: const NeverScrollableScrollPhysics(),
-                    children: KycRegistrationStep.values.map(_buildStep).toList(),
+                    children: context
+                        .read<KycRegistrationStepCubit>()
+                        .state
+                        .steps
+                        .map(_buildStep)
+                        .toList(),
                   ),
                   BlocBuilder<KycRegistrationSubmitCubit, KycRegistrationSubmitState>(
                     builder: (context, state) {
@@ -301,6 +326,13 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
 
   Widget _buildStep(KycRegistrationStep step) {
     switch (step) {
+      case KycRegistrationStep.referral:
+        return KycRegistrationReferralStep(
+          referralCodeCtrl: referralCodeCtrl,
+          onResolved: (code) => _resolvedReferralCode = code,
+          autoPasteOnEmpty: true,
+        );
+
       case KycRegistrationStep.personal:
         return KycRegistrationPersonalStep(
           typeCtrl: typeCtrl,
@@ -373,6 +405,7 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
     lastnameCtrl.dispose();
     phoneCtrl.dispose();
     nationalityCtrl.dispose();
+    referralCodeCtrl.dispose();
     addressStreetCtrl.dispose();
     addressStreetNumberCtrl.dispose();
     postalCodeCtrl.dispose();

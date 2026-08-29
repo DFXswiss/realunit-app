@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Assemble the 284 handbook screenshots from the visual-regression Golden
+# Assemble the 299 handbook screenshots from the visual-regression Golden
 # baselines. The flat `NN-name.png` output layout matches what
 # docs/handbook/de/index.html links to (`<img src="../screenshots/NN-name.png">`
 # — the relative path resolves to `docs/handbook/screenshots/NN-name.png`).
@@ -322,6 +322,23 @@ MAPPING=(
   "273-handbook-persona-mix=screens/dashboard/goldens/macos/handbook_persona_mix.png"
   "274-handbook-persona-scale=screens/dashboard/goldens/macos/handbook_persona_scale.png"
   "275-handbook-persona-exit-1j=screens/dashboard/goldens/macos/handbook_persona_exit_1j.png"
+  # 276–290: referral/promo goldens. No matching .maestro/handbook flow —
+  # eligibility (KYC 30 + 70 REALU) is not reachable in the 01–26 chain.
+  "276-referral-overview=screens/referral/goldens/macos/referral_overview_page_default.png"
+  "277-kyc-registration-referral=screens/kyc/goldens/macos/kyc_registration_referral_step_default.png"
+  "278-referral-entry-card=screens/referral/goldens/macos/referral_entry_card_eligible.png"
+  "279-referral-not-eligible=screens/referral/goldens/macos/referral_gate_not_eligible.png"
+  "280-referral-create-invite=screens/referral/goldens/macos/referral_create_page_invite_created.png"
+  "281-referral-terms=screens/referral/goldens/macos/referral_terms_page_default.png"
+  "282-referral-payout-row=screens/referral/goldens/macos/referral_payout_transaction_row_default.png"
+  "283-referral-terms-readonly=screens/referral/goldens/macos/referral_terms_page_readonly.png"
+  "284-referral-create-name=screens/referral/goldens/macos/referral_create_page_name_entry.png"
+  "285-settings-referral-eligible=screens/settings/goldens/macos/settings_page_referral_eligible.png"
+  "286-settings-legal-referral-terms=screens/settings_legal_documents/goldens/macos/settings_legal_documents_page_referral_terms.png"
+  "287-kyc-registration-referral-recognized=screens/kyc/goldens/macos/kyc_registration_referral_step_recognized.png"
+  "288-transaction-history-referral-payout=screens/transaction_history/goldens/macos/transaction_history_page_referral_payout.png"
+  "289-dashboard-referral-entry-and-payout=screens/dashboard/goldens/macos/dashboard_referral_entry_and_payout.png"
+  "290-kyc-registration-referral-promo=screens/kyc/goldens/macos/kyc_registration_referral_step_promo.png"
 )
 
 missing=()

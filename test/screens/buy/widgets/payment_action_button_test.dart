@@ -113,6 +113,7 @@ void main() {
         localizationsDelegates: [
           S.delegate,
           GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: S.delegate.supportedLocales,
       ),

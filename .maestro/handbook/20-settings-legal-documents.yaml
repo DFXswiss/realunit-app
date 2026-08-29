@@ -39,3 +39,20 @@ appId: swiss.realunit.app
     visible:
       text: '.*Dokumente der Aktionariat AG.*'
     timeout: 30000
+# Last tile is the 14.08 Teilnahmebedingungen (Ziff. 2–11). On a phone it can
+# sit below the fold, so scroll it into view, then restore Aktionariat so
+# flow 21 can tap that entry.
+- scrollUntilVisible:
+    element:
+      text: '.*Teilnahmebedingungen Referral-Programm.*'
+    direction: DOWN
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      text: '.*Teilnahmebedingungen Referral-Programm.*'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: '.*Dokumente der Aktionariat AG.*'
+    direction: UP
+    timeout: 15000

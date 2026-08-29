@@ -35,3 +35,9 @@ appId: swiss.realunit.app
 - extendedWaitUntil:
     visible: 'RealUnit kaufen'
     timeout: 30000
+# Fresh handbook wallet is not a verified shareholder with 70 REALU
+# (TB Ziff. 2, analog Verkaufen). The dashboard card must stay off this
+# screen; 289-dashboard-referral-entry-and-payout is golden-only.
+- extendedWaitUntil:
+    notVisible: 'Erhalte 20 REALU pro Weiterempfehlung'
+    timeout: 10000
