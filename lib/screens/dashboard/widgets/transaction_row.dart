@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/models/transaction.dart';
+import 'package:realunit_wallet/screens/referral/format_frozen_chf.dart';
+import 'package:realunit_wallet/screens/referral/frozen_chf_label.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/styles/icons.dart';
 import 'package:realunit_wallet/widgets/hide_amount_text.dart';
@@ -33,6 +37,8 @@ class TransactionRow extends StatelessWidget {
           secondRowTextColor: secondRowTextColor,
           showBlockchainIcon: showBlockchainIcon,
         )
+      : transaction.type == TransactionTypes.referralPayout
+      ? ReferralPayoutTransactionRow(transaction: transaction)
       : InkWell(
           child: Container(
             decoration: BoxDecoration(
@@ -116,6 +122,110 @@ class TransactionRow extends StatelessWidget {
             ),
           ),
         );
+}
+
+class ReferralPayoutTransactionRow extends StatelessWidget {
+  final Transaction transaction;
+
+  const ReferralPayoutTransactionRow({super.key, required this.transaction});
+
+  @override
+  Widget build(BuildContext context) {
+    final chf = transaction.data;
+    final s = S.of(context);
+    final date = DateFormat('dd.MM.yyyy | H:mm').format(
+      transaction.timestamp.toLocal(),
+    );
+    return BlocBuilder<SettingsBloc, SettingsState>(
+      builder: (context, settings) {
+        final amount = referralPayoutAmountText(
+          hideAmounts: settings.hideAmounts,
+          amount: transaction.amount,
+          decimals: transaction.asset.decimals,
+          symbol: transaction.asset.symbol,
+        );
+        final chfLine = chf != null && chf.isNotEmpty
+            ? s.referralPayoutChf(
+                settings.hideAmounts ? '***.**' : formatFrozenChfAmount(chf),
+              )
+            : null;
+        return Semantics(
+          container: true,
+          label: referralPayoutSemanticsLabel(
+            title: s.referralPayout,
+            date: date,
+            amount: amount,
+            chfLine: chfLine,
+          ),
+          child: ExcludeSemantics(
+            child: InkWell(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: RealUnitColors.basic.white,
+                ),
+                child: Row(
+                  spacing: 10.0,
+                  children: [
+                    Container(
+                      height: 32,
+                      width: 32,
+                      decoration: BoxDecoration(
+                        color: RealUnitColors.brand200,
+                        borderRadius: BorderRadius.circular(24.0),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: RealUnitColors.darkBlue,
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            s.referralPayout,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              height: 20 / 16,
+                            ),
+                          ),
+                          Text(
+                            date,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 16 / 12,
+                              color: RealUnitColors.neutral500,
+                            ),
+                          ),
+                          if (chf != null && chf.isNotEmpty)
+                            FrozenChfLabel(raw: chf),
+                        ],
+                      ),
+                    ),
+                    HideAmountText(
+                      leadingSymbol: '+',
+                      amount: transaction.amount,
+                      decimals: transaction.asset.decimals,
+                      fractionalDigits: 0,
+                      trimZeros: false,
+                      trailingSymbol: transaction.asset.symbol,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        height: 20 / 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
 class SavingsTransactionRow extends StatelessWidget {

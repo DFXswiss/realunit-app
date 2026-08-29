@@ -21,7 +21,7 @@ deployten Image (`handbook.realunit.app`).
 
 ## Screenshots regenerieren
 
-Es gibt keinen separaten Regeneration-Schritt: Die 284 Handbook-Screenshots
+Es gibt keinen separaten Regeneration-Schritt: Die 299 Handbook-Screenshots
 sind direkt die Golden-Baselines unter `test/goldens/` (gemappt in
 `scripts/assemble-handbook-screenshots.sh`). Eine UI-Änderung an einer der
 gemappten Pages produziert beim `flutter test test/goldens` einen Diff —
@@ -111,12 +111,21 @@ auf `https://api.dfx.swiss/v1/country`; eine lokale HTML-Vorschau fällt auf die
 ## E-Mail Previews
 
 Die HTML-Vorschauen aller vom Backend an Endkunden versendeten Mails liegen
-**nicht in diesem Repo**. Quelle ist `DFXswiss/api`:
+**nicht in diesem Repo**. Quelle für KYC-, Kauf- und Verkaufs-Mails ist
+`DFXswiss/api`:
 
 - Generator: `scripts/generate-realunit-previews.js`
 - Vorlage: `src/subdomains/supporting/notification/templates/realunit.hbs`
 - Übersetzungen: `src/shared/i18n/de/mail-realunit.json` (RealUnit-Texte) mit
   Fallback auf `src/shared/i18n/de/mail.json` (DFX-Defaults)
+
+Die Bestätigungs-E-Mail der Empfehlungsprämie (Anzahl, Datum D.M.YYYY, fixierter
+Frankenwert, TB Ziff. 6) kommt aus dem Nest-Drop-in
+[JonnyLuca/dfx-referral-api](https://github.com/JonnyLuca/dfx-referral-api)
+(`PrizeMailAdapter`, `GET /v1/realunit/referral/admin/emails`) — nicht aus
+`realunit.hbs`. Der Mailer bekommt `html` / `htmlEn` zur Sendezeit aus dem
+Klartext (ohne extra Persist-Spalte); die Überwachung bleibt der Klartext.
+Der Live-Mount bleibt `DFXswiss/backend`.
 
 Der Handbook-CI-Build (`.github/workflows/handbook.yaml`) checkt das api-Repo
 zur Build-Zeit aus, führt den Generator aus und kopiert das Ergebnis nach

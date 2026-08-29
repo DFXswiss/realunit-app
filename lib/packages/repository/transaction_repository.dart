@@ -19,38 +19,65 @@ class TransactionRepository {
   Future<int> getLatestHeight() async =>
       (await _appDatabase.getLatestTransactions(limit: 1)).firstOrNull?.height ?? 0;
 
-  Future<int> insertTransaction(Transaction transaction) => _appDatabase.insertTransactions(
-    transaction.height,
-    transaction.txId,
-    transaction.chainId,
-    transaction.senderAddress,
-    transaction.receiverAddress,
-    transaction.amount.toRadixString(16),
-    transaction.asset.id,
-    transaction.type.index,
-    transaction.note ?? '',
-    transaction.data ?? '',
-    transaction.timestamp,
-  );
+  /// SQLite UNIQUE on `txId` is case-sensitive. A payout hash `0xabc` must
+  /// not sit beside a history row `0xAbC` as a second prize/buy
+  /// (Offerte Punkt 2). Write onto the stored casing when it exists.
+  Future<int> insertTransaction(Transaction transaction) async {
+    if (await findTxIdIgnoreCase(transaction.txId) != null) {
+      return updateTransaction(transaction);
+    }
+    return _appDatabase.insertTransactions(
+      transaction.height,
+      transaction.txId,
+      transaction.chainId,
+      transaction.senderAddress,
+      transaction.receiverAddress,
+      transaction.amount.toRadixString(16),
+      transaction.asset.id,
+      transaction.type.index,
+      transaction.note ?? '',
+      transaction.data ?? '',
+      transaction.timestamp,
+    );
+  }
 
-  Future<int> updateTransaction(Transaction transaction) => _appDatabase.updateTransaction(
-    transaction.txId,
-    height: transaction.height,
-    chainId: transaction.chainId,
-    senderAddress: transaction.senderAddress,
-    receiverAddress: transaction.receiverAddress,
-    amount: transaction.amount.toRadixString(16),
-    asset: transaction.asset.id,
-    type: transaction.type.index,
-    note: transaction.note ?? '',
-    data: transaction.data ?? '',
-    timeStamp: transaction.timestamp,
-  );
+  /// Payout hashes and history hashes do not always share casing.
+  /// Write onto the stored row so converting an on-chain transfer into a
+  /// prize cannot no-op and leave frozen CHF off the history line
+  /// (Offerte Punkt 2).
+  Future<int> updateTransaction(Transaction transaction) async {
+    final stored = await findTxIdIgnoreCase(transaction.txId) ?? transaction.txId;
+    return _appDatabase.updateTransaction(
+      stored,
+      height: transaction.height,
+      chainId: transaction.chainId,
+      senderAddress: transaction.senderAddress,
+      receiverAddress: transaction.receiverAddress,
+      amount: transaction.amount.toRadixString(16),
+      asset: transaction.asset.id,
+      type: transaction.type.index,
+      note: transaction.note ?? '',
+      data: transaction.data ?? '',
+      timeStamp: transaction.timestamp,
+    );
+  }
 
   Future<void> insertDfxTransaction(DfxTransaction transaction) async {
     await insertTransaction(transaction);
+    final stored = await findTxIdIgnoreCase(transaction.txId) ?? transaction.txId;
+    final existing = await _appDatabase.getDfxTransactionDetails(stored);
+    if (existing != null) {
+      await _appDatabase.updateDfxTransactionDetails(
+        txId: stored,
+        dfxId: transaction.dfxId,
+        rate: transaction.rate.toString(),
+        inputTxId: transaction.inputTxId,
+        outputTxId: transaction.outputTxId,
+      );
+      return;
+    }
     await _appDatabase.insertDfxTransactionDetails(
-      txId: transaction.txId,
+      txId: stored,
       dfxId: transaction.dfxId,
       rate: transaction.rate.toString(),
       inputTxId: transaction.inputTxId,
@@ -60,8 +87,9 @@ class TransactionRepository {
 
   Future<void> updateDfxTransaction(DfxTransaction transaction) async {
     await updateTransaction(transaction);
+    final stored = await findTxIdIgnoreCase(transaction.txId) ?? transaction.txId;
     await _appDatabase.updateDfxTransactionDetails(
-      txId: transaction.txId,
+      txId: stored,
       dfxId: transaction.dfxId,
       rate: transaction.rate.toString(),
       inputTxId: transaction.inputTxId,
@@ -71,6 +99,34 @@ class TransactionRepository {
 
   Future<bool> existsTransaction(String txId) =>
       _appDatabase.getTransaction(txId).then((txData) => txData != null);
+
+  /// Stored `txId` when [txId] matches ignoring case, otherwise null.
+  Future<String?> findTxIdIgnoreCase(String txId) =>
+      _appDatabase.getTransactionIgnoreCase(txId).then((row) => row?.txId);
+
+  /// True when the stored row is already a prize (Offerte Punkt 2).
+  /// Account history must not rewrite it as a buy and drop frozen CHF.
+  Future<bool> isReferralPayoutIgnoreCase(String txId) async {
+    final row = await _appDatabase.getTransactionIgnoreCase(txId);
+    return row?.type == TransactionTypes.referralPayout.index;
+  }
+
+  /// Drop leftover DFX Beleg details first so SQLite FK
+  /// (`DfxTransactionDetails.txId` → `Transactions.txId`, NO ACTION)
+  /// cannot block the leftover synthetic `referral-payout-{id}` delete
+  /// when a hashed prize replaces it (Offerte Punkt 2). Match the stored
+  /// hash ignoring case — payouts and history do not always share casing.
+  Future<int> deleteTransaction(String txId) async {
+    final stored = await findTxIdIgnoreCase(txId);
+    if (stored == null) return 0;
+    await deleteDfxTransactionDetailsIgnoreCase(stored);
+    return _appDatabase.deleteTransaction(stored);
+  }
+
+  /// Prize rows have no DFX Beleg. Drop leftover buy/sell metadata so a
+  /// converted on-chain transfer cannot keep a live rate or receipt id.
+  Future<int> deleteDfxTransactionDetailsIgnoreCase(String txId) =>
+      _appDatabase.deleteDfxTransactionDetailsIgnoreCase(txId);
 
   Future<List<Transaction>> get allTransactions async {
     final assets = await _assetRepository.allAssets;

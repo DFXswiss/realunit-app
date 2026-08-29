@@ -32,6 +32,7 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_account_service.d
 import 'package:realunit_wallet/packages/service/dfx/real_unit_buy_payment_info_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_legal_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pay_service.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_registration_service.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_sell_payment_info_service.dart';
@@ -40,6 +41,7 @@ import 'package:realunit_wallet/packages/service/session_cache.dart';
 import 'package:realunit_wallet/packages/service/settings_service.dart';
 import 'package:realunit_wallet/packages/service/transaction_history_service.dart';
 import 'package:realunit_wallet/packages/service/wallet_service.dart';
+import 'package:realunit_wallet/packages/io/install_referrer_adapter.dart';
 import 'package:realunit_wallet/packages/storage/database.dart';
 import 'package:realunit_wallet/packages/storage/secure_storage.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
@@ -47,6 +49,7 @@ import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/account_currency_sync.dart';
 import 'package:realunit_wallet/setup/database.dart';
+import 'package:realunit_wallet/setup/routing/capture_install_referrer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -95,6 +98,11 @@ Future<String> setupEssentials({
 }
 
 Future<void> finishSetup(String encryptionKey) async {
+  await captureInstallReferrer(
+    prefs: getIt<SharedPreferences>(),
+    port: const InstallReferrerAdapter(),
+  );
+
   getIt.registerSingleton(AppDatabase(encryptionKey));
   setupRepositories();
 
@@ -202,6 +210,9 @@ void setupServices() {
   );
   getIt.registerFactory(
     () => RealUnitLegalService(getIt<AppStore>(), getIt<WalletService>()),
+  );
+  getIt.registerFactory(
+    () => RealUnitReferralService(getIt<AppStore>(), getIt<WalletService>()),
   );
   getIt.registerFactory(
     () => RealUnitPayService(getIt<AppStore>(), getIt<WalletService>()),

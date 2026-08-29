@@ -8,6 +8,7 @@ import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_step/kyc_registration_step_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_submit/kyc_registration_submit_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/kyc_registration_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helper/helper.dart';
 
@@ -50,6 +51,7 @@ void main() {
   // constructor. The default golden uses `initialUserData: null` so it asserts
   // on the empty-form render, which is the first-time-registration path.
   setUpAll(() {
+    SharedPreferences.setMockInitialValues({});
     GetIt.instance.registerSingleton<DfxCountryService>(fixtureCountryService());
   });
 

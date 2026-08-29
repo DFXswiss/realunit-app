@@ -17,6 +17,7 @@ import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_por
 import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_portfolio_chart_widget.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_price_widget.dart';
 import 'package:realunit_wallet/screens/dashboard/widgets/sections/dashboard_transaction_history.dart';
+import 'package:realunit_wallet/screens/referral/widgets/referral_entry_card.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
@@ -137,6 +138,7 @@ class DashboardView extends StatelessWidget {
                             spacing: 20.0,
                             children: [
                               const DashboardActions(),
+                              const ReferralEntryCard(),
                               DashboardPortfolio(
                                 price: dashboardState.price,
                               ),

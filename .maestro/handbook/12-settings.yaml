@@ -24,3 +24,13 @@ appId: swiss.realunit.app
 - extendedWaitUntil:
     visible: 'Einstellungen'
     timeout: 30000
+# Same gate as the dashboard card. Wait for a settings tile that does not
+# depend on the referral API, then assert Empfehlungen is still absent so
+# a late summary 200 cannot have opened the tile on a fresh wallet.
+- extendedWaitUntil:
+    visible:
+      text: '.*Rechtsdokumente.*'
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: 'Empfehlungen'
+    timeout: 8000

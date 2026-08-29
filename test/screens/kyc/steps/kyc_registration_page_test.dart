@@ -34,10 +34,14 @@ import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registrati
 import 'package:realunit_wallet/screens/kyc/steps/registration/kyc_registration_page.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_address_step.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_personal_step.dart';
+import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_tax_step.dart';
+import 'package:realunit_wallet/setup/routing/referral_pending_code.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/buttons/app_text_button.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helper/helper.dart';
 
@@ -116,6 +120,7 @@ void main() {
   late HomeBloc homeBloc;
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     registrationStepCubit = MockRegistrationStepCubit();
     registrationSubmitCubit = MockRegistrationSubmitCubit();
     kycCubit = MockKycCubit();
@@ -211,7 +216,85 @@ void main() {
       await tester.pump();
 
       expect(find.byType(KycRegistrationPersonalStep).hitTestable(), findsOne);
+      expect(
+        find.text('Einladungs- oder Promo-Code (optional)'),
+        findsNothing,
+      );
     });
+
+    testWidgets('renders $KycRegistrationReferralStep with skip', (tester) async {
+      final state = const KycRegistrationStepState(
+        step: KycRegistrationStep.referral,
+        steps: [
+          KycRegistrationStep.referral,
+          KycRegistrationStep.personal,
+        ],
+      );
+      when(() => registrationStepCubit.state).thenReturn(state);
+
+      await tester.pumpApp(buildSubject(const KycRegistrationView()));
+      await tester.pump();
+
+      (tester.widget(find.byType(PageView)) as PageView).controller?.jumpToPage(state.index);
+      await tester.pump();
+
+      expect(find.byType(KycRegistrationReferralStep).hitTestable(), findsOne);
+      expect(
+        tester
+            .widget<KycRegistrationReferralStep>(
+              find.byType(KycRegistrationReferralStep),
+            )
+            .autoPasteOnEmpty,
+        isTrue,
+      );
+      expect(find.byType(AppTextButton), findsOneWidget);
+    });
+
+    testWidgets('prefills a stashed invite code on the referral step', (
+      tester,
+    ) async {
+      addTearDown(clearPendingReferralCode);
+      await stashPendingReferralCode('AB12CD');
+      const state = KycRegistrationStepState(
+        step: KycRegistrationStep.referral,
+        steps: [
+          KycRegistrationStep.referral,
+          KycRegistrationStep.personal,
+        ],
+      );
+      when(() => registrationStepCubit.state).thenReturn(state);
+
+      await tester.pumpApp(buildSubject(const KycRegistrationView()));
+      await tester.pump();
+      (tester.widget(find.byType(PageView)) as PageView).controller
+          ?.jumpToPage(state.index);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('AB12CD'), findsOneWidget);
+    });
+
+    testWidgets(
+      'does not prefill a stashed code after leaving the referral step',
+      (tester) async {
+        addTearDown(clearPendingReferralCode);
+        await stashPendingReferralCode('AB12CD');
+        const state = KycRegistrationStepState(
+          step: KycRegistrationStep.personal,
+          steps: [
+            KycRegistrationStep.referral,
+            KycRegistrationStep.personal,
+          ],
+        );
+        when(() => registrationStepCubit.state).thenReturn(state);
+
+        await tester.pumpApp(buildSubject(const KycRegistrationView()));
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('AB12CD'), findsNothing);
+      },
+    );
 
     testWidgets('renders $KycRegistrationAddressStep', (tester) async {
       final state = const KycRegistrationStepState(
@@ -527,7 +610,10 @@ void main() {
         await tester.pumpApp(const KycRegistrationPage(initialUserData: _fixtureUserData));
         // Scalars seed synchronously in initState; the two country lookups
         // resolve through the fixture-backed DfxCountryService and setState on
-        // completion.
+        // completion. The live pager starts on the optional referral step.
+        await tester.pumpAndSettle();
+        // Live cubit order: referral, personal, address, tax.
+        (tester.widget(find.byType(PageView)) as PageView).controller?.jumpToPage(1);
         await tester.pumpAndSettle();
 
         expect(find.text('Ada'), findsOneWidget);
@@ -556,7 +642,7 @@ void main() {
 
         // Reveal the address step and confirm its residence field resolved the
         // address country too.
-        (tester.widget(find.byType(PageView)) as PageView).controller?.jumpToPage(1);
+        (tester.widget(find.byType(PageView)) as PageView).controller?.jumpToPage(2);
         await tester.pumpAndSettle();
         final resField = tester.widget<DropdownButtonFormField<Country>>(
           find.descendant(
@@ -583,6 +669,8 @@ void main() {
       });
 
       await tester.pumpApp(const KycRegistrationPage(initialUserData: _fixtureUserData));
+      await tester.pumpAndSettle();
+      (tester.widget(find.byType(PageView)) as PageView).controller?.jumpToPage(1);
       await tester.pumpAndSettle();
 
       // The scalar prefill still applies. The lookup failure is swallowed by
@@ -696,6 +784,7 @@ void main() {
             localizationsDelegates: const [
               S.delegate,
               GlobalMaterialLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
             ],
             supportedLocales: S.delegate.supportedLocales,
           ),

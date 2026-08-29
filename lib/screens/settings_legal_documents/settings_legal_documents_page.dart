@@ -66,6 +66,16 @@ class SettingsLegalDocumentsPage extends StatelessWidget {
                   onTap: () => context.pushNamed(SettingsRoutes.dfxDocuments),
                   trailingIcon: Icons.chevron_right_rounded,
                 ),
+                OutlinedTile(
+                  key: const Key('settings-referral-terms'),
+                  leading: const Icon(
+                    Icons.card_giftcard_outlined,
+                    color: RealUnitColors.realUnitBlue,
+                  ),
+                  title: S.of(context).referralTermsTitle,
+                  onTap: () => context.pushNamed(LegalRoutes.referralTerms),
+                  trailingIcon: Icons.chevron_right_rounded,
+                ),
               ],
             ),
           ),

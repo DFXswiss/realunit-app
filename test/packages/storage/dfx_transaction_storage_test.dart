@@ -66,6 +66,15 @@ void main() {
       expect(await db.getDfxTransactionDetails('nope'), isNull);
     });
 
+    test('deleteDfxTransactionDetailsIgnoreCase drops mixed-case hashes', () async {
+      await seedTx('0xAbC');
+      await db.insertDfxTransactionDetails(txId: '0xAbC', dfxId: 7, rate: '1.38');
+
+      expect(await db.deleteDfxTransactionDetailsIgnoreCase('0xabc'), 1);
+      expect(await db.getDfxTransactionDetails('0xAbC'), isNull);
+      expect(await db.deleteDfxTransactionDetailsIgnoreCase('0xabc'), 0);
+    });
+
     test('getDfxTransactionDetailsByDfxId looks up by the DFX id', () async {
       await seedTx('tx-1');
       await db.insertDfxTransactionDetails(txId: 'tx-1', dfxId: 42);

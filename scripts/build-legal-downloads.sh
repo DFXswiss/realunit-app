@@ -16,9 +16,9 @@
 # weasyprint is used as the PDF engine (HTML/CSS based) deliberately, to avoid
 # pulling a full TeX Live into the image just for PDF rendering.
 #
-# Document discovery mirrors assemble-handbook-legal.py: the same three bases,
-# languages discovered by glob (never hardcoded), so a future assets/legal/
-# <base>_<lang>.md is picked up automatically.
+# Document discovery mirrors assemble-handbook-legal.py: the same bases,
+# languages discovered by glob (never hardcoded). Keep this list in lockstep
+# with BASES in assemble-handbook-legal.py.
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
@@ -34,7 +34,7 @@ repo="$(cd "$script_dir/.." && pwd)"
 legal_src="$repo/assets/legal"
 legal_out="$out/legal"
 
-bases="privacy_policy terms_of_use registration_agreement"
+bases="privacy_policy terms_of_use registration_agreement referral_terms"
 
 mkdir -p "$legal_out"
 
