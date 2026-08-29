@@ -373,6 +373,7 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
     lastnameCtrl.dispose();
     phoneCtrl.dispose();
     nationalityCtrl.dispose();
+    birthdayCtrl.dispose();
     addressStreetCtrl.dispose();
     addressStreetNumberCtrl.dispose();
     postalCodeCtrl.dispose();
