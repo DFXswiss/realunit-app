@@ -51,10 +51,24 @@ def upload_sentry_symbols(marketing_version:, version_code:, symbols_path:, dart
       UI.user_error!("Sentry upload: Dart obfuscation map not found at #{dart_symbol_map_path}")
     end
 
-    sh("dart", "run", "sentry_dart_plugin",
-       "--sentry-define=symbols_path=#{symbols_path}",
-       "--sentry-define=dart_symbol_map_path=#{dart_symbol_map_path}"
-    )
+    # Self-hosted Sentry sometimes returns "Not all chunks available
+    # for assembling" on libapp.so after the CLI already said the
+    # files were on the server. Retry that class instead of failing
+    # the Play Store upload on the first assemble flake.
+    max_attempts = 3
+    attempt = 0
+    begin
+      attempt += 1
+      sh("dart", "run", "sentry_dart_plugin",
+         "--sentry-define=symbols_path=#{symbols_path}",
+         "--sentry-define=dart_symbol_map_path=#{dart_symbol_map_path}"
+      )
+    rescue FastlaneCore::Interface::FastlaneShellError
+      raise if attempt >= max_attempts
+      UI.important("Sentry symbol upload failed (#{attempt}/#{max_attempts}), retrying in 20s")
+      sleep 20
+      retry
+    end
   end
 end
 
