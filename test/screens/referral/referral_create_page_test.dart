@@ -6,11 +6,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_created_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
 import 'package:realunit_wallet/screens/referral/referral_create_page.dart';
 import 'package:realunit_wallet/screens/referral/referral_error_message.dart';
@@ -20,6 +22,8 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
 class _MockReferralCubit extends MockCubit<ReferralState>
     implements ReferralCubit {}
+
+class _MockService extends Mock implements RealUnitReferralService {}
 
 const _summary = ReferralSummaryDto(
   eligible: true,
@@ -1078,4 +1082,126 @@ void main() {
 
     expect(popped, isTrue);
   });
+
+  testWidgets(
+    'ReferralCreatePage loads summary then opens the name-entry form',
+    (tester) async {
+      final service = _MockService();
+      when(() => service.getSummary()).thenAnswer((_) async => _summary);
+      when(() => service.getInvites()).thenAnswer((_) async => []);
+      GetIt.instance.registerSingleton<RealUnitReferralService>(service);
+      addTearDown(() async {
+        await GetIt.instance.reset();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: const ReferralCreatePage(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.byType(TextFormField), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'submit from overview opens create then posts the guest name',
+    (tester) async {
+      when(() => cubit.state).thenReturn(
+        ReferralOverviewLoaded(summary: _summary, invites: const []),
+      );
+      whenListen(
+        cubit,
+        const Stream<ReferralState>.empty(),
+        initialState: ReferralOverviewLoaded(
+          summary: _summary,
+          invites: const [],
+        ),
+      );
+      when(() => cubit.openCreate()).thenReturn(null);
+      when(
+        () => cubit.createInvite(guestName: any(named: 'guestName')),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: BlocProvider<ReferralCubit>.value(
+            value: cubit,
+            child: const ReferralCreateView(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(find.byType(TextFormField), 'Alice');
+      await tester.tap(find.byType(AppFilledButton));
+      await tester.pump();
+
+      verify(() => cubit.openCreate()).called(1);
+      verify(() => cubit.createInvite(guestName: 'Alice')).called(1);
+    },
+  );
+
+  testWidgets(
+    'submit is a no-op when create is already in flight on the cubit',
+    (tester) async {
+      when(() => cubit.state).thenReturn(ReferralCreateReady(summary: _summary));
+      whenListen(
+        cubit,
+        const Stream<ReferralState>.empty(),
+        initialState: ReferralCreateReady(summary: _summary),
+      );
+      when(
+        () => cubit.createInvite(guestName: any(named: 'guestName')),
+      ).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: BlocProvider<ReferralCubit>.value(
+            value: cubit,
+            child: const ReferralCreateView(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.enterText(find.byType(TextFormField), 'Alice');
+      when(() => cubit.state).thenReturn(
+        const ReferralCreating(summary: _summary, guestName: 'Alice'),
+      );
+      await tester.tap(find.byType(AppFilledButton));
+      await tester.pump();
+
+      verifyNever(
+        () => cubit.createInvite(guestName: any(named: 'guestName')),
+      );
+    },
+  );
 }
