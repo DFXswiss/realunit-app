@@ -75,6 +75,31 @@ void main() {
       expect(cubit.state.balance, BigInt.from(7000));
     });
 
+    test(
+        'a stream error is handled (not unhandled) and later balances still '
+        'update (issue #657 P4 S6 regression)', () async {
+      final cubit = SellBalanceCubit(repo, appStore);
+
+      // Without an onError handler this error escaped as an unhandled async
+      // error (failing the test) and stopped the sell balance. It must now be
+      // logged, and — cancelOnError being false — a later balance still lands.
+      controller.addError(Exception('balance backend blip'));
+      await Future<void>.delayed(Duration.zero);
+
+      final updated = Balance(
+        chainId: realUnitAsset.chainId,
+        contractAddress: realUnitAsset.address,
+        walletAddress: _wallet,
+        balance: BigInt.from(4242),
+        asset: realUnitAsset,
+      );
+      final ready = cubit.stream.firstWhere((b) => b.balance == BigInt.from(4242));
+      controller.add(updated);
+      await ready.timeout(const Duration(seconds: 1));
+
+      expect(cubit.state.balance, BigInt.from(4242));
+    });
+
     test('close() cancels the subscription cleanly', () async {
       final cubit = SellBalanceCubit(repo, appStore);
 
