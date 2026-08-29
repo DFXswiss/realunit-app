@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
@@ -34,6 +36,25 @@ void main() {
       await cubit.stream.firstWhere((s) => s.isNotEmpty);
 
       expect(cubit.state, [tx1, tx2]);
+    });
+
+    test('does not emit (no StateError) if closed before the fetch resolves '
+        '(issue #657 P3 #16 regression)', () async {
+      final completer = Completer<List<TransactionDto>>();
+      when(() => service.fetchPendingTransactions())
+          .thenAnswer((_) => completer.future);
+
+      final cubit = PendingTransactionsCubit(service);
+      // Close while the constructor-started fetch is still in flight.
+      await cubit.close();
+
+      // Resolving now would, without the isClosed guard, emit after close and
+      // throw 'Cannot emit new states after calling close'.
+      completer.complete([_StubTx()]);
+      await Future<void>.delayed(Duration.zero);
+
+      // No exception escaped; the closed cubit kept its last state.
+      expect(cubit.isClosed, isTrue);
     });
 
     test('falls back to an empty list when the service throws', () async {

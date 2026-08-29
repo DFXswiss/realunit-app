@@ -14,9 +14,14 @@ class PendingTransactionsCubit extends Cubit<List<TransactionDto>> {
   Future<void> _loadPendingTransactions() async {
     try {
       final transactions = await _transactionHistoryService.fetchPendingTransactions();
+      // The fetch is started in the constructor and not awaited, so the cubit
+      // can be closed (page popped) before it resolves. Guard the emit to avoid
+      // a StateError after close (issue #657 P3 #16).
+      if (isClosed) return;
       emit(transactions);
     } catch (e) {
       developer.log('Failed to load pending transactions: $e', name: '$PendingTransactionsCubit');
+      if (isClosed) return;
       emit([]);
     }
   }
