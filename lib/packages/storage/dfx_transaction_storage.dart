@@ -45,6 +45,23 @@ extension DfxTransactionStorage on AppDatabase {
 
   Future<List<DfxTransactionDetailsData>> get allDfxTransactionDetails =>
       dfxTransactionDetails.all().get();
+
+  Future<int> deleteDfxTransactionDetails(String txId) =>
+      (delete(dfxTransactionDetails)..where((row) => row.txId.equals(txId))).go();
+
+  /// Hex hashes are stored as the API sent them. Drop Beleg metadata for a
+  /// prize even when the payout hash casing differs from the history row.
+  Future<int> deleteDfxTransactionDetailsIgnoreCase(String txId) async {
+    final rows = await (select(
+      dfxTransactionDetails,
+    )..where((row) => row.txId.collate(Collate.noCase).equals(txId))).get();
+    if (rows.isEmpty) return 0;
+    var n = 0;
+    for (final row in rows) {
+      n += await deleteDfxTransactionDetails(row.txId);
+    }
+    return n;
+  }
 }
 
 // The schema getters below are read by `drift_dev` at codegen time and the

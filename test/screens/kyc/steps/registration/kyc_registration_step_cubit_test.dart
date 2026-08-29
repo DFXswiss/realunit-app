@@ -4,37 +4,39 @@ import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registrati
 
 void main() {
   group('$KycRegistrationStepCubit initial state', () {
-    test('starts at the personal step with all steps in order', () {
+    test('starts at the optional referral step with all steps in order', () {
       final cubit = KycRegistrationStepCubit();
 
-      expect(cubit.state.step, KycRegistrationStep.personal);
+      expect(cubit.state.step, KycRegistrationStep.referral);
       expect(cubit.state.steps, [
+        KycRegistrationStep.referral,
         KycRegistrationStep.personal,
         KycRegistrationStep.address,
         KycRegistrationStep.taxResidence,
       ]);
       expect(cubit.state.index, 0);
-      expect(cubit.state.totalSteps, 3);
-      expect(cubit.state.progress, closeTo(1 / 3, 1e-9));
+      expect(cubit.state.totalSteps, 4);
+      expect(cubit.state.progress, closeTo(1 / 4, 1e-9));
       expect(cubit.state.canGoBack, isFalse);
     });
   });
 
   group('next', () {
     blocTest<KycRegistrationStepCubit, KycRegistrationStepState>(
-      'advances from personal to address',
+      'advances from referral to personal',
       build: KycRegistrationStepCubit.new,
       act: (c) => c.next(),
       verify: (c) {
-        expect(c.state.step, KycRegistrationStep.address);
+        expect(c.state.step, KycRegistrationStep.personal);
         expect(c.state.index, 1);
-        expect(c.state.progress, closeTo(2 / 3, 1e-9));
+        expect(c.state.progress, closeTo(2 / 4, 1e-9));
         expect(c.state.canGoBack, isTrue);
       },
     );
 
     test('next() at the last step is a no-op (no emit)', () {
       final cubit = KycRegistrationStepCubit()
+        ..next()
         ..next()
         ..next();
       expect(cubit.state.step, KycRegistrationStep.taxResidence);
@@ -46,13 +48,13 @@ void main() {
 
   group('previous', () {
     blocTest<KycRegistrationStepCubit, KycRegistrationStepState>(
-      'goes from address back to personal',
+      'goes from personal back to referral',
       build: KycRegistrationStepCubit.new,
       act: (c) => c
         ..next()
         ..previous(),
       verify: (c) {
-        expect(c.state.step, KycRegistrationStep.personal);
+        expect(c.state.step, KycRegistrationStep.referral);
         expect(c.state.canGoBack, isFalse);
       },
     );
@@ -74,7 +76,7 @@ void main() {
       expect(state.progress, closeTo(0.5, 1e-9));
     });
 
-    test('canGoBack only false at the personal step', () {
+    test('canGoBack is false only at the first step', () {
       const personal = KycRegistrationStepState(
         steps: [KycRegistrationStep.personal, KycRegistrationStep.address],
         step: KycRegistrationStep.personal,

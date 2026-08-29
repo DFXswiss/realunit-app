@@ -16,6 +16,7 @@ class AppFilledButton extends StatelessWidget {
     this.state = .idle,
     this.icon,
     this.fullWidth = true,
+    this.autofocus = false,
   });
 
   final String label;
@@ -24,6 +25,7 @@ class AppFilledButton extends StatelessWidget {
   final FilledButtonState state;
   final IconData? icon;
   final bool fullWidth;
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +44,7 @@ class AppFilledButton extends StatelessWidget {
     if (icon != null) {
       return FilledButton.icon(
         onPressed: onPressed,
+        autofocus: autofocus,
         style: style,
         icon: Icon(
           icon!,
@@ -55,6 +58,7 @@ class AppFilledButton extends StatelessWidget {
     }
     return FilledButton(
       onPressed: onPressed,
+      autofocus: autofocus,
       style: style,
       child: Text(
         label,
@@ -93,7 +97,7 @@ class AppFilledButton extends StatelessWidget {
   Widget _successButton() {
     if (icon != null) {
       return FilledButton.icon(
-        onPressed: null,
+        onPressed: onPressed,
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.all(RealUnitColors.green),
           foregroundColor: WidgetStateProperty.all(RealUnitColors.basic.white),
@@ -107,7 +111,7 @@ class AppFilledButton extends StatelessWidget {
       );
     }
     return FilledButton(
-      onPressed: null,
+      onPressed: onPressed,
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.all(RealUnitColors.green),
         foregroundColor: WidgetStateProperty.all(RealUnitColors.basic.white),
@@ -123,7 +127,7 @@ class AppFilledButton extends StatelessWidget {
   Widget _errorButton() {
     if (icon != null) {
       return FilledButton.icon(
-        onPressed: null,
+        onPressed: onPressed,
         style: ButtonStyle(
           backgroundColor: WidgetStateProperty.all(RealUnitColors.status.red600),
           foregroundColor: WidgetStateProperty.all(RealUnitColors.basic.white),
@@ -138,7 +142,7 @@ class AppFilledButton extends StatelessWidget {
     }
 
     return FilledButton(
-      onPressed: null,
+      onPressed: onPressed,
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.all(RealUnitColors.status.red600),
         foregroundColor: WidgetStateProperty.all(RealUnitColors.basic.white),

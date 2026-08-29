@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:go_router/go_router.dart';
+import 'package:realunit_wallet/setup/routing/referral_bind.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/onboarding_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/pin_routes.dart';
@@ -222,6 +223,7 @@ void applyBootNavAction(
         if (payload != null) {
           router.goNamed(routeName);
           unawaited(router.pushNamed(AppRoutes.pay, extra: payload));
+          unawaited(bindPendingReferralCode(router));
           return;
         }
       }
@@ -231,6 +233,9 @@ void applyBootNavAction(
       // locked-warm-resume payment deeplinks can still replay. Do NOT clear
       // the pending-payment stash here.
       router.goNamed(routeName);
+      if (routeName == AppRoutes.dashboard) {
+        unawaited(bindPendingReferralCode(router));
+      }
       return;
     case BootNavRestore(:final location):
       // Return to the in-flight route the user was on before the re-lock,
@@ -254,6 +259,7 @@ void applyBootNavAction(
       if (payload != null) {
         unawaited(router.pushNamed(AppRoutes.pay, extra: payload));
       }
+      unawaited(bindPendingReferralCode(router));
       return;
     case BootNavStay():
       // Already on a valid non-gate route — discard any stale resume capture.
@@ -266,6 +272,7 @@ void applyBootNavAction(
       if (payload != null) {
         unawaited(router.pushNamed(AppRoutes.pay, extra: payload));
       }
+      unawaited(bindPendingReferralCode(router));
       return;
   }
 }

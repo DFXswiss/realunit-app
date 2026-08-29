@@ -1,6 +1,6 @@
 part of 'kyc_registration_step_cubit.dart';
 
-enum KycRegistrationStep { personal, address, taxResidence }
+enum KycRegistrationStep { personal, address, taxResidence, referral }
 
 class KycRegistrationStepState {
   final List<KycRegistrationStep> steps;
@@ -17,10 +17,12 @@ class KycRegistrationStepState {
 
   double get progress => (index + 1) / totalSteps;
 
-  bool get canGoBack => step != KycRegistrationStep.personal;
+  bool get canGoBack => index > 0;
 
   String title(BuildContext context) {
     switch (step) {
+      case KycRegistrationStep.referral:
+        return S.of(context).referralCodeHeading;
       case KycRegistrationStep.personal:
         return S.of(context).personalData;
       case KycRegistrationStep.address:

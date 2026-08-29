@@ -14,7 +14,7 @@ if (keystorePropertiesFile.exists()) {
 android {
     namespace = "swiss.realunit.app"
     compileSdk =  36
-    ndkVersion = "29.0.13113456 rc1"
+    ndkVersion = "29.0.13113456"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
@@ -63,4 +63,8 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    implementation "com.android.installreferrer:installreferrer:2.2"
 }

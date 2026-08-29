@@ -10,6 +10,8 @@ extension PumpApp on WidgetTester {
         localizationsDelegates: [
           S.delegate,
           GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
         ],
         supportedLocales: S.delegate.supportedLocales,
         home: widget,

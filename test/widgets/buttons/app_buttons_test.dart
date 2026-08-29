@@ -75,6 +75,33 @@ void main() {
       expect(taps, 1);
     });
 
+    testWidgets('idle: autofocus defaults to false on the FilledButton',
+        (tester) async {
+      await tester.pumpWidget(_host(
+        AppFilledButton(label: 'Go', onPressed: () {}),
+      ));
+
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).autofocus, isFalse);
+    });
+
+    testWidgets('idle: autofocus is forwarded to FilledButton and FilledButton.icon',
+        (tester) async {
+      await tester.pumpWidget(_host(
+        AppFilledButton(label: 'Retry', autofocus: true, onPressed: () {}),
+      ));
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).autofocus, isTrue);
+
+      await tester.pumpWidget(_host(
+        AppFilledButton(
+          label: 'Retry',
+          icon: Icons.refresh,
+          autofocus: true,
+          onPressed: () {},
+        ),
+      ));
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).autofocus, isTrue);
+    });
+
     testWidgets('loading: shows CupertinoActivityIndicator, disables onPressed',
         (tester) async {
       var taps = 0;
@@ -93,7 +120,7 @@ void main() {
       expect(taps, 0);
     });
 
-    testWidgets('success: button is non-tappable (onPressed: null)', (tester) async {
+    testWidgets('success: honors onPressed when provided', (tester) async {
       var taps = 0;
       await tester.pumpWidget(_host(
         AppFilledButton(
@@ -105,10 +132,10 @@ void main() {
 
       await tester.tap(find.byType(AppFilledButton));
       await tester.pump();
-      expect(taps, 0);
+      expect(taps, 1);
     });
 
-    testWidgets('error: button is non-tappable (onPressed: null)', (tester) async {
+    testWidgets('error: honors onPressed when provided', (tester) async {
       var taps = 0;
       await tester.pumpWidget(_host(
         AppFilledButton(
@@ -120,7 +147,7 @@ void main() {
 
       await tester.tap(find.byType(AppFilledButton));
       await tester.pump();
-      expect(taps, 0);
+      expect(taps, 1);
     });
 
     testWidgets('icon variant renders the Icon in idle state', (tester) async {

@@ -1144,6 +1144,9 @@
               <a href="#spec-web"><span class="spec-num">W</span>Web · realunit.app</a>
             </li>
             <li>
+              <a href="#spec-referral"><span class="spec-num">R</span>Empfehlungen &amp; Promo-Code</a>
+            </li>
+            <li>
               <a href="#spec-mails"><span class="spec-num">M</span>E-Mails</a>
             </li>
             <li>
@@ -9151,6 +9154,423 @@
 
         <hr class="sep" />
 
+        <details id="spec-referral" class="spec" open>
+          <summary>
+            <div class="spec-head">
+              <div class="lhs">
+                <h2><span class="num">R</span>Empfehlungen &amp; Promo-Code</h2>
+                <div class="file">lib/screens/referral/ · docs/referral-programme.md</div>
+              </div>
+              <div class="rhs">
+                <b>API entscheidet</b>
+                <div class="links">
+                  <a href="https://github.com/RealUnitCH/app/blob/develop/docs/referral-programme.md">Vertrag ↗</a>
+                </div>
+              </div>
+            </div>
+          </summary>
+          <p class="spec-intro">
+            Verifizierte Aktionäre mit ausreichendem Bestand sehen auf dem Dashboard
+            die Karte <b>Empfehlungen</b> («Erhalte 20 REALU pro Weiterempfehlung»)
+            und denselben Einstieg in den Einstellungen. Sichtbarkeit, Mindestbestand
+            und Auszahlung entscheidet die DFX API; die App rendert
+            <code>eligible</code> 1:1. Nach einem fehlgeschlagenen ersten
+            Summary-GET (unmounted, 503, Timeout) blendet die Karte aus;
+            solange die Route aktuell und die App im Vordergrund ist, wird
+            die Gate erneut geladen, ohne eine bereits sichtbare Karte zu
+            verstecken. Ein 200 mit <code>eligible: false</code> wird nicht
+            gepollt.
+          </p>
+          <p>
+            Einladung erstellen: Name der eingeladenen Person (eine Zeile,
+            Zeilenumbrüche werden zu Leerzeichen, höchstens 80 Zeichen;
+            Absenden räumt den Feldtext auf; Autofokus), Checkbox
+            <b>Ich habe die Teilnahmebedingungen gelesen und akzeptiert</b>
+            (Checkbox erst nach geladenem TB-Text; Button erst danach aktiv;
+            der TB-Text ist markierbar), persönlicher Link von der API.
+            Der Einladungslink ist immer
+            <code>https://realunit.app/invite/…</code>
+            (<code>http://</code>, <code>//realunit.app</code> und
+            <code>www.realunit.app</code> werden auf den Apex gefaltet;
+            ein API-Pfad <code>/promo/…</code> bleibt Promo).
+            Nach dem Erstellen und in der Übersicht erscheint der personalisierte
+            Share-Text unter <b>Persönlicher Einladungslink</b>; Kopieren und
+            Versenden schicken denselben Text.
+            Nach der Annahme bleiben die Teilnahmebedingungen über den
+            Übersichtstitel und Einstellungen → Rechtliche Dokumente
+            (letzter Eintrag) lesbar. Kopieren bestätigt mit
+            <b>Kopiert</b> für zwei Sekunden nur nach erfolgreichem Schreiben
+            in die Zwischenablage und liest den Share-Text vor; ein erneutes
+            Tippen kopiert wieder.
+            Versenden setzt Titel und Betreff <b>Persönlicher Einladungslink</b>
+            und verankert das iPad/Mac-Share-Popover am Button (sonst am
+            Bildschirm). Kopiert-Status fällt zurück, wenn der Share-Text
+            wechselt. Übersicht zeigt Anzahl offen /
+            gutgeschrieben (vorgelesen «3 Offen») sowie Summe REALU und Frankenwert; offene Einladungen
+            lassen sich erneut kopieren und versenden, ohne den Status der
+            eingeladenen Person. Offene Einladungen verfallen nach 3 Monaten.
+            Kachel-Beschriftung
+            <b>Aktienkurs</b>. Jede Gutschrift in der Historie zeigt ganze REALU,
+            Datum und den <b>im Zeitpunkt der Gutschrift fixierten</b> Frankenwert
+            (eine Vorlese-Zeile: Titel, Datum, CHF, Anzahl) —
+            kein späteres Nachziehen auf den aktuellen Kurs.
+          </p>
+          <p>
+            Promo-Code und Einladungscode teilen dasselbe optionale
+            Registrierungs-Schritt (Überspringen erlaubt) und denselben Deep Link.
+            Während der Prüfung zeigt das Feld <b>Code wird geprüft…</b>.
+            Nach der Prüfung erscheint bei einem Promo-Code der
+            Aktionstext in einem eigenen Fenster (nur Schließen, kein Tippen
+            daneben); bei einer Einladung die Erkennung
+            mit dem Namen des Empfehlers. Ein eingefügter
+            <code>realunit.app/invite|promo/…</code>-Link oder eine Share-Nachricht
+            wird auf den Code reduziert (Zero-Width- und Bidi-Zeichen aus
+            Messenger-Copy werden entfernt, auch im Play-Referrer und direkt
+            im Eingabefeld; Einfügen ignoriert eine Zwischenablage nur aus
+            Formatzeichen); das Feld hat Autofokus und fügt einen von der
+            Landing kopierten Code selbst ein, wenn es leer ist
+            (Deeplink-Stash geht vor). Weiter/Überspringen
+            sperren das Feld, bis sie durch sind, und brechen eine
+            ausstehende Code-Prüfung ab (Weiter wartet auf die Prüfung;
+            Überspringen setzt Weiter nicht auf Laden). Überspringen
+            verwirft einen getippten Code und lässt einen
+            Deeplink-Stash stehen. Ein abgelehnter Bind (4xx) zeigt
+            <b>Link ungültig oder abgelaufen</b> einmal in einem Dialog. 20 REALU als Promo-Zugabe nur beim ersten erfolgreichen
+            Kauf von mindestens N REALU (Vorgabe 200, durch die API gesetzt).
+            Einlösung und Kumulierungssperre sind Server-Pflicht. Universal Links:
+            <code>https://realunit.app/invite/…</code> und
+            <code>/promo/…</code> öffnen die App (auch auf <code>www.realunit.app</code>,
+            HTTP 200, kein 301). Nach Neuinstallation auf iOS den
+            Link erneut antippen oder den Code von der Landing-Seite
+            (App-Store-Tap kopiert ihn) bei der Registrierung einfügen. Android trägt den
+            Code als Play-Store-Install-Referrer, schon während die Landing
+            den Code prüft; ein ungültiger Lookup entfernt den Referrer.
+            Auf iOS führt der App-Store-Badge, auf Android Play. Die
+            In-App-CTA bleibt bis zum Lookup-Ende verborgen und gilt nur mobil.
+            Landing und Registrierung zeigen den Code in Grossbuchstaben
+            und höchstens 32 Zeichen (wie die API); ein angehängtes
+            Satzzeichen (`!`, `?`, `/`) fällt weg. Steckt
+            <code>invite/</code> oder <code>promo/</code> im Token,
+            bleibt nur der Code (wie die API). Unsichtbare
+            Steuerzeichen (ZWSP) und Vollbreite-Zeichen aus Messenger-URLs
+            entfernt die Landing-HTML schon in den Bytes, die Safari für
+            den Smart App Banner ausliest. Dasselbe gilt für Play/Ads-
+            <code>utm_content=invite=</code> und <code>referrer</code> auf
+            der Landing-URL, nicht nur für <code>/invite/{code}</code>
+            — auch ohne <code>https://</code> (<code>realunit.app/invite/…</code>).
+            Facebook <code>u=</code>, Google <code>q=</code>, Outlook
+            <code>url=</code> und E-Mail <code>link=</code> auf der
+            Landing-URL ebenso, ein bloßes
+            <code>u=hello</code> oder eine fremde <code>https://</code>-URL
+            nicht. Ein Kampagnenname in <code>utm_content</code> verdeckt
+            keinen späteren Wrapper-Schlüssel, und eine Tracking-URL, die
+            nur <code>realunit.app</code> nennt, auch nicht. Einfügen und App
+            Links verwenden dieselben Schlüssel. Ein leeres oder fremdes
+            <code>code=</code> verdeckt kein späteres <code>invite=</code>.
+            Proofpoint URL Defense, Outlook Safe Links und kurze
+            <code>ios-app://</code>-Alternate-Links um eine
+            RealUnit-Landing werden entpackt.
+            Safari erkennt den Code und das Aktionsdatum nicht als Telefon- oder
+            Kalender-Link (<code>format-detection</code>
+            <code>telephone=no, date=no</code>;
+            <code>x-apple-data-detectors="false"</code> am Code und
+            Aktionstext, weil Lookup-JS den Text nachlädt).
+            Tab-Titel, Open-Graph, Twitter und die Standard-Beschreibung folgen
+            Laden / ungültig / nicht erreichbar; ein Pfad ohne Code gilt als
+            ungültig. Ungültige Überschrift und Text sind statusrot;
+            die Browser-Themenfarbe folgt (`#E02523` ungültig, sonst Markenblau).
+            og:locale:alternate nennt die andere Sprache (de_CH / en_GB).
+            Crawler lesen Smart-App-Banner <code>app-argument</code>,
+            <code>og:image:alt</code> / <code>twitter:image:alt</code>,
+            <code>og:site_name</code> (RealUnit),
+            Facebook App Links und Twitter App Cards aus den HTML-Bytes (ohne JS):
+            <code>al:ios:url</code>, <code>al:android:url</code> und
+            <code>twitter:app:url:iphone</code> / <code>ipad</code> /
+            <code>googleplay</code> sind
+            <code>realunit-wallet://invite|promo/…</code>,
+            <code>al:android:class</code> ist
+            <code>swiss.realunit.app.MainActivity</code>,
+            <code>al:web:url</code> die HTTPS-Landing,
+            <code>twitter:app:country</code> ist CH.
+            «Erneut versuchen» prüft den Code erneut ohne Seiten-Reload
+            (der Button wird vom Fehlertext beschrieben) und setzt den Fokus auf
+            «Code wird geprüft…»; nach dem Ergebnis auf die Ergebnis-Überschrift.
+            «Kopiert» erscheint nur, wenn Code oder Link wirklich in der
+            Zwischenablage liegt, und wird über den Status-Hinweis vorgelesen.
+          </p>
+          <p>
+            Automatisierte Oberflächen-Tests: Responsive-Matrix auf
+            Teilnahmebedingungen, Übersicht und Erstellseite, Cubit- und
+            API-Vertrags-Tests, Deeplink-Parser. Visual-Regression: Übersicht
+            (`276`), Registrierungs-Schritt (`277`), Dashboard-Karte (`278`),
+            Nicht-berechtigt (`279`), Einladung erstellt (`280`),
+            Teilnahmebedingungen (`281`), Prämie in der Historie (`282`),
+            TB nach Annahme (`283`), Namenseingabe (`284`), Einstellungen-Karte
+            (`285`), Rechtliche Dokumente letzter Eintrag (`286`), Einladung
+            erkannt (`287`), Historie mit Prämie (`288`), Dashboard-Einstieg
+            (`289`), Promo-Aktionstext (`290`).
+          </p>
+          <div class="test" id="276-referral-overview">
+            <div class="head">
+              <a class="name permalink" href="#276-referral-overview">276-referral-overview</a>
+              <button class="copy-link" type="button" data-target="276-referral-overview" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_overview_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/276-referral-overview.png"
+                alt="Empfehlungs-Übersicht mit Aktienkurs und offener Einladung"
+              />
+            </div>
+            <div class="desc">
+              Kachel <b>Insgesamt erhalten</b> mit ganzen REALU, fixiertem CHF
+              und Beschriftung <b>Aktienkurs</b>; Zähler Offen / Gutgeschrieben;
+              offene Einladung mit Kopieren und Versenden.
+            </div>
+          </div>
+          <div class="test" id="277-kyc-registration-referral">
+            <div class="head">
+              <a class="name permalink" href="#277-kyc-registration-referral">277-kyc-registration-referral</a>
+              <button class="copy-link" type="button" data-target="277-kyc-registration-referral" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">kyc_registration_referral_step_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/277-kyc-registration-referral.png"
+                alt="Optionaler Einladungs- oder Promo-Code in der Registrierung"
+              />
+            </div>
+            <div class="desc">
+              Optionaler Code-Schritt (Überspringen erlaubt) mit Autofokus,
+              Einfügen und Weiter.
+            </div>
+          </div>
+          <div class="test" id="278-referral-entry-card">
+            <div class="head">
+              <a class="name permalink" href="#278-referral-entry-card">278-referral-entry-card</a>
+              <button class="copy-link" type="button" data-target="278-referral-entry-card" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_surfaces_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/278-referral-entry-card.png"
+                alt="Dashboard-Karte Empfehlungen"
+              />
+            </div>
+            <div class="desc">
+              Karte <b>Empfehlungen</b> mit «Erhalte 20 REALU pro Weiterempfehlung»,
+              nur wenn die API <code>eligible</code> setzt.
+            </div>
+          </div>
+          <div class="test" id="279-referral-not-eligible">
+            <div class="head">
+              <a class="name permalink" href="#279-referral-not-eligible">279-referral-not-eligible</a>
+              <button class="copy-link" type="button" data-target="279-referral-not-eligible" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_surfaces_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/279-referral-not-eligible.png"
+                alt="Empfehlungsprogramm nicht berechtigt"
+              />
+            </div>
+            <div class="desc">
+              Gate für nicht berechtigte Nutzer, Schließen mit Tastaturfokus.
+            </div>
+          </div>
+          <div class="test" id="280-referral-create-invite">
+            <div class="head">
+              <a class="name permalink" href="#280-referral-create-invite">280-referral-create-invite</a>
+              <button class="copy-link" type="button" data-target="280-referral-create-invite" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_surfaces_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/280-referral-create-invite.png"
+                alt="Persönlicher Einladungslink nach dem Erstellen"
+              />
+            </div>
+            <div class="desc">
+              Nach dem Erstellen: personalisierter Share-Text, Kopieren und Versenden.
+            </div>
+          </div>
+          <div class="test" id="281-referral-terms">
+            <div class="head">
+              <a class="name permalink" href="#281-referral-terms">281-referral-terms</a>
+              <button class="copy-link" type="button" data-target="281-referral-terms" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_surfaces_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/281-referral-terms.png"
+                alt="Teilnahmebedingungen mit Checkbox gelesen und akzeptiert"
+              />
+            </div>
+            <div class="desc">
+              Teilnahmebedingungen als eigene Seite; Checkbox
+              «Ich habe die Teilnahmebedingungen gelesen und akzeptiert»;
+              «Einladungslink erstellen» erst danach aktiv.
+            </div>
+          </div>
+          <div class="test" id="282-referral-payout-row">
+            <div class="head">
+              <a class="name permalink" href="#282-referral-payout-row">282-referral-payout-row</a>
+              <button class="copy-link" type="button" data-target="282-referral-payout-row" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_surfaces_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/282-referral-payout-row.png"
+                alt="Empfehlungsprämie in der Transaktionshistorie"
+              />
+            </div>
+            <div class="desc">
+              Prämie mit ganzer REALU-Anzahl, Datum und Frankenwert,
+              fixiert im Zeitpunkt der Gutschrift.
+            </div>
+          </div>
+          <div class="test" id="283-referral-terms-readonly">
+            <div class="head">
+              <a class="name permalink" href="#283-referral-terms-readonly">283-referral-terms-readonly</a>
+              <button class="copy-link" type="button" data-target="283-referral-terms-readonly" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_surfaces_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/283-referral-terms-readonly.png"
+                alt="Teilnahmebedingungen nach Annahme, ohne Checkbox"
+              />
+            </div>
+            <div class="desc">
+              Nach der Annahme bleiben die Teilnahmebedingungen lesbar
+              (Übersichtstitel und Einstellungen → Rechtliche Dokumente),
+              ohne Checkbox und ohne «Einladungslink erstellen».
+            </div>
+          </div>
+          <div class="test" id="284-referral-create-name">
+            <div class="head">
+              <a class="name permalink" href="#284-referral-create-name">284-referral-create-name</a>
+              <button class="copy-link" type="button" data-target="284-referral-create-name" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">referral_surfaces_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/284-referral-create-name.png"
+                alt="Namenseingabe für die persönliche Einladung"
+              />
+            </div>
+            <div class="desc">
+              Einladung erstellen: Vorname der eingeladenen Person, Button
+              «Einladungslink erstellen».
+            </div>
+          </div>
+          <div class="test" id="285-settings-referral-eligible">
+            <div class="head">
+              <a class="name permalink" href="#285-settings-referral-eligible">285-settings-referral-eligible</a>
+              <button class="copy-link" type="button" data-target="285-settings-referral-eligible" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">settings_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/285-settings-referral-eligible.png"
+                alt="Einstellungen-Karte Empfehlungen für berechtigte Aktionäre"
+              />
+            </div>
+            <div class="desc">
+              Einstieg «Empfehlungen» in den Einstellungen, nur wenn die API
+              <code>eligible</code> setzt. Kartentext «Erhalte 20 REALU pro
+              Weiterempfehlung».
+            </div>
+          </div>
+          <div class="test" id="286-settings-legal-referral-terms">
+            <div class="head">
+              <a class="name permalink" href="#286-settings-legal-referral-terms">286-settings-legal-referral-terms</a>
+              <button class="copy-link" type="button" data-target="286-settings-legal-referral-terms" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">settings_legal_documents_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/286-settings-legal-referral-terms.png"
+                alt="Letzter Eintrag Teilnahmebedingungen Referral-Programm"
+              />
+            </div>
+            <div class="desc">
+              Einstellungen → Rechtliche Dokumente, letzter Eintrag
+              «Teilnahmebedingungen Referral-Programm».
+            </div>
+          </div>
+          <div class="test" id="287-kyc-registration-referral-recognized">
+            <div class="head">
+              <a class="name permalink" href="#287-kyc-registration-referral-recognized">287-kyc-registration-referral-recognized</a>
+              <button class="copy-link" type="button" data-target="287-kyc-registration-referral-recognized" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">kyc_registration_referral_step_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/287-kyc-registration-referral-recognized.png"
+                alt="Einladung von Björn erkannt in der Registrierung"
+              />
+            </div>
+            <div class="desc">
+              Entwurf 4: Code-Eingabe als Fallback; nach Prüfung «Einladung von
+              Björn erkannt».
+            </div>
+          </div>
+          <div class="test" id="288-transaction-history-referral-payout">
+            <div class="head">
+              <a class="name permalink" href="#288-transaction-history-referral-payout">288-transaction-history-referral-payout</a>
+              <button class="copy-link" type="button" data-target="288-transaction-history-referral-payout" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">transaction_history_states_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/288-transaction-history-referral-payout.png"
+                alt="Transaktionshistorie mit Empfehlungsprämie, Datum und fixiertem CHF"
+              />
+            </div>
+            <div class="desc">
+              Historie: Prämie mit ganzer Anzahl (20 REALU), Datum und
+              Frankenwert, fixiert im Zeitpunkt der Gutschrift (TB Ziff. 6).
+            </div>
+          </div>
+          <div class="test" id="289-dashboard-referral-entry-and-payout">
+            <div class="head">
+              <a class="name permalink" href="#289-dashboard-referral-entry-and-payout">289-dashboard-referral-entry-and-payout</a>
+              <button class="copy-link" type="button" data-target="289-dashboard-referral-entry-and-payout" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">dashboard_states_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/289-dashboard-referral-entry-and-payout.png"
+                alt="Dashboard-Karte Empfehlungen und Prämie in den letzten Transaktionen"
+              />
+            </div>
+            <div class="desc">
+              Entwurf 1: Einstieg «Empfehlungen» («Erhalte 20 REALU pro
+              Weiterempfehlung») und Prämie in den letzten Transaktionen.
+            </div>
+          </div>
+          <div class="test" id="290-kyc-registration-referral-promo">
+            <div class="head">
+              <a class="name permalink" href="#290-kyc-registration-referral-promo">290-kyc-registration-referral-promo</a>
+              <button class="copy-link" type="button" data-target="290-kyc-registration-referral-promo" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+              <span class="src">kyc_registration_referral_step_golden_test.dart</span>
+            </div>
+            <div class="img">
+              <img
+                src="../screenshots/290-kyc-registration-referral-promo.png"
+                alt="Promo-Aktionstext in einem eigenen Fenster"
+              />
+            </div>
+            <div class="desc">
+              Punkt 5: nach Prüfung erscheint der von RealUnit vorgegebene
+              Aktionstext in einem eigenen Fenster (nur Schließen).
+            </div>
+          </div>
+        </details>
+
+        <hr class="sep" />
+
         <details id="spec-mails" class="spec" open>
           <summary>
             <div class="spec-head">
@@ -9176,6 +9596,10 @@
             jedem Handbook-Build automatisch frisch generiert und ins Image
             gepackt — Single Source of Truth ist das api-Repo, dieses Handbook
             spiegelt nur den aktuellen Stand.
+            Die Bestätigungs-E-Mail der Empfehlungsprämie (Anzahl, Datum,
+            fixierter Frankenwert) kommt aus dem Nest-Drop-in, nicht aus
+            <code>realunit.hbs</code>: der Mailer sendet HTML aus dem Klartext;
+            <code>GET /admin/emails</code> bleibt der Klartext.
           </p>
 
           <div class="callout info">
@@ -9659,6 +10083,35 @@ Dieser Inhalt dient Werbezwecken. Die genehmigten Prospekte und weitere Unterlag
         <a class="dl-btn" href="../legal/registration_agreement_en.pdf" download>PDF</a>
         <a class="dl-btn" href="../legal/registration_agreement_en.docx" download>DOCX</a>
         <a class="src" href="https://github.com/RealUnitCH/app/blob/develop/assets/legal/registration_agreement_en.md" title="Quelle: registration_agreement_en.md">Markdown ↗</a>
+      </div>
+    </div>
+  </div>
+  <h3>Teilnahmebedingungen Referral-Programm <a class="src" href="https://github.com/RealUnitCH/app/tree/develop/assets/legal" title="Quelle: assets/legal/">↗</a></h3>
+  <div class="tests cols-2">
+    <div class="test legal-doc" id="legal-referral_terms-de">
+      <div class="head">
+        <a class="name permalink" href="#legal-referral_terms-de">referral_terms_de</a>
+        <button class="copy-link" type="button" data-target="legal-referral_terms-de" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+        <span class="src">de</span>
+      </div>
+      <div class="downloads">
+        <span class="doc-title">Teilnahmebedingungen Referral-Programm</span>
+        <a class="dl-btn" href="../legal/referral_terms_de.pdf" download>PDF</a>
+        <a class="dl-btn" href="../legal/referral_terms_de.docx" download>DOCX</a>
+        <a class="src" href="https://github.com/RealUnitCH/app/blob/develop/assets/legal/referral_terms_de.md" title="Quelle: referral_terms_de.md">Markdown ↗</a>
+      </div>
+    </div>
+    <div class="test legal-doc" id="legal-referral_terms-en">
+      <div class="head">
+        <a class="name permalink" href="#legal-referral_terms-en">referral_terms_en</a>
+        <button class="copy-link" type="button" data-target="legal-referral_terms-en" title="Direkt-Link kopieren" aria-label="Direkt-Link kopieren">🔗 Link</button>
+        <span class="src">en</span>
+      </div>
+      <div class="downloads">
+        <span class="doc-title">Referral programme terms of participation</span>
+        <a class="dl-btn" href="../legal/referral_terms_en.pdf" download>PDF</a>
+        <a class="dl-btn" href="../legal/referral_terms_en.docx" download>DOCX</a>
+        <a class="src" href="https://github.com/RealUnitCH/app/blob/develop/assets/legal/referral_terms_en.md" title="Quelle: referral_terms_en.md">Markdown ↗</a>
       </div>
     </div>
   </div>

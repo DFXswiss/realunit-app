@@ -18,6 +18,9 @@ import 'package:realunit_wallet/screens/pay/pay_info_page.dart';
 import 'package:realunit_wallet/screens/pin/setup_pin_page.dart';
 import 'package:realunit_wallet/screens/pin/verify_pin_page.dart';
 import 'package:realunit_wallet/screens/receive/receive_page.dart';
+import 'package:realunit_wallet/screens/referral/referral_create_page.dart';
+import 'package:realunit_wallet/screens/referral/referral_page.dart';
+import 'package:realunit_wallet/screens/referral/referral_terms_page.dart';
 import 'package:realunit_wallet/screens/restore_wallet/restore_wallet_page.dart';
 import 'package:realunit_wallet/screens/sell/sell_page.dart';
 import 'package:realunit_wallet/screens/sell_bitbox/sell_bitbox_page.dart';
@@ -47,6 +50,7 @@ import 'package:realunit_wallet/screens/transaction_history/transaction_history_
 import 'package:realunit_wallet/screens/verify_seed/verify_seed_page.dart';
 import 'package:realunit_wallet/screens/web_view/web_view_page.dart';
 import 'package:realunit_wallet/screens/welcome/welcome_page.dart';
+import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/routing/boot_navigation.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_link_entry.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
@@ -57,6 +61,7 @@ import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
 import 'package:realunit_wallet/setup/routing/routes/support_routes.dart';
 
 final GoRouter routerConfig = GoRouter(
+  navigatorKey: navigatorKey,
   initialLocation: '/home',
   // Custom-scheme opens (realunit-wallet://…, canonical realunit-wallet://open)
   // only foreground the app; they must not force any navigation. Cold start:
@@ -220,6 +225,12 @@ final GoRouter routerConfig = GoRouter(
     ),
 
     GoRoute(
+      name: LegalRoutes.referralTerms,
+      path: '/referralTerms',
+      builder: (_, _) => const ReferralTermsPage(readOnly: true),
+    ),
+
+    GoRoute(
       name: AppRoutes.kyc,
       path: '/kyc',
       builder: (_, state) => KycPageManager(kycContext: state.extra as String?),
@@ -327,6 +338,18 @@ final GoRouter routerConfig = GoRouter(
               name: SettingsRoutes.editPhone,
               path: 'editPhoneNumber',
               builder: (_, _) => const SettingsEditPhoneNumberPage(),
+            ),
+          ],
+        ),
+        GoRoute(
+          name: SettingsRoutes.referral,
+          path: 'referral',
+          builder: (_, _) => const ReferralPage(),
+          routes: [
+            GoRoute(
+              name: SettingsRoutes.referralCreate,
+              path: 'create',
+              builder: (_, _) => const ReferralCreatePage(),
             ),
           ],
         ),

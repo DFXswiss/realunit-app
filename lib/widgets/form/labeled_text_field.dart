@@ -15,6 +15,19 @@ class LabeledTextField extends StatelessWidget {
   final bool hideErrorText;
   final TextCapitalization textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
+  final Widget? suffixIcon;
+  final Iterable<String>? autofillHints;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onFieldSubmitted;
+  final SmartDashesType? smartDashesType;
+  final SmartQuotesType? smartQuotesType;
+  final SpellCheckConfiguration? spellCheckConfiguration;
+  final GestureTapCallback? onTap;
+  final bool autocorrect;
+  final bool enableSuggestions;
+  final bool enableIMEPersonalizedLearning;
+  final bool autofocus;
+  final bool enabled;
 
   const LabeledTextField({
     super.key,
@@ -30,6 +43,19 @@ class LabeledTextField extends StatelessWidget {
     this.hideErrorText = true,
     this.textCapitalization = TextCapitalization.none,
     this.inputFormatters,
+    this.suffixIcon,
+    this.autofillHints,
+    this.textInputAction = TextInputAction.next,
+    this.onFieldSubmitted,
+    this.smartDashesType,
+    this.smartQuotesType,
+    this.spellCheckConfiguration,
+    this.onTap,
+    this.autocorrect = false,
+    this.enableSuggestions = false,
+    this.enableIMEPersonalizedLearning = true,
+    this.autofocus = false,
+    this.enabled = true,
   });
 
   @override
@@ -53,13 +79,19 @@ class LabeledTextField extends StatelessWidget {
           initialValue: initialValue,
           onChanged: onChanged,
           controller: controller,
-          autocorrect: false,
-          enableSuggestions: false,
-          textInputAction: .next,
+          autocorrect: autocorrect,
+          enableSuggestions: enableSuggestions,
+          enableIMEPersonalizedLearning: enableIMEPersonalizedLearning,
+          autofocus: autofocus,
+          enabled: enabled,
+          onTap: onTap,
+          textInputAction: textInputAction,
+          onFieldSubmitted: onFieldSubmitted,
           textCapitalization: textCapitalization,
           decoration: InputDecoration(
             hintText: hintText,
             prefixText: prefixText,
+            suffixIcon: suffixIcon,
             enabledBorder: const OutlineInputBorder(
               borderRadius: .all(.circular(8.0)),
               borderSide: BorderSide(color: RealUnitColors.neutral300),
@@ -88,6 +120,10 @@ class LabeledTextField extends StatelessWidget {
           maxLines: maxLines,
           keyboardType: keyboardType,
           inputFormatters: inputFormatters,
+          autofillHints: autofillHints,
+          smartDashesType: smartDashesType,
+          smartQuotesType: smartQuotesType,
+          spellCheckConfiguration: spellCheckConfiguration,
           validator: validator,
         ),
       ],

@@ -81,6 +81,7 @@ void main() {
       localizationsDelegates: [
         S.delegate,
         GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: S.delegate.supportedLocales,
       home: BlocProvider<SupportEmailCaptureCubit>.value(
@@ -104,6 +105,7 @@ void main() {
         localizationsDelegates: const [
           S.delegate,
           GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
@@ -126,6 +128,7 @@ void main() {
           localizationsDelegates: [
             S.delegate,
             GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: S.delegate.supportedLocales,
           home: const SupportEmailCapturePage(),
@@ -242,6 +245,7 @@ void main() {
           localizationsDelegates: [
             S.delegate,
             GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: S.delegate.supportedLocales,
         ),
@@ -269,6 +273,7 @@ void main() {
             localizationsDelegates: const [
               S.delegate,
               GlobalMaterialLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],

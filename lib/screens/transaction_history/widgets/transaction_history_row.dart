@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/models/transaction.dart';
+import 'package:realunit_wallet/screens/referral/format_frozen_chf.dart';
+import 'package:realunit_wallet/screens/referral/frozen_chf_label.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/screens/transaction_history/cubits/receipt/transaction_history_receipt_cubit.dart';
@@ -62,7 +64,7 @@ class TransactionHistoryRowView extends StatelessWidget {
         }
       },
       builder: (context, state) {
-        return InkWell(
+        final row = InkWell(
           child: Column(
             children: [
               Row(
@@ -90,9 +92,14 @@ class TransactionHistoryRowView extends StatelessWidget {
                             color: RealUnitColors.brand200,
                             borderRadius: BorderRadius.circular(24.0),
                           ),
-                          child: const Icon(
-                            Icons.add,
-                            color: RealUnitColors.darkBlue,
+                          child: ExcludeSemantics(
+                            excluding:
+                                transaction.type ==
+                                TransactionTypes.referralPayout,
+                            child: const Icon(
+                              Icons.add,
+                              color: RealUnitColors.darkBlue,
+                            ),
                           ),
                         ),
                   Expanded(
@@ -101,7 +108,11 @@ class TransactionHistoryRowView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isOutbound ? S.of(context).transactionSell : S.of(context).transactionBuy,
+                          transaction.type == TransactionTypes.referralPayout
+                              ? S.of(context).referralPayout
+                              : isOutbound
+                                  ? S.of(context).transactionSell
+                                  : S.of(context).transactionBuy,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -109,18 +120,31 @@ class TransactionHistoryRowView extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          DateFormat('MMM dd, yyyy | H:mm').format(transaction.timestamp.toLocal()),
+                          transaction.type == TransactionTypes.referralPayout
+                              ? DateFormat('dd.MM.yyyy | H:mm').format(
+                                  transaction.timestamp.toLocal(),
+                                )
+                              : DateFormat('MMM dd, yyyy | H:mm').format(
+                                  transaction.timestamp.toLocal(),
+                                ),
                           style: const TextStyle(
                             fontSize: 12,
                             height: 16 / 12,
                             color: RealUnitColors.neutral500,
                           ),
                         ),
+                        if (transaction.type == TransactionTypes.referralPayout &&
+                            transaction.data != null &&
+                            transaction.data!.isNotEmpty)
+                          FrozenChfLabel(raw: transaction.data!),
                       ],
                     ),
                   ),
                   HideAmountText(
-                    leadingSymbol: isOutbound ? '-' : '+',
+                    leadingSymbol: isOutbound &&
+                            transaction.type != TransactionTypes.referralPayout
+                        ? '-'
+                        : '+',
                     amount: transaction.amount,
                     decimals: transaction.asset.decimals,
                     fractionalDigits: 0,
@@ -132,36 +156,65 @@ class TransactionHistoryRowView extends StatelessWidget {
                       height: 20 / 16,
                     ),
                   ),
-                  state is TransactionHistoryReceiptLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(4.0),
-                          child: SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
+                  if (transaction.type != TransactionTypes.referralPayout)
+                    state is TransactionHistoryReceiptLoading
+                        ? const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: RealUnitColors.realUnitBlue,
+                              ),
+                            ),
+                          )
+                        : GestureDetector(
+                            onTap: () {
+                              context.read<TransactionHistoryReceiptCubit>().generateReceipt(
+                                transaction.txId,
+                                currency: context.read<SettingsBloc>().state.currency,
+                                language: context.read<SettingsBloc>().state.language,
+                              );
+                            },
+                            child: const Icon(
+                              size: 20,
+                              Icons.file_download_outlined,
                               color: RealUnitColors.realUnitBlue,
                             ),
                           ),
-                        )
-                      : GestureDetector(
-                          onTap: () {
-                            context.read<TransactionHistoryReceiptCubit>().generateReceipt(
-                              transaction.txId,
-                              currency: context.read<SettingsBloc>().state.currency,
-                              language: context.read<SettingsBloc>().state.language,
-                            );
-                          },
-                          child: const Icon(
-                            size: 20,
-                            Icons.file_download_outlined,
-                            color: RealUnitColors.realUnitBlue,
-                          ),
-                        ),
                 ],
               ),
             ],
           ),
+        );
+        if (transaction.type != TransactionTypes.referralPayout) return row;
+        final s = S.of(context);
+        final settings = context.watch<SettingsBloc>().state;
+        final date = DateFormat('dd.MM.yyyy | H:mm').format(
+          transaction.timestamp.toLocal(),
+        );
+        final chf = transaction.data;
+        return Semantics(
+          container: true,
+          label: referralPayoutSemanticsLabel(
+            title: s.referralPayout,
+            date: date,
+            amount: referralPayoutAmountText(
+              hideAmounts: settings.hideAmounts,
+              amount: transaction.amount,
+              decimals: transaction.asset.decimals,
+              symbol: transaction.asset.symbol,
+            ),
+            chfLine: chf != null && chf.isNotEmpty
+                ? s.referralPayoutChf(
+                    settings.hideAmounts
+                        ? '***.**'
+                        : formatFrozenChfAmount(chf),
+                  )
+                : null,
+          ),
+          child: ExcludeSemantics(child: row),
         );
       },
     );
