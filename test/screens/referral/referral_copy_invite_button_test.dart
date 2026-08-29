@@ -316,4 +316,49 @@ void main() {
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Einladungslink kopieren'), findsOneWidget);
   });
+
+  testWidgets('unmount during an in-flight clipboard write does not setState', (
+    tester,
+  ) async {
+    final release = Completer<void>();
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        await release.future;
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: realUnitTheme,
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        home: const Scaffold(
+          body: ReferralCopyInviteButton(
+            text: 'Hey Alice: https://realunit.app/invite/AAAA',
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Einladungslink kopieren'));
+    await tester.pump();
+    expect(find.byType(ReferralCopyInviteButton), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(find.byType(ReferralCopyInviteButton), findsNothing);
+
+    release.complete();
+    await tester.pump();
+  });
 }
