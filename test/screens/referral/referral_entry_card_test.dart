@@ -9,6 +9,7 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.da
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/screens/referral/widgets/referral_entry_card.dart';
+import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 
 class _MockService extends Mock implements RealUnitReferralService {}
@@ -343,5 +344,57 @@ void main() {
       ),
       findsAtLeastNWidgets(1),
     );
+  });
+
+  testWidgets('taps through to the referral route when eligible', (tester) async {
+    when(() => service.getSummary()).thenAnswer(
+      (_) async => const ReferralSummaryDto(
+        eligible: true,
+        termsAccepted: true,
+        openCount: 0,
+        creditedCount: 0,
+        realuSum: 0,
+        chfSum: 0,
+      ),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(
+            body: ReferralEntryCard(unavailablePollInterval: Duration.zero),
+          ),
+        ),
+        GoRoute(
+          path: '/settings/referral',
+          name: SettingsRoutes.referral,
+          builder: (_, _) => const Scaffold(body: Text('referral-page')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: realUnitTheme,
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        routerConfig: router,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Empfehlungen'), findsOneWidget);
+
+    await tester.tap(find.text('Empfehlungen'));
+    await tester.pumpAndSettle();
+    expect(find.text('referral-page'), findsOneWidget);
   });
 }
