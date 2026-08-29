@@ -180,7 +180,8 @@ String? referralCodeFromPathRemainder(String? rest) {
   } catch (_) {}
   if (decoded.isNotEmpty &&
       (_isPastedReferralUrl(decoded) || _embeddedReferralUrl(decoded) != null)) {
-    return referralCodeFromInput(decoded) ?? referralCodeFromInput(value);
+    final fromDecoded = referralCodeFromInput(decoded);
+    if (fromDecoded != null) return fromDecoded;
   }
   if (_isPastedReferralUrl(value) || _embeddedReferralUrl(value) != null) {
     return referralCodeFromInput(value);
@@ -241,15 +242,21 @@ String? _embeddedReferralUrl(String value) {
 const _pastedQuoteOpeners = '"\'(<*_~`|\u201C\u2018\u00AB\u201E';
 const _pastedQuoteClosers = '"\'>)*_~`|\u201D\u2019\u00BB\u201C';
 
+const _htmlWhitespaceEntities = {9: '\t', 10: '\n', 13: '\r', 160: ' '};
+
 String _unescapeHtmlNumericEntity(Match match) {
   final isHex = match[1]!.isNotEmpty;
   final code = int.tryParse(match[2]!, radix: isHex ? 16 : 10);
-  if (code == null) return match[0]!;
-  if (code == 9) return '\t';
-  if (code == 10) return '\n';
-  if (code == 13) return '\r';
-  if (code == 160) return ' ';
-  if (code < 32 || code > 126) return match[0]!;
+  if (code == null) {
+    return match[0]!;
+  }
+  final space = _htmlWhitespaceEntities[code];
+  if (space != null) {
+    return space;
+  }
+  if (code < 32 || code > 126) {
+    return match[0]!;
+  }
   return String.fromCharCode(code);
 }
 
