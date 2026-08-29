@@ -72,6 +72,8 @@ void main() {
     expect(referralJsonNum(' 246.50 '), 246.5);
     expect(referralJsonNum('246,5'), 246.5);
     expect(referralJsonNum("1'246.50"), 1246.5);
+    expect(referralJsonNum('1,246.50'), 1246.5);
+    expect(referralJsonNum('1.246,50'), 1246.5);
     expect(referralJsonNum('CHF 246.50'), 246.5);
     expect(referralJsonNum(''), isNull);
     expect(referralJsonNum(null), isNull);
