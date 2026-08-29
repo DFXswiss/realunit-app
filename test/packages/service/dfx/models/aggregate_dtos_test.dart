@@ -206,6 +206,16 @@ void main() {
       expect(dto.realUnitUserDataDto, isNotNull);
     });
 
+    test('parses NewRegistration with null userData (first-time user → empty form)', () {
+      final dto = RealUnitRegistrationInfoDto.fromJson({
+        'state': 'NewRegistration',
+        'userData': null,
+      });
+
+      expect(dto.state, RealUnitRegistrationState.newRegistration);
+      expect(dto.realUnitUserDataDto, isNull);
+    });
+
     test('throws ArgumentError on unknown state', () {
       expect(
         () => RealUnitRegistrationInfoDto.fromJson({
