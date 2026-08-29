@@ -178,6 +178,20 @@ void main() {
       expect(created.code, 'AB12');
       expect(created.guestName, 'Alice');
     });
+
+    test('throws ApiException on a non-200/201 response', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 400, 'code': 'LIMIT', 'message': 'max'}),
+          400,
+        ),
+      );
+
+      expect(
+        () => build(client).createInvite(guestName: 'Alice'),
+        throwsA(isA<ApiException>()),
+      );
+    });
   });
 
   group('$RealUnitReferralService.lookupCode', () {
@@ -282,6 +296,17 @@ void main() {
         ),
         throwsA(isA<TimeoutException>()),
       );
+    });
+
+    test('throws ApiException on a non-200 response', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 404, 'code': 'NOT_FOUND', 'message': 'gone'}),
+          404,
+        ),
+      );
+
+      expect(() => build(client).lookupCode('AB12'), throwsA(isA<ApiException>()));
     });
   });
 
@@ -394,6 +419,17 @@ void main() {
         throwsA(isA<TimeoutException>()),
       );
     });
+
+    test('throws ApiException on a non-200/201 response', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 409, 'code': 'CONFLICT', 'message': 'used'}),
+          409,
+        ),
+      );
+
+      expect(() => build(client).bind(code: 'XY'), throwsA(isA<ApiException>()));
+    });
   });
 
   group('$RealUnitReferralService.acceptTerms', () {
@@ -408,6 +444,17 @@ void main() {
 
       await build(client).acceptTerms();
       expect(body, {'accepted': true});
+    });
+
+    test('throws ApiException on a non-200/201 response', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 403, 'code': 'FORBIDDEN', 'message': 'no'}),
+          403,
+        ),
+      );
+
+      expect(() => build(client).acceptTerms(), throwsA(isA<ApiException>()));
     });
   });
 
@@ -514,6 +561,17 @@ void main() {
       expect(invites, hasLength(1));
       expect(invites.single.guestName, 'Alice');
       expect(invites.single.created, DateTime.utc(2026, 8, 24, 10));
+    });
+
+    test('throws ApiException on a non-200 response', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 500, 'code': 'SERVER_ERROR', 'message': 'boom'}),
+          500,
+        ),
+      );
+
+      expect(() => build(client).getInvites(), throwsA(isA<ApiException>()));
     });
   });
 
@@ -640,6 +698,17 @@ void main() {
       expect(payouts.single.id, 2);
       expect(payouts.single.status, 'Settled');
     });
+
+    test('throws ApiException on a non-200 response', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 500, 'code': 'SERVER_ERROR', 'message': 'boom'}),
+          500,
+        ),
+      );
+
+      expect(() => build(client).getPayouts(), throwsA(isA<ApiException>()));
+    });
   });
 
   group('$RealUnitReferralService.getTerms', () {
@@ -673,6 +742,17 @@ void main() {
         build(client).getTerms(timeout: const Duration(milliseconds: 20)),
         throwsA(isA<TimeoutException>()),
       );
+    });
+
+    test('throws ApiException on a non-200 response', () async {
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({'statusCode': 500, 'code': 'SERVER_ERROR', 'message': 'boom'}),
+          500,
+        ),
+      );
+
+      expect(() => build(client).getTerms(), throwsA(isA<ApiException>()));
     });
   });
 }
