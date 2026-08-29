@@ -10,6 +10,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
+import 'package:realunit_wallet/screens/referral/open_referral_create.dart';
 import 'package:realunit_wallet/screens/referral/referral_error_message.dart';
 import 'package:realunit_wallet/screens/referral/referral_overview_page.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
@@ -31,6 +32,7 @@ void main() {
   late _MockSettingsBloc settings;
 
   setUp(() {
+    debugResetOpeningReferralCreate();
     cubit = _MockReferralCubit();
     settings = _MockSettingsBloc();
     const settingsState = SettingsState(language: Language.de);
@@ -1427,4 +1429,218 @@ void main() {
       isNull,
     );
   });
+
+  testWidgets(
+    'announces invite-list loading without dropping the overview tiles',
+    (tester) async {
+      const summary = ReferralSummaryDto(
+        eligible: true,
+        termsAccepted: true,
+        openCount: 2,
+        creditedCount: 1,
+        realuSum: 20,
+        chfSum: 246.5,
+      );
+      when(() => cubit.state).thenReturn(
+        const ReferralOverviewLoaded(
+          summary: summary,
+          invites: [],
+          invitesLoading: true,
+        ),
+      );
+      whenListen(
+        cubit,
+        const Stream<ReferralState>.empty(),
+        initialState: const ReferralOverviewLoaded(
+          summary: summary,
+          invites: [],
+          invitesLoading: true,
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: MultiBlocProvider(
+            providers: [
+              BlocProvider<ReferralCubit>.value(value: cubit),
+              BlocProvider<SettingsBloc>.value(value: settings),
+            ],
+            child: const ReferralOverviewPage(),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Offene Einladungen werden geladen…'), findsOneWidget);
+      expect(
+        find.ancestor(
+          of: find.text('Offene Einladungen werden geladen…'),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics && widget.properties.liveRegion == true,
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('2'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
+      expect(find.text('Einladungslink erstellen'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'create CTA pushes the invite form and refreshes after a created invite',
+    (tester) async {
+      const summary = ReferralSummaryDto(
+        eligible: true,
+        termsAccepted: true,
+        openCount: 0,
+        creditedCount: 0,
+        realuSum: 0,
+        chfSum: 0,
+      );
+      when(() => cubit.state).thenReturn(
+        const ReferralOverviewLoaded(summary: summary, invites: []),
+      );
+      whenListen(
+        cubit,
+        const Stream<ReferralState>.empty(),
+        initialState: const ReferralOverviewLoaded(
+          summary: summary,
+          invites: [],
+        ),
+      );
+      when(() => cubit.refreshOverview()).thenAnswer((_) async {});
+
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => MultiBlocProvider(
+              providers: [
+                BlocProvider<ReferralCubit>.value(value: cubit),
+                BlocProvider<SettingsBloc>.value(value: settings),
+              ],
+              child: const ReferralOverviewPage(),
+            ),
+            routes: [
+              GoRoute(
+                name: SettingsRoutes.referralCreate,
+                path: 'create',
+                builder: (context, _) => TextButton(
+                  onPressed: () => context.pop(true),
+                  child: const Text('created'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Einladungslink erstellen'));
+      await tester.pumpAndSettle();
+      expect(find.text('created'), findsOneWidget);
+      await tester.tap(find.text('created'));
+      await tester.pumpAndSettle();
+      verify(() => cubit.refreshOverview()).called(1);
+    },
+  );
+
+  testWidgets(
+    'create CTA ignores a second tap while the create route is opening',
+    (tester) async {
+      const summary = ReferralSummaryDto(
+        eligible: true,
+        termsAccepted: true,
+        openCount: 0,
+        creditedCount: 0,
+        realuSum: 0,
+        chfSum: 0,
+      );
+      when(() => cubit.state).thenReturn(
+        const ReferralOverviewLoaded(summary: summary, invites: []),
+      );
+      whenListen(
+        cubit,
+        const Stream<ReferralState>.empty(),
+        initialState: const ReferralOverviewLoaded(
+          summary: summary,
+          invites: [],
+        ),
+      );
+
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => MultiBlocProvider(
+              providers: [
+                BlocProvider<ReferralCubit>.value(value: cubit),
+                BlocProvider<SettingsBloc>.value(value: settings),
+              ],
+              child: const ReferralOverviewPage(),
+            ),
+            routes: [
+              GoRoute(
+                name: SettingsRoutes.referralCreate,
+                path: 'create',
+                builder: (_, _) => const Text('create-form'),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pump();
+      final button = tester.widget<AppFilledButton>(
+        find.widgetWithText(AppFilledButton, 'Einladungslink erstellen'),
+      );
+      button.onPressed?.call();
+      button.onPressed?.call();
+      await tester.pumpAndSettle();
+      expect(find.text('create-form'), findsOneWidget);
+    },
+  );
 }
