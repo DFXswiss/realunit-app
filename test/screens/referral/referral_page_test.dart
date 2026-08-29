@@ -3,11 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
+import 'package:realunit_wallet/screens/referral/open_referral_create.dart';
 import 'package:realunit_wallet/screens/referral/referral_error_message.dart';
 import 'package:realunit_wallet/screens/referral/referral_page.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
@@ -23,11 +26,14 @@ class _MockReferralCubit extends MockCubit<ReferralState>
 class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
     implements SettingsBloc {}
 
+class _MockService extends Mock implements RealUnitReferralService {}
+
 void main() {
   late _MockReferralCubit cubit;
   late _MockSettingsBloc settings;
 
   setUp(() {
+    debugResetOpeningReferralCreate();
     cubit = _MockReferralCubit();
     when(() => cubit.load()).thenAnswer((_) async {});
     settings = _MockSettingsBloc();
@@ -306,6 +312,122 @@ void main() {
         const ReferralOverviewLoaded(summary: eligible, invites: []),
       ]),
       initialState: ReferralNeedsTerms(summary: needs),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => MultiBlocProvider(
+            providers: [
+              BlocProvider<ReferralCubit>.value(value: cubit),
+              BlocProvider<SettingsBloc>.value(value: settings),
+            ],
+            child: const ReferralGate(),
+          ),
+          routes: [
+            GoRoute(
+              name: SettingsRoutes.referralCreate,
+              path: 'create',
+              builder: (_, _) => const Text('create-invite'),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: realUnitTheme,
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        routerConfig: router,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('create-invite'), findsOneWidget);
+  });
+
+  testWidgets('ReferralPage loads summary through the live service', (
+    tester,
+  ) async {
+    final service = _MockService();
+    GetIt.instance.registerSingleton<RealUnitReferralService>(service);
+    addTearDown(GetIt.instance.reset);
+    when(() => service.getSummary()).thenAnswer(
+      (_) async => const ReferralSummaryDto(
+        eligible: true,
+        termsAccepted: true,
+        openCount: 0,
+        creditedCount: 0,
+        realuSum: 0,
+        chfSum: 0,
+      ),
+    );
+    when(() => service.getInvites()).thenAnswer((_) async => []);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: realUnitTheme,
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        home: BlocProvider<SettingsBloc>.value(
+          value: settings,
+          child: const ReferralPage(),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Deine Empfehlungen'), findsOneWidget);
+  });
+
+  testWidgets('accepting terms from the accepting state opens create-invite', (
+    tester,
+  ) async {
+    const needs = ReferralSummaryDto(
+      eligible: true,
+      termsAccepted: false,
+      openCount: 0,
+      creditedCount: 0,
+      realuSum: 0,
+      chfSum: 0,
+    );
+    const eligible = ReferralSummaryDto(
+      eligible: true,
+      termsAccepted: true,
+      openCount: 0,
+      creditedCount: 0,
+      realuSum: 0,
+      chfSum: 0,
+    );
+    when(() => cubit.state).thenReturn(
+      const ReferralTermsAccepting(summary: needs),
+    );
+    when(() => cubit.refreshOverview()).thenAnswer((_) async {});
+    whenListen(
+      cubit,
+      Stream.fromIterable([
+        const ReferralOverviewLoaded(summary: eligible, invites: []),
+      ]),
+      initialState: const ReferralTermsAccepting(summary: needs),
     );
 
     final router = GoRouter(
