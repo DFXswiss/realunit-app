@@ -40,7 +40,8 @@
 #   Silicon + iOS 26.x (see mobile-dev-inc/maestro#3137); the pin
 #   targets a known-good release. The retry remains as a safety net
 #   for residual Apple-XCTest crashes (~10 % per the #3137 thread):
-#   each flow is retried up to MAESTRO_MAX_ATTEMPTS times (default 3)
+#   each flow is retried up to MAESTRO_MAX_ATTEMPTS times (default 3);
+#   a hung JVM is killed after MAESTRO_ATTEMPT_TIMEOUT_SEC (default 480)
 #   when the CLI tee-log or `--debug-output` maestro.log matches the
 #   driver hang/death class. `IOSDriverTimeoutException` matches
 #   anywhere in the file. ConnectException / `Failed to connect to
@@ -62,6 +63,7 @@
 #   scripts/run-handbook-flows.sh                    # run ALL handbook flows
 #   scripts/run-handbook-flows.sh 25-restore-wallet  # run only matching flows
 #   scripts/run-handbook-flows.sh '2*' 12-settings   # multiple glob patterns
+#   scripts/run-handbook-flows.sh --matcher-self-test
 #
 #   With no arguments every flow in .maestro/handbook/*.yaml runs (the
 #   default, full-suite behaviour). With one or more positional arguments,
@@ -84,6 +86,77 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MAESTRO="${MAESTRO:-$HOME/.maestro/bin/maestro}"
 FLOWS_DIR="$REPO_ROOT/.maestro/handbook"
 CAPTURES_DIR="$REPO_ROOT/build/handbook-captures"
+
+# True when $1 is a readable file that matches the XCUITest-driver
+# hang/death class. Maestro often disguises driver death as a later
+# assertion failure on CLI stdout while the ConnectException lives
+# only in `--debug-output` maestro.log — callers must pass both.
+# ConnectException-class strings before `Running flow ` are installer
+# status-check noise, not driver death; slice them out. Do not pipe
+# awk into grep under pipefail (SIGPIPE would false-negative).
+is_driver_hang_or_death() {
+  local log="$1"
+  [ -f "$log" ] || return 1
+
+  if grep -qF 'IOSDriverTimeoutException' "$log"; then
+    return 0
+  fi
+
+  local haystack="$log"
+  local tmp=""
+  if grep -qF 'Running flow ' "$log"; then
+    tmp="$(mktemp)"
+    awk 'p || /Running flow / { p=1; print }' "$log" > "$tmp"
+    haystack="$tmp"
+  fi
+
+  local rc=0
+  grep -qF \
+    -e 'Failed to connect to /127.0.0.1:7001' \
+    -e 'java.net.ConnectException' \
+    -e 'Connection refused' \
+    -e 'Connection reset' \
+    -e 'UnknownFailure' \
+    -e 'deviceInfo failed, code: 500' \
+    "$haystack" || rc=$?
+  if [ -n "$tmp" ]; then
+    rm -f "$tmp"
+  fi
+  return "$rc"
+}
+
+if [ "${1:-}" = '--matcher-self-test' ]; then
+  tmp="$(mktemp)"
+  trap 'rm -f "$tmp"' EXIT
+  printf '%s\n' \
+    'Running flow 01-welcome' \
+    'Assert that "Start" is visible...Exception in thread "main" UnknownFailure(errorResponse=Request for http://127.0.0.1:7001/deviceInfo failed, code: 500, body: )' \
+    > "$tmp"
+  is_driver_hang_or_death "$tmp" || {
+    echo 'expected HTTP 500 deviceInfo after Running flow to match' >&2
+    exit 1
+  }
+  printf '%s\n' 'Running flow 01-welcome' 'Assert that "Start" is visible' > "$tmp"
+  if is_driver_hang_or_death "$tmp"; then
+    echo 'bare assertion must not match' >&2
+    exit 1
+  fi
+  printf '%s\n' \
+    'Running flow 01-welcome' \
+    'GET http://127.0.0.1:7001/deviceInfo' \
+    > "$tmp"
+  if is_driver_hang_or_death "$tmp"; then
+    echo 'deviceInfo URL without failure must not match' >&2
+    exit 1
+  fi
+  printf '%s\n' 'java.net.ConnectException: Connection refused' > "$tmp"
+  is_driver_hang_or_death "$tmp" || {
+    echo 'expected ConnectException without Running flow to match' >&2
+    exit 1
+  }
+  echo ok
+  exit 0
+fi
 
 mkdir -p "$CAPTURES_DIR"
 
@@ -191,9 +264,9 @@ trap 'rm -rf "$TMP_DIR"' EXIT
 # Per-attempt retry budget for the upstream driver-hang class. The per-flow
 # / per-attempt timing logged below is the data to size the workflow's
 # `timeout-minutes` (see tier3-handbook.yaml) and to target a real speed-up.
-# Worst-case the entire suite is 3 × 26 × ~1 min plus 3 × ~6 min
-# driver-startup-timeout per failed attempt, which still fits inside
-# the workflow's 60 min envelope.
+# Happy-path the suite is ~26 × ~1–3 min plus driver startup and still
+# fits the workflow's 60 min envelope. Per-attempt 480s timeouts are
+# the rare hang class, not the budget for every flow.
 MAESTRO_MAX_ATTEMPTS="${MAESTRO_MAX_ATTEMPTS:-3}"
 # Cap a single `maestro test` so a JVM that prints Exception-in-main
 # and then never exits cannot consume the remaining job budget.
@@ -242,44 +315,6 @@ fmt_duration() {
   printf '%dm %02ds' $(( $1 / 60 )) $(( $1 % 60 ))
 }
 
-# True when $1 is a readable file that matches the XCUITest-driver
-# hang/death class. Maestro often disguises driver death as a later
-# assertion failure on CLI stdout while the ConnectException lives
-# only in `--debug-output` maestro.log — callers must pass both.
-# ConnectException-class strings before `Running flow ` are installer
-# status-check noise, not driver death; slice them out. Do not pipe
-# awk into grep under pipefail (SIGPIPE would false-negative).
-is_driver_hang_or_death() {
-  local log="$1"
-  [ -f "$log" ] || return 1
-
-  if grep -qF 'IOSDriverTimeoutException' "$log"; then
-    return 0
-  fi
-
-  local haystack="$log"
-  local tmp=""
-  if grep -qF 'Running flow ' "$log"; then
-    tmp="$(mktemp)"
-    awk 'p || /Running flow / { p=1; print }' "$log" > "$tmp"
-    haystack="$tmp"
-  fi
-
-  local rc=0
-  grep -qF \
-    -e 'Failed to connect to /127.0.0.1:7001' \
-    -e 'java.net.ConnectException' \
-    -e 'Connection refused' \
-    -e 'Connection reset' \
-    -e 'UnknownFailure' \
-    -e '127.0.0.1:7001/deviceInfo' \
-    "$haystack" || rc=$?
-  if [ -n "$tmp" ]; then
-    rm -f "$tmp"
-  fi
-  return "$rc"
-}
-
 # Run one `maestro test`, tee to $1, kill the process group if it
 # outlives MAESTRO_ATTEMPT_TIMEOUT_SEC. Exit 124 on timeout so the
 # retry path can treat it as driver hang/death.
@@ -288,61 +323,75 @@ run_maestro_attempt() {
   shift
   MAESTRO_ATTEMPT_TIMEOUT_SEC="$MAESTRO_ATTEMPT_TIMEOUT_SEC" \
     /usr/bin/python3 - "$log" "$@" <<'PY'
-import os, select, signal, subprocess, sys, time
+import os, select, signal, subprocess, sys, threading
 
 log_path = sys.argv[1]
 cmd = sys.argv[2:]
 timeout = int(os.environ.get("MAESTRO_ATTEMPT_TIMEOUT_SEC", "480"))
-log = open(log_path, "w", encoding="utf-8", errors="replace")
+log = open(log_path, "wb")
 p = subprocess.Popen(
     cmd,
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT,
+    stdin=subprocess.DEVNULL,
     start_new_session=True,
-    text=True,
-    bufsize=1,
 )
-deadline = time.monotonic() + timeout
+timed_out = {"v": False}
+
+def kill_pg():
+    timed_out["v"] = True
+    try:
+        os.killpg(p.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+
+def on_signal(signum, _frame):
+    kill_pg()
+    try:
+        p.wait()
+    except Exception:
+        pass
+    log.close()
+    sys.exit(128 + signum)
+
+signal.signal(signal.SIGTERM, on_signal)
+signal.signal(signal.SIGINT, on_signal)
+signal.signal(signal.SIGHUP, on_signal)
+
+timer = threading.Timer(timeout, kill_pg)
+timer.daemon = True
+timer.start()
 try:
+    fd = p.stdout.fileno()
     while True:
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            try:
-                os.killpg(p.pid, signal.SIGKILL)
-            except ProcessLookupError:
-                pass
-            p.wait()
-            msg = "\nmaestro attempt timed out after %ss\n" % timeout
-            sys.stdout.write(msg)
-            log.write(msg)
-            log.close()
-            sys.exit(124)
-        if p.stdout is None:
-            break
-        ready, _, _ = select.select([p.stdout], [], [], min(1.0, remaining))
-        if ready:
-            line = p.stdout.readline()
-            if line:
-                sys.stdout.write(line)
-                sys.stdout.flush()
-                log.write(line)
-                continue
-            if p.poll() is not None:
-                break
-        elif p.poll() is not None:
-            rest = p.stdout.read()
-            if rest:
-                sys.stdout.write(rest)
+        if p.poll() is not None:
+            rest = os.read(fd, 65536) if p.stdout is not None else b""
+            while rest:
+                sys.stdout.buffer.write(rest)
                 log.write(rest)
+                rest = os.read(fd, 65536)
             break
-finally:
-    if p.poll() is None:
+        ready, _, _ = select.select([p.stdout], [], [], 1.0)
+        if not ready:
+            continue
         try:
-            os.killpg(p.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+            chunk = os.read(fd, 4096)
+        except OSError:
+            break
+        if not chunk:
+            break
+        sys.stdout.buffer.write(chunk)
+        sys.stdout.buffer.flush()
+        log.write(chunk)
+finally:
+    timer.cancel()
+    if p.poll() is None:
+        kill_pg()
         p.wait()
 log.close()
+if timed_out["v"]:
+    sys.stdout.write("\nmaestro attempt timed out after %ss\n" % timeout)
+    sys.exit(124)
 sys.exit(p.returncode or 0)
 PY
 }
