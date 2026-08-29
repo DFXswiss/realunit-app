@@ -8,6 +8,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_terms_dto.dart';
@@ -15,11 +16,18 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
 import 'package:realunit_wallet/screens/referral/referral_error_message.dart';
 import 'package:realunit_wallet/screens/referral/referral_terms_page.dart';
+import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
+import 'package:realunit_wallet/screens/web_view/web_view_page.dart';
+import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
+import 'package:realunit_wallet/styles/language.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
 class _MockReferralCubit extends MockCubit<ReferralState>
     implements ReferralCubit {}
+
+class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
+    implements SettingsBloc {}
 
 const _summary = ReferralSummaryDto(
   eligible: true,
@@ -572,6 +580,155 @@ void main() {
     expect(
       referralTermsInAppUri('//docs.dfx.swiss/de/tnc.html'),
       Uri.parse('https://docs.dfx.swiss/de/tnc.html'),
+    );
+  });
+
+  testWidgets(
+    'loads API terms in the SettingsBloc language, not the widget locale',
+    (tester) async {
+      final settings = _MockSettingsBloc();
+      const settingsState = SettingsState(language: Language.de);
+      when(() => settings.state).thenReturn(settingsState);
+      GetIt.instance.registerSingleton<SettingsBloc>(settings);
+      final service = _MockReferralService();
+      when(() => service.getTerms()).thenAnswer(
+        (_) async => const ReferralTermsDto(
+          version: '2026-08-14',
+          markdown: '# DE-TB-FROM-BLOC',
+          markdownEn: '# EN-TB-FROM-LOCALE',
+        ),
+      );
+      GetIt.instance.registerSingleton<RealUnitReferralService>(service);
+      addTearDown(() async {
+        await GetIt.instance.reset();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: realUnitTheme,
+          locale: const Locale('en'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          home: BlocProvider<ReferralCubit>.value(
+            value: cubit,
+            child: const ReferralTermsPage(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.textContaining('DE-TB-FROM-BLOC'), findsOneWidget);
+      expect(find.textContaining('EN-TB-FROM-LOCALE'), findsNothing);
+    },
+  );
+
+  testWidgets('http(s) terms links open the in-app web view', (tester) async {
+    late WebViewRouteParams params;
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => BlocProvider<ReferralCubit>.value(
+            value: cubit,
+            child: const ReferralTermsPage(
+              initialMarkdownContent:
+                  '[Prospekt](https://realunit.ch/downloads/p.pdf)',
+            ),
+          ),
+        ),
+        GoRoute(
+          name: AppRoutes.webView,
+          path: '/webView',
+          builder: (_, state) {
+            params = state.extra! as WebViewRouteParams;
+            return const Scaffold(body: Text('WEB'));
+          },
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: realUnitTheme,
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        routerConfig: router,
+      ),
+    );
+    await tester.pump();
+
+    tester.widget<MarkdownBody>(find.byType(MarkdownBody)).onTapLink!(
+      'Prospekt',
+      'https://realunit.ch/downloads/p.pdf',
+      '',
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('WEB'), findsOneWidget);
+    expect(params.title, 'Prospekt');
+    expect(params.url, Uri.parse('https://realunit.ch/downloads/p.pdf'));
+  });
+
+  testWidgets('mailto terms links stay on the terms page', (tester) async {
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => BlocProvider<ReferralCubit>.value(
+            value: cubit,
+            child: const ReferralTermsPage(
+              initialMarkdownContent: '[Mail](mailto:info@realunit.ch)',
+            ),
+          ),
+        ),
+        GoRoute(
+          name: AppRoutes.webView,
+          path: '/webView',
+          builder: (_, _) => const Scaffold(body: Text('WEB')),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        theme: realUnitTheme,
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        routerConfig: router,
+      ),
+    );
+    await tester.pump();
+
+    tester.widget<MarkdownBody>(find.byType(MarkdownBody)).onTapLink!(
+      'Mail',
+      'mailto:info@realunit.ch',
+      '',
+    );
+    await tester.pump();
+
+    expect(find.text('WEB'), findsNothing);
+    expect(
+      find.text('Teilnahmebedingungen Referral-Programm'),
+      findsOneWidget,
     );
   });
 }
