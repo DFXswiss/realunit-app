@@ -76,8 +76,11 @@ name: Tier 3 — Handbook flows
 #   as a safety net for that residual crash class, retrying the
 #   driver hang/death class against both the CLI tee-log and
 #   `--debug-output` maestro.log (`IOSDriverTimeoutException`,
-#   ConnectException on :7001, Connection refused/reset) —
-#   assertion failures without those patterns are never retried.
+#   ConnectException on :7001, Connection refused/reset,
+#   UnknownFailure HTTP 500 on :7001/deviceInfo). A hung JVM after
+#   that 500 is killed per attempt (`MAESTRO_ATTEMPT_TIMEOUT_SEC`)
+#   so the 60-minute job does not sit until GitHub cancels it.
+#   Assertion failures without those patterns are never retried.
 #   The post-mortem block (lsof / ps / simctl log + Maestro
 #   `--debug-output`) captures failure state so future regressions
 #   can be diagnosed forensically. The CI-hardening track that landed
