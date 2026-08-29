@@ -177,5 +177,15 @@ void main() {
       expect(txid.asShortTxId.contains('...'), isTrue);
       expect(txid.asShortTxId.length, 23); // 10 + 3 + 10
     });
+
+    test('asShortTxId returns a short id whole without a RangeError '
+        '(issue #657 P9 L1 regression)', () {
+      // Anything not longer than the elided form is shown whole; the old code
+      // crashed with a RangeError on substring(0, 10) / substring(length - 10)
+      // for these inputs.
+      expect('0xabc'.asShortTxId, '0xabc');
+      expect(''.asShortTxId, '');
+      expect('0x12345678'.asShortTxId, '0x12345678'); // length 10, would overlap
+    });
   });
 }

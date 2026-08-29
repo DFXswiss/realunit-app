@@ -129,6 +129,10 @@ extension ToEpiAddress on String {
   String get asHexEip55 => EthereumAddress.fromHex(this).hexEip55;
 
   String get asShortTxId {
+    // A txid shorter than the elided form (10 + "..." + 10 = 23) is returned
+    // whole: slicing it would throw a RangeError for length < 10 and overlap
+    // the head/tail for length < 20 (issue #657 P9 L1).
+    if (length <= 23) return this;
     return '${substring(0, 10)}...${substring(length - 10)}';
   }
 }
