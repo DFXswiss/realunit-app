@@ -233,4 +233,60 @@ void main() {
       ReferralEligibilityLoaded(eligible: true),
     ],
   );
+
+  blocTest<ReferralEligibilityCubit, ReferralEligibilityState>(
+    'reload does not hide a tile that is already shown on timeout',
+    build: () {
+      var calls = 0;
+      when(() => service.getSummary()).thenAnswer((_) async {
+        calls++;
+        if (calls == 1) {
+          return const ReferralSummaryDto(
+            eligible: true,
+            termsAccepted: true,
+            openCount: 0,
+            creditedCount: 0,
+            realuSum: 0,
+            chfSum: 0,
+          );
+        }
+        throw TimeoutException('summary');
+      });
+      return ReferralEligibilityCubit(service);
+    },
+    act: (cubit) async {
+      await cubit.load();
+      await cubit.reload();
+    },
+    expect: () => const [
+      ReferralEligibilityLoading(),
+      ReferralEligibilityLoaded(eligible: true),
+    ],
+  );
+
+  blocTest<ReferralEligibilityCubit, ReferralEligibilityState>(
+    'reload from initial hides the tile on a timed-out summary',
+    build: () {
+      when(() => service.getSummary()).thenThrow(
+        TimeoutException('summary'),
+      );
+      return ReferralEligibilityCubit(service);
+    },
+    act: (cubit) => cubit.reload(),
+    expect: () => const [
+      ReferralEligibilityLoaded(eligible: false, unavailable: true),
+    ],
+  );
+
+  blocTest<ReferralEligibilityCubit, ReferralEligibilityState>(
+    'reload from initial hides the tile when the API call fails',
+    build: () {
+      when(() => service.getSummary()).thenThrow(Exception('down'));
+      return ReferralEligibilityCubit(service);
+    },
+    act: (cubit) => cubit.reload(),
+    expect: () => const [
+      ReferralEligibilityLoaded(eligible: false, unavailable: true),
+    ],
+  );
 }
