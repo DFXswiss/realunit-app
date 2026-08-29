@@ -10,12 +10,11 @@ import 'package:realunit_wallet/models/portfolio_value_point.dart';
 ///
 /// Chart Y is mark-to-market CHF (shares × REALU price at that date), not
 /// share count. The spot price path ends at 153 rappen so the last point
-/// matches `balance * DashboardState.price`. As-of date for the handbook
-/// trade tables: 2026-08-28.
-DateTime _today() {
-  final now = DateTime.now();
-  return DateTime(now.year, now.month, now.day);
-}
+/// matches `balance * DashboardState.price`.
+///
+/// Trade-table labels are derived from these timestamps. They must not
+/// follow `DateTime.now()` or the goldens go red at midnight.
+DateTime _today() => DateTime(2026, 8, 28);
 
 /// REALU price in rappen. 153 today, ~118 a year ago, with a mid-year
 /// peak and dip so a flat holding is not a straight line.
