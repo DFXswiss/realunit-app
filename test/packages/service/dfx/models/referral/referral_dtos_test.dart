@@ -314,6 +314,17 @@ void main() {
       });
       expect(numeric.inviterName, isNull);
     });
+
+    test('campaignTextLang keeps the UI language when there is no copy', () {
+      final dto = ReferralBindResultDto.fromJson({
+        'kind': 'Invite',
+        'inviterName': 'Björn',
+      });
+      expect(dto.campaignTextForLocale('en'), isNull);
+      expect(dto.campaignTextForLocale('de'), isNull);
+      expect(dto.campaignTextLang('en'), 'en');
+      expect(dto.campaignTextLang('de'), 'de');
+    });
   });
 
   group('$ReferralInviteDto.fromJson', () {
