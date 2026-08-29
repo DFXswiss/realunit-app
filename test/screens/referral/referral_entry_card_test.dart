@@ -397,4 +397,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('referral-page'), findsOneWidget);
   });
+
+  testWidgets(
+    'hides the dashboard card when the referral service is unregistered',
+    (tester) async {
+      await GetIt.instance.reset();
+
+      await pumpCard(tester);
+      await tester.pump();
+
+      expect(find.text('Empfehlungen'), findsNothing);
+    },
+  );
 }

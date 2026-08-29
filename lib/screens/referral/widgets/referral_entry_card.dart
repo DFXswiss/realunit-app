@@ -21,9 +21,11 @@ class ReferralEntryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!getIt.isRegistered<RealUnitReferralService>()) {
+      return const SizedBox.shrink();
+    }
     return BlocProvider(
-      create: (_) =>
-          ReferralEligibilityCubit(getIt<RealUnitReferralService>())..load(),
+      create: (_) => ReferralEligibilityCubit(getIt<RealUnitReferralService>())..load(),
       child: ReferralEligibilityResumeReloader(
         unavailablePollInterval: unavailablePollInterval,
         child: const _ReferralEntryCardView(),
