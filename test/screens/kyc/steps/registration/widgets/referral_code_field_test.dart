@@ -4,12 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get_it/get_it.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_code_lookup_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/widgets/referral_code_field.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+
+class _MockService extends Mock implements RealUnitReferralService {}
 
 bool _isLiveRegion(WidgetTester tester, Finder textFinder) {
   return find
@@ -1360,5 +1365,259 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(lookups, 0);
     expect(find.textContaining('Einladung von Björn erkannt'), findsNothing);
+  });
+
+  testWidgets(
+    'in-flight stash does not overwrite a code typed while peeking',
+    (tester) async {
+      final pending = Completer<String?>();
+      String? lookedUp;
+      final ctrl = TextEditingController();
+      await pumpField(
+        tester,
+        controller: ctrl,
+        pendingCode: () => pending.future,
+        lookup: (code) async {
+          lookedUp = code;
+          return const ReferralCodeLookupDto(
+            kind: 'invite',
+            inviterName: 'Björn',
+          );
+        },
+      );
+      await tester.pump();
+      ctrl.text = 'TYPED1';
+      pending.complete('STASH1');
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(ctrl.text, 'TYPED1');
+      expect(lookedUp, 'TYPED1');
+    },
+  );
+
+  testWidgets(
+    'a failed stash peek still looks up a code typed while peeking',
+    (tester) async {
+      final pending = Completer<String?>();
+      String? lookedUp;
+      final ctrl = TextEditingController();
+      await pumpField(
+        tester,
+        controller: ctrl,
+        pendingCode: () => pending.future,
+        lookup: (code) async {
+          lookedUp = code;
+          return const ReferralCodeLookupDto(
+            kind: 'invite',
+            inviterName: 'Björn',
+          );
+        },
+      );
+      await tester.pump();
+      ctrl.text = 'TYPED1';
+      pending.completeError(Exception('stash'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(ctrl.text, 'TYPED1');
+      expect(lookedUp, 'TYPED1');
+    },
+  );
+
+  testWidgets('swapping the controller moves the lookup listener', (
+    tester,
+  ) async {
+    final lookups = <String>[];
+    final ctrl1 = TextEditingController(text: 'AAAA11');
+    final ctrl2 = TextEditingController();
+    Future<ReferralCodeLookupDto> lookup(String code) async {
+      lookups.add(code);
+      return const ReferralCodeLookupDto(
+        kind: 'invite',
+        inviterName: 'Björn',
+      );
+    }
+
+    await pumpField(tester, controller: ctrl1, lookup: lookup);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(lookups, ['AAAA11']);
+
+    await pumpField(tester, controller: ctrl2, lookup: lookup);
+    await tester.pump();
+    ctrl2.text = 'BBBB22';
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(lookups, ['AAAA11', 'BBBB22']);
+
+    final before = lookups.length;
+    ctrl1.text = 'CCCC33';
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(lookups.length, before);
+  });
+
+  testWidgets('paste reads Clipboard.getData when no reader is injected', (
+    tester,
+  ) async {
+    String? lookedUp;
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.getData') {
+        return <String, dynamic>{'text': 'AB12CD'};
+      }
+      return null;
+    });
+    addTearDown(() {
+      messenger.setMockMethodCallHandler(SystemChannels.platform, null);
+    });
+
+    final ctrl = TextEditingController();
+    await pumpField(
+      tester,
+      controller: ctrl,
+      lookup: (code) async {
+        lookedUp = code;
+        return const ReferralCodeLookupDto(
+          kind: 'invite',
+          inviterName: 'Björn',
+        );
+      },
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Einfügen'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(ctrl.text, 'AB12CD');
+    expect(lookedUp, 'AB12CD');
+  });
+
+  testWidgets('unmount during an in-flight paste does not setState', (
+    tester,
+  ) async {
+    final release = Completer<String?>();
+    final ctrl = TextEditingController();
+    await pumpField(
+      tester,
+      controller: ctrl,
+      readClipboard: () => release.future,
+      lookup: (_) async => const ReferralCodeLookupDto(kind: 'invite'),
+    );
+    await tester.pump();
+    await tester.tap(find.byTooltip('Einfügen'));
+    await tester.pump();
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    release.complete('AB12');
+    await tester.pump();
+    expect(ctrl.text, isEmpty);
+  });
+
+  testWidgets('looks up via RealUnitReferralService when lookup is omitted', (
+    tester,
+  ) async {
+    final service = _MockService();
+    when(() => service.lookupCode('AB12CD')).thenAnswer(
+      (_) async => const ReferralCodeLookupDto(
+        kind: 'invite',
+        inviterName: 'Björn',
+      ),
+    );
+    GetIt.instance.registerSingleton<RealUnitReferralService>(service);
+    addTearDown(() async {
+      await GetIt.instance.reset();
+    });
+
+    final ctrl = TextEditingController(text: 'AB12CD');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: realUnitTheme,
+        locale: const Locale('de'),
+        localizationsDelegates: const [
+          S.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: S.delegate.supportedLocales,
+        home: Scaffold(
+          body: ReferralCodeField(
+            key: const Key('referral-code'),
+            controller: ctrl,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.textContaining('Einladung von Björn erkannt'), findsOneWidget);
+    verify(() => service.lookupCode('AB12CD')).called(1);
+  });
+
+  testWidgets(
+    'a disabled field ignores controller changes without looking up',
+    (tester) async {
+      var lookups = 0;
+      final ctrl = TextEditingController();
+      await pumpField(
+        tester,
+        controller: ctrl,
+        enabled: false,
+        lookup: (_) async {
+          lookups++;
+          return const ReferralCodeLookupDto(kind: 'invite');
+        },
+      );
+      await tester.pump();
+      ctrl.text = 'AB12CD';
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(lookups, 0);
+    },
+  );
+
+  testWidgets('dismissPromoDialog pops an open campaign dialog', (
+    tester,
+  ) async {
+    final ctrl = TextEditingController(text: 'EVT1');
+    await pumpField(
+      tester,
+      controller: ctrl,
+      lookup: (_) async => const ReferralCodeLookupDto(
+        kind: 'promo',
+        actionText: 'Mit dem Code EVT1 schenken wir dir 20 Token.',
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    expect(find.text('Aktion'), findsOneWidget);
+
+    tester
+        .state<ReferralCodeFieldState>(find.byType(ReferralCodeField))
+        .dismissPromoDialog();
+    await tester.pumpAndSettle();
+    expect(find.text('Aktion'), findsNothing);
+  });
+
+  testWidgets('dismissPromoDialog is a no-op without an open campaign', (
+    tester,
+  ) async {
+    final ctrl = TextEditingController();
+    await pumpField(
+      tester,
+      controller: ctrl,
+      lookup: (_) async => const ReferralCodeLookupDto(kind: 'invite'),
+    );
+    await tester.pump();
+    tester
+        .state<ReferralCodeFieldState>(find.byType(ReferralCodeField))
+        .dismissPromoDialog();
+    await tester.pump();
+    expect(find.byType(ReferralCodeField), findsOneWidget);
   });
 }
