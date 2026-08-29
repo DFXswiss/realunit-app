@@ -10,6 +10,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_bind_result_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
+import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/setup/routing/referral_bind.dart';
 import 'package:realunit_wallet/setup/routing/referral_pending_code.dart';
 import 'package:realunit_wallet/styles/colors.dart';
@@ -18,6 +19,8 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _MockService extends Mock implements RealUnitReferralService {}
+
+class _MockPinAuthCubit extends Mock implements PinAuthCubit {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -837,6 +840,365 @@ void main() {
         ),
         findsNothing,
       );
+      expect(await peekPendingReferralCode(), isNull);
+    },
+  );
+
+  testWidgets(
+    'unavailable Retry restashes when bind is still unavailable',
+    (tester) async {
+      when(() => service.bind(code: 'AB12CD')).thenThrow(
+        const ApiException(
+          statusCode: 503,
+          code: 'UNAVAILABLE',
+          message: 'down',
+        ),
+      );
+      await stashPendingReferralCode('AB12CD');
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final pending = bindPendingReferralCode(router);
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Wiederholen'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(
+        find.text(
+          'Wir konnten den Code gerade nicht prüfen. Bitte versuche es später erneut.',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<AppFilledButton>(
+              find.widgetWithText(AppFilledButton, 'Wiederholen'),
+            )
+            .state,
+        FilledButtonState.idle,
+      );
+      expect(await peekPendingReferralCode(), 'AB12CD');
+      await tester.tap(find.text('Schließen'));
+      await tester.pumpAndSettle();
+      await pending;
+    },
+  );
+
+  testWidgets(
+    'unavailable Retry keeps a newer stashed code when bind is still unavailable',
+    (tester) async {
+      var calls = 0;
+      when(() => service.bind(code: any(named: 'code'))).thenAnswer((
+        invocation,
+      ) async {
+        calls += 1;
+        if (calls >= 2) {
+          await stashPendingReferralCode('NEWER1');
+        }
+        throw const ApiException(
+          statusCode: 503,
+          code: 'UNAVAILABLE',
+          message: 'down',
+        );
+      });
+      await stashPendingReferralCode('AB12CD');
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final pending = bindPendingReferralCode(router);
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Wiederholen'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(await peekPendingReferralCode(), 'NEWER1');
+      expect(
+        find.text(
+          'Wir konnten den Code gerade nicht prüfen. Bitte versuche es später erneut.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Schließen'));
+      await tester.pumpAndSettle();
+      await pending;
+    },
+  );
+
+  testWidgets(
+    'unavailable Retry shows invalid copy when bind is a 4xx rejection',
+    (tester) async {
+      var calls = 0;
+      when(() => service.bind(code: 'AB12CD')).thenAnswer((_) async {
+        calls += 1;
+        if (calls == 1) {
+          throw const ApiException(
+            statusCode: 503,
+            code: 'UNAVAILABLE',
+            message: 'down',
+          );
+        }
+        throw const ApiException(
+          statusCode: 409,
+          code: 'ALREADY_BOUND',
+          message: 'already bound',
+        );
+      });
+      await stashPendingReferralCode('AB12CD');
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final pending = bindPendingReferralCode(router);
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.text('Wiederholen'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Link ungültig oder abgelaufen'), findsOneWidget);
+      expect(await peekPendingReferralCode(), isNull);
+      await tester.tap(find.text('Schließen'));
+      await tester.pumpAndSettle();
+      await pending;
+    },
+  );
+
+  testWidgets(
+    'unavailable dialog post-frame is a no-op without a navigator',
+    (tester) async {
+      await stashPendingReferralCode('AB12CD');
+      when(() => service.bind(code: 'AB12CD')).thenThrow(
+        const ApiException(
+          statusCode: 503,
+          code: 'UNAVAILABLE',
+          message: 'down',
+        ),
+      );
+
+      await bindPendingReferralCode(router);
+      await tester.pump();
+
+      expect(
+        find.text(
+          'Wir konnten den Code gerade nicht prüfen. Bitte versuche es später erneut.',
+        ),
+        findsNothing,
+      );
+      expect(await peekPendingReferralCode(), 'AB12CD');
+    },
+  );
+
+  testWidgets(
+    'deferred unavailable Retry shows the promo campaign',
+    (tester) async {
+      var calls = 0;
+      when(() => service.bind(code: 'EVT1')).thenAnswer((_) async {
+        calls += 1;
+        if (calls == 1) {
+          throw const ApiException(
+            statusCode: 503,
+            code: 'UNAVAILABLE',
+            message: 'down',
+          );
+        }
+        return const ReferralBindResultDto(
+          kind: 'Promo',
+          campaignText: 'Mit dem Code EVT1 schenken wir dir 20 Token.',
+        );
+      });
+      await stashPendingReferralCode('EVT1');
+      await bindPendingReferralCode(router);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Wiederholen'), findsOneWidget);
+      await tester.tap(find.text('Wiederholen'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Aktion'), findsOneWidget);
+      expect(
+        find.text('Mit dem Code EVT1 schenken wir dir 20 Token.'),
+        findsOneWidget,
+      );
+      expect(calls, 2);
+      await tester.tap(find.text('Schließen'));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'deferred unavailable Retry shows invalid copy on a 4xx rejection',
+    (tester) async {
+      var calls = 0;
+      when(() => service.bind(code: 'AB12CD')).thenAnswer((_) async {
+        calls += 1;
+        if (calls == 1) {
+          throw const ApiException(
+            statusCode: 503,
+            code: 'UNAVAILABLE',
+            message: 'down',
+          );
+        }
+        throw const ApiException(
+          statusCode: 409,
+          code: 'ALREADY_BOUND',
+          message: 'already bound',
+        );
+      });
+      await stashPendingReferralCode('AB12CD');
+      await bindPendingReferralCode(router);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Wiederholen'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Link ungültig oder abgelaufen'), findsOneWidget);
+      expect(calls, 2);
+      await tester.tap(find.text('Schließen'));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'scheduleReferralBind stashes without binding when PIN is locked',
+    (tester) async {
+      final pin = _MockPinAuthCubit();
+      when(() => pin.state).thenReturn(
+        const PinAuthState(isPinSetup: true, isPinVerified: false),
+      );
+      GetIt.instance.registerSingleton<PinAuthCubit>(pin);
+
+      scheduleReferralBind(router, 'AB12CD');
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pump();
+
+      expect(await peekPendingReferralCode(), 'AB12CD');
+      verifyNever(() => service.bind(code: 'AB12CD'));
+    },
+  );
+
+  testWidgets(
+    'scheduleReferralBind binds after PIN unlock',
+    (tester) async {
+      final pin = _MockPinAuthCubit();
+      when(() => pin.state).thenReturn(
+        const PinAuthState(isPinSetup: true, isPinVerified: true),
+      );
+      GetIt.instance.registerSingleton<PinAuthCubit>(pin);
+      when(() => service.bind(code: 'AB12CD')).thenAnswer(
+        (_) async => const ReferralBindResultDto(kind: 'Invite'),
+      );
+
+      scheduleReferralBind(router, 'AB12CD');
+      await tester.pumpWidget(
+        MaterialApp.router(
+          theme: realUnitTheme,
+          locale: const Locale('de'),
+          localizationsDelegates: const [
+            S.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          supportedLocales: S.delegate.supportedLocales,
+          routerConfig: router,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      verify(() => service.bind(code: 'AB12CD')).called(1);
       expect(await peekPendingReferralCode(), isNull);
     },
   );
