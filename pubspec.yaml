@@ -87,6 +87,8 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
   alchemist: ^0.14.0
   bloc_test: ^10.0.0
