@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_code_lookup_dto.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_step/kyc_registration_step_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart';
@@ -93,6 +94,32 @@ void main() {
                 kind: 'Promo',
                 campaignText:
                     'Mit dem Code EVT1 schenken wir dir bei deinem ersten erfolgreich abgewickelten Kauf von mindestens 200 RealUnit-Aktientoken 20 Token dazu. Die 20 Token werden als Zugabe zum Kauf gewährt und mindern damit den effektiven Kaufpreis. Gültig bis 7.9.2026, einmal je Person, begrenzt auf 100 Einlösungen, nicht kumulierbar mit einer Empfehlungsprämie. Die RealUnit Schweiz AG kann die Aktion jederzeit beenden.',
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    goldenTest(
+      'invalid code after lookup',
+      fileName: 'kyc_registration_referral_step_invalid',
+      constraints: phoneConstraints,
+      pumpBeforeTest: (tester) async {
+        await alchemist.precacheImages(tester);
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pumpAndSettle();
+      },
+      builder: () => wrapForGolden(
+        Scaffold(
+          body: BlocProvider<KycRegistrationStepCubit>.value(
+            value: stepCubit,
+            child: KycRegistrationReferralStep(
+              referralCodeCtrl: TextEditingController(text: 'NOPE'),
+              lookup: (_) async => throw const ApiException(
+                statusCode: 404,
+                code: 'NOT_FOUND',
+                message: 'missing',
               ),
             ),
           ),
