@@ -952,4 +952,154 @@ void main() {
       );
     });
   });
+
+  test('foldReferralPastedText repairs a split https:/ scheme', () {
+    expect(
+      foldReferralPastedText('https:/realunit.app/invite/AB12CD'),
+      'https://realunit.app/invite/AB12CD',
+    );
+  });
+
+  test('Yahoo RU remainder is used when the inner landing has no code path', () {
+    expect(
+      referralCodeFromInput(
+        'https://r.search.yahoo.com/RU=https://realunit.app/',
+      ),
+      isNull,
+    );
+  });
+
+  test('paste field ignores recognized invite/promo URLs that have no code', () {
+    expect(referralPasteFieldText('realunit-wallet:invite'), isNull);
+    expect(referralPasteFieldText('intent://realunit.app/invite'), isNull);
+    expect(
+      referralPasteFieldText(
+        'android-app://swiss.realunit.app/https/realunit.app/invite',
+      ),
+      isNull,
+    );
+    expect(
+      referralPasteFieldText('ios-app://6759720010/realunit-wallet/promo'),
+      isNull,
+    );
+    expect(referralPasteFieldText('/invite'), isNull);
+    expect(referralPasteFieldText('invite?utm_source=mail'), isNull);
+    expect(referralPasteFieldText('promo?utm_source=mail'), isNull);
+    expect(referralPasteFieldText('invite#'), isNull);
+    expect(referralPasteFieldText('promo#'), isNull);
+    expect(referralPasteFieldText('invite/'), isNull);
+    expect(referralPasteFieldText('promo/'), isNull);
+  });
+
+  test('path remainder follows the original value when decode is not a URL', () {
+    expect(
+      referralCodeFromPathRemainder('https://realunit.app/invite/AB12CD'),
+      'AB12CD',
+    );
+    expect(
+      referralCodeFromPathRemainder('intent://realunit.app/invite/AB12CD'),
+      'AB12CD',
+    );
+    expect(
+      referralCodeFromPathRemainder('https://realunit.app/invite'),
+      isNull,
+    );
+  });
+
+  test('HTML numeric tab entity does not hide a wrapped landing URL', () {
+    expect(
+      foldReferralPastedText('AB&#9;12CD'),
+      'AB\t12CD',
+    );
+    expect(
+      referralCodeFromInput('https://realunit.app/invite/AB&#9;12CD'),
+      'AB',
+    );
+  });
+
+  test('HTML numeric newline entity does not hide a wrapped landing URL', () {
+    expect(
+      referralCodeFromInput('https://realunit.app/invite/AB&#10;12CD'),
+      'AB12CD',
+    );
+  });
+
+  test('HTML numeric nbsp entity does not hide a wrapped landing URL', () {
+    expect(
+      referralCodeFromInput('https://realunit.app/invite/AB&#160;12CD'),
+      'AB',
+    );
+  });
+
+  test('HTML numeric entity with a non-decimal payload is left in place', () {
+    expect(foldReferralPastedText('AB&#a;CD'), 'AB&#a;CD');
+    expect(foldReferralPastedText('AB&#128;CD'), 'AB&#128;CD');
+  });
+
+  test('RFC2047 B encoding pads a truncated base64 payload', () {
+    expect(
+      referralCodeFromInput(
+        '=?UTF-8?B?aHR0cHM6Ly9yZWFsdW5pdC5hcHAvaW52aXRlL0FCMTJDRA?=',
+      ),
+      'AB12CD',
+    );
+  });
+
+  test('RFC2047 Q encoding maps underscore to space before URL detect', () {
+    expect(
+      referralCodeFromInput(
+        '=?UTF-8?Q?See_https=3A=2F=2Frealunit.app=2Finvite=2FAB12CD?=',
+      ),
+      'AB12CD',
+    );
+  });
+
+  test('RFC2047 leaves an invalid B payload in place', () {
+    expect(
+      referralCodeFromInput('=?UTF-8?B?!!!!!?='),
+      isNot('AB12CD'),
+    );
+  });
+
+  test('intent host invite|promo reads ?code= when the path is empty', () {
+    expect(
+      referralCodeFromInput(
+        'intent://invite?code=AB12CD#Intent;scheme=https;end',
+      ),
+      'AB12CD',
+    );
+    expect(
+      referralCodeFromInput(
+        'intent://promo?code=EVT1#Intent;scheme=https;end',
+      ),
+      'EVT1',
+    );
+  });
+
+  test('ios-app invite|promo first segment reads ?code= without a code path', () {
+    expect(
+      referralCodeFromInput('ios-app://6759720010/invite?code=AB12CD'),
+      'AB12CD',
+    );
+    expect(
+      referralCodeFromInput('ios-app://6759720010/promo?code=EVT1'),
+      'EVT1',
+    );
+  });
+
+  test('ios-app without an invite path still unwraps a nested landing URL', () {
+    expect(
+      referralCodeFromInput(
+        'ios-app://6759720010/other?u=https://realunit.app/invite/AB12CD',
+      ),
+      'AB12CD',
+    );
+  });
+
+  test('wrapper value that is a bare realunit.app host does not become a code', () {
+    expect(
+      referralCodeFromInput('https://facebook.com/l.php?u=https://realunit.app/invite'),
+      isNull,
+    );
+  });
 }
