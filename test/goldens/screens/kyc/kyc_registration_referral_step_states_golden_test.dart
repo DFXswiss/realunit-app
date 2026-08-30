@@ -58,6 +58,8 @@ void main() {
   }
 
   group('$KycRegistrationReferralStep states', () {
+    late Completer<ReferralCodeLookupDto> loadingLookup;
+
     goldenTest(
       'loading while lookup is in flight',
       fileName: 'kyc_registration_referral_step_loading',
@@ -66,9 +68,24 @@ void main() {
         // Hung lookup: do not pumpAndSettle (debounce 400ms starts the GET).
         await tester.pump(const Duration(milliseconds: 500));
       },
+      whilePerforming: (tester) async {
+        // Complete after the shot so the 15s lookup timeout Timer is not
+        // pending when FakeAsync ends. Do not pump here — the loading
+        // frame is already captured.
+        return () async {
+          if (!loadingLookup.isCompleted) {
+            loadingLookup.complete(
+              const ReferralCodeLookupDto(
+                kind: 'Invite',
+                inviterName: 'Björn',
+              ),
+            );
+          }
+        };
+      },
       builder: () {
-        final hung = Completer<ReferralCodeLookupDto>();
-        return step(code: 'AB12CD', lookup: (_) => hung.future);
+        loadingLookup = Completer<ReferralCodeLookupDto>();
+        return step(code: 'AB12CD', lookup: (_) => loadingLookup.future);
       },
     );
 
