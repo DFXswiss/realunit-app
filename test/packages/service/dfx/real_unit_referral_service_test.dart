@@ -127,6 +127,52 @@ void main() {
       expect(summary.openCount, 1);
     });
 
+    test('keeps summary counts aligned with visible invite states', () async {
+      Map<String, Object?> invite(int id, String status) => {
+        'id': id,
+        'code': 'CODE$id',
+        'url': 'https://realunit.app/invite/CODE$id',
+        'guestName': 'Guest$id',
+        'status': status,
+        'created': '2026-08-24T10:00:00Z',
+      };
+      final client = MockClient((request) async {
+        if (request.url.path.endsWith('/summary')) {
+          return http.Response(
+            jsonEncode({
+              'eligible': true,
+              'termsAccepted': true,
+              'minHolding': 70,
+              'openCount': 3,
+              'creditedCount': 1,
+              'realuSum': 20,
+              'chfSum': 84,
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode([
+            invite(1, 'Open'),
+            invite(2, 'Open'),
+            invite(3, 'Open'),
+            invite(4, 'Credited'),
+          ]),
+          200,
+        );
+      });
+
+      final service = build(client);
+      final summary = await service.getSummary();
+      final invites = await service.getInvites();
+
+      expect(summary.openCount, invites.where((invite) => invite.isOpen).length);
+      expect(
+        summary.creditedCount,
+        invites.where((invite) => invite.isCredited).length,
+      );
+    });
+
     test('throws ApiException on a non-200 response', () async {
       final client = MockClient(
         (_) async => http.Response(
