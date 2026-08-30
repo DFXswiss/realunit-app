@@ -21,11 +21,9 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
 import '../../helper/helper.dart';
 
-class _MockReferralCubit extends MockCubit<ReferralState>
-    implements ReferralCubit {}
+class _MockReferralCubit extends MockCubit<ReferralState> implements ReferralCubit {}
 
-class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
-    implements SettingsBloc {}
+class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState> implements SettingsBloc {}
 
 const _summary = ReferralSummaryDto(
   eligible: true,
