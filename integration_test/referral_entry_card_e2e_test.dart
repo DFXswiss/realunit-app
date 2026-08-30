@@ -85,8 +85,11 @@ void main() {
   });
 
   testWidgets('taps the Einstiegskarte through to the referral route', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(800, 600));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+    tester.view
+      ..physicalSize = const Size(800, 600)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
     when(() => service.getSummary()).thenAnswer(
       (_) async => const ReferralSummaryDto(
