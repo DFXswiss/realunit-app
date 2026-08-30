@@ -494,7 +494,7 @@ void main() {
   });
 
   group('$RealUnitReferralService.acceptTerms', () {
-    test('POSTs accepted:true and accepts 200 or 201', () async {
+    test('POSTs accepted:true with the rendered version and accepts 200 or 201', () async {
       Map<String, dynamic>? body;
       final client = MockClient((request) async {
         body = jsonDecode(request.body) as Map<String, dynamic>;
@@ -503,8 +503,8 @@ void main() {
         return http.Response('{}', 201);
       });
 
-      await build(client).acceptTerms();
-      expect(body, {'accepted': true});
+      await build(client).acceptTerms(version: '2026-09-01');
+      expect(body, {'accepted': true, 'version': '2026-09-01'});
     });
 
     test('throws ApiException on a non-200/201 response', () async {

@@ -99,7 +99,7 @@ void main() {
 
   setUp(() {
     cubit = _MockReferralCubit();
-    when(() => cubit.acceptTerms()).thenAnswer((_) async {});
+    when(() => cubit.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
     when(() => cubit.load()).thenAnswer((_) async {});
     settings = _MockSettingsBloc();
     const settingsState = SettingsState(language: Language.de);

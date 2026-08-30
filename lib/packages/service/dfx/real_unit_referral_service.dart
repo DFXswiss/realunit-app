@@ -56,13 +56,15 @@ class RealUnitReferralService extends DFXAuthService {
     );
   }
 
-  Future<void> acceptTerms() async {
+  Future<void> acceptTerms({
+    String version = ReferralTermsDto.bundledVersion,
+  }) async {
     final uri = buildUri(host, '$_basePath/terms/accept');
     final response = await _timed(
       authenticatedPost(
         uri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'accepted': true}),
+        body: jsonEncode({'accepted': true, 'version': version}),
       ),
     );
 

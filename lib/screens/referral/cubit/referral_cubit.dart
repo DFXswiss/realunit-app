@@ -4,6 +4,7 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.da
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_created_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_terms_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/screens/referral/referral_error_message.dart';
 import 'package:realunit_wallet/screens/referral/referral_limits.dart';
@@ -44,7 +45,9 @@ class ReferralCubit extends Cubit<ReferralState> {
     }
   }
 
-  Future<void> acceptTerms() async {
+  Future<void> acceptTerms({
+    String version = ReferralTermsDto.bundledVersion,
+  }) async {
     final current = state;
     if (current is! ReferralNeedsTerms) return;
     final summary = current.summary;
@@ -56,7 +59,7 @@ class ReferralCubit extends Cubit<ReferralState> {
       ),
     );
     try {
-      await _service.acceptTerms();
+      await _service.acceptTerms(version: version);
     } on ApiException catch (e) {
       emit(
         ReferralNeedsTerms(
