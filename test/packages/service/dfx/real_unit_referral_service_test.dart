@@ -824,6 +824,7 @@ void main() {
 
       final terms = await build(client).getTerms();
       expect(path, '/v1/realunit/referral/terms');
+      expect(terms.version, '2026-08-14');
       expect(terms.textForLang('de'), '# TB');
       expect(terms.textForLang('en'), '# Terms');
     });
