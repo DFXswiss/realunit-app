@@ -928,6 +928,19 @@ void main() {
       expect(promo.campaignTextLang('de'), 'de');
     });
 
+    test('uses backend inviterName and inviteeName, not legacy aliases', () {
+      final invite = ReferralCodeLookupDto.fromJson({
+        'kind': 'invite',
+        'inviterName': 'Ada',
+        'inviteeName': 'Grace',
+        'hostDisplayName': 'Legacy host',
+        'guestName': 'Legacy guest',
+      });
+
+      expect(invite.inviterName, 'Ada');
+      expect(invite.inviteeName, 'Grace');
+    });
+
     test('whitespace-only inviterName is not displayed', () {
       final invite = ReferralCodeLookupDto.fromJson({
         'kind': 'invite',
