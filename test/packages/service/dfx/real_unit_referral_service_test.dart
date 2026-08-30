@@ -69,9 +69,11 @@ void main() {
             'eligible': true,
             'termsAccepted': true,
             'openCount': 0,
-            'creditedCount': 0,
-            'realuSum': 0,
-            'chfSum': 0,
+            'creditedCount': 2,
+            'realuSum': 40,
+            'chfSum': 512.4,
+            'sharePrice': 1.38,
+            'sharePriceLabel': 'Aktienkurs',
           }),
           200,
         );
@@ -82,6 +84,9 @@ void main() {
       expect(path, '/v1/realunit/referral/summary');
       expect(auth, 'Bearer jwt-1');
       expect(summary.eligible, isTrue);
+      expect(summary.sharePrice, 1.38);
+      expect(summary.sharePriceLabel, 'Aktienkurs');
+      expect(summary.tileChf, 55.2);
     });
 
     test('unwraps a {summary: {...}} payload and coerces eligible:1', () async {
