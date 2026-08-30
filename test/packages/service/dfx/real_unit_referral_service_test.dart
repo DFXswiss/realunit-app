@@ -191,10 +191,10 @@ void main() {
   });
 
   group('$RealUnitReferralService.createInvite', () {
-    test('POSTs guestName and parses the created invite', () async {
-      Map<String, dynamic>? body;
+    test('POSTs the exact guestName-only contract and parses the invite', () async {
+      late http.Request capturedRequest;
       final client = MockClient((request) async {
-        body = jsonDecode(request.body) as Map<String, dynamic>;
+        capturedRequest = request;
         return http.Response(
           jsonEncode({
             'code': 'AB12',
@@ -212,7 +212,9 @@ void main() {
 
       final created = await build(client).createInvite(guestName: 'Alice');
 
-      expect(body, {'guestName': 'Alice', 'termsAccepted': true});
+      expect(capturedRequest.method, 'POST');
+      expect(capturedRequest.url.path, '/v1/realunit/referral/invites');
+      expect(jsonDecode(capturedRequest.body), {'guestName': 'Alice'});
       expect(created.url, 'https://realunit.app/invite/AB12');
       expect(created.inviterName, 'Björn');
       expect(

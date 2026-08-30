@@ -108,10 +108,7 @@ class RealUnitReferralService extends DFXAuthService {
       authenticatedPost(
         uri,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'guestName': guestName,
-          'termsAccepted': true,
-        }),
+        body: jsonEncode({'guestName': guestName}),
       ),
     );
 
