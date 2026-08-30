@@ -130,9 +130,7 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
     if (!mounted || generation != _loadGeneration) return;
     final content = await loadReferralTermsMarkdown(
       languageCode: code,
-      loadAsset:
-          widget.loadAsset ??
-          ((path) => rootBundle.loadString(path, cache: false)),
+      loadAsset: widget.loadAsset ?? ((path) => rootBundle.loadString(path, cache: false)),
       apiText: apiText,
     );
     if (!mounted || generation != _loadGeneration) return;
@@ -192,153 +190,136 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
           spacing: 16,
           children: [
             if (_loadFailed) ...[
-                      Semantics(
-                        container: true,
-                        liveRegion: true,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          spacing: 8,
-                          children: [
-                            Text(s.legalDocumentLoadFailed),
-                            Text(
-                              s.legalDocumentLoadFailedDescription,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: RealUnitColors.neutral500),
-                            ),
-                          ],
-                        ),
-                      ),
-                      AppFilledButton(
-                        label: s.retry,
-                        autofocus: !_reloading,
-                        variant: FilledButtonVariant.secondary,
-                        state: _reloading
-                            ? FilledButtonState.loading
-                            : FilledButtonState.idle,
-                        onPressed: accepting || _reloading
-                            ? null
-                            : () {
-                                if (!_loadFailed || _reloading) return;
-                                setState(() {
-                                  _reloading = true;
-                                  _accepted = false;
-                                });
-                                _loadMarkdown();
-                              },
-                      ),
-                    ] else if (_markdown == null)
-                      Semantics(
-                        container: true,
-                        liveRegion: true,
-                        child: Row(
-                          spacing: 8,
-                          children: [
-                            const ExcludeSemantics(
-                              child: CupertinoActivityIndicator(),
-                            ),
-                            Expanded(
-                              child: Text(
-                                s.referralTermsLoading,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: RealUnitColors.neutral500),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      MarkdownBody(
-                        data: _markdown!,
-                        selectable: true,
-                        styleSheet: MarkdownStyleSheet(
-                          h2Padding: const EdgeInsets.only(top: 16),
-                        ),
-                        onTapLink: (text, href, title) {
-                          final uri = referralTermsInAppUri(href);
-                          if (uri == null) return;
-                          context.pushNamed(
-                            AppRoutes.webView,
-                            extra: WebViewRouteParams(
-                              title: text,
-                              url: uri,
-                            ),
-                          );
-                        },
-                      ),
-                    if (!widget.readOnly &&
-                        accepting &&
-                        (error == null || error.isEmpty))
-                      Semantics(
-                        container: true,
-                        liveRegion: true,
-                        child: Row(
-                          spacing: 8,
-                          children: [
-                            const ExcludeSemantics(
-                              child: CupertinoActivityIndicator(),
-                            ),
-                            Expanded(
-                              child: Text(
-                                s.referralTermsAccepting,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: RealUnitColors.neutral500),
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    else if (!widget.readOnly &&
-                        error != null &&
-                        error.isNotEmpty)
-                      Semantics(
-                        container: true,
-                        liveRegion: true,
-                        child: Text(
-                          localizedReferralError(context, error),
-                          style: TextStyle(color: RealUnitColors.status.red600),
-                        ),
-                      ),
-                    if (!widget.readOnly &&
-                        _markdown != null &&
-                        !_loadFailed)
-                      CheckboxListTile(
-                        contentPadding: EdgeInsets.zero,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        value: _accepted,
-                        onChanged: accepting
-                            ? null
-                            : (v) => setState(() => _accepted = v ?? false),
-                        title: Text(s.referralTermsCheckbox),
-                      ),
+              Semantics(
+                container: true,
+                liveRegion: true,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 8,
+                  children: [
+                    Text(s.legalDocumentLoadFailed),
+                    Text(
+                      s.legalDocumentLoadFailedDescription,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: RealUnitColors.neutral500),
+                    ),
                   ],
                 ),
-                actions: [
-                  if (!widget.readOnly)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: AppFilledButton(
-                        label: s.referralCreateInvite,
-                        autofocus:
-                            error != null &&
-                            error.isNotEmpty &&
-                            _accepted &&
-                            !accepting,
-                        state: accepting
-                            ? FilledButtonState.loading
-                            : FilledButtonState.idle,
-                        onPressed:
-                            _accepted &&
-                                !accepting &&
-                                _markdown != null &&
-                                !_loadFailed
-                            ? () => context.read<ReferralCubit>().acceptTerms(
-                                version: _termsVersion,
-                              )
-                            : null,
+              ),
+              AppFilledButton(
+                label: s.retry,
+                autofocus: !_reloading,
+                variant: FilledButtonVariant.secondary,
+                state: _reloading ? FilledButtonState.loading : FilledButtonState.idle,
+                onPressed: accepting || _reloading
+                    ? null
+                    : () {
+                        if (!_loadFailed || _reloading) return;
+                        setState(() {
+                          _reloading = true;
+                          _accepted = false;
+                        });
+                        _loadMarkdown();
+                      },
+              ),
+            ] else if (_markdown == null)
+              Semantics(
+                container: true,
+                liveRegion: true,
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    const ExcludeSemantics(
+                      child: CupertinoActivityIndicator(),
+                    ),
+                    Expanded(
+                      child: Text(
+                        s.referralTermsLoading,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: RealUnitColors.neutral500),
                       ),
                     ),
-                ],
+                  ],
+                ),
+              )
+            else
+              MarkdownBody(
+                data: _markdown!,
+                selectable: true,
+                styleSheet: MarkdownStyleSheet(
+                  h2Padding: const EdgeInsets.only(top: 16),
+                ),
+                onTapLink: (text, href, title) {
+                  final uri = referralTermsInAppUri(href);
+                  if (uri == null) return;
+                  context.pushNamed(
+                    AppRoutes.webView,
+                    extra: WebViewRouteParams(
+                      title: text,
+                      url: uri,
+                    ),
+                  );
+                },
               ),
-            );
+            if (!widget.readOnly && accepting && (error == null || error.isEmpty))
+              Semantics(
+                container: true,
+                liveRegion: true,
+                child: Row(
+                  spacing: 8,
+                  children: [
+                    const ExcludeSemantics(
+                      child: CupertinoActivityIndicator(),
+                    ),
+                    Expanded(
+                      child: Text(
+                        s.referralTermsAccepting,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: RealUnitColors.neutral500),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (!widget.readOnly && error != null && error.isNotEmpty)
+              Semantics(
+                container: true,
+                liveRegion: true,
+                child: Text(
+                  localizedReferralError(context, error),
+                  style: TextStyle(color: RealUnitColors.status.red600),
+                ),
+              ),
+            if (!widget.readOnly && _markdown != null && !_loadFailed)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _accepted,
+                onChanged: accepting ? null : (v) => setState(() => _accepted = v ?? false),
+                title: Text(s.referralTermsCheckbox),
+              ),
+          ],
+        ),
+        actions: [
+          if (!widget.readOnly)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: AppFilledButton(
+                label: s.referralCreateInvite,
+                autofocus: error != null && error.isNotEmpty && _accepted && !accepting,
+                state: accepting ? FilledButtonState.loading : FilledButtonState.idle,
+                onPressed: _accepted && !accepting && _markdown != null && !_loadFailed
+                    ? () => context.read<ReferralCubit>().acceptTerms(
+                        version: _termsVersion,
+                      )
+                    : null,
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
