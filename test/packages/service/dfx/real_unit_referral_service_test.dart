@@ -149,6 +149,11 @@ void main() {
             'code': 'AB12',
             'url': 'https://realunit.app/invite/AB12',
             'guestName': 'Alice',
+            'copyText':
+                'Hey Alice, Björn lädt dich ein zu RealUnit: https://realunit.app/invite/AB12',
+            'copyTextEn':
+                'Hey Alice, Björn is inviting you to RealUnit: https://realunit.app/invite/AB12',
+            'inviterName': 'Björn',
           }),
           201,
         );
@@ -158,6 +163,11 @@ void main() {
 
       expect(body, {'guestName': 'Alice', 'termsAccepted': true});
       expect(created.url, 'https://realunit.app/invite/AB12');
+      expect(created.inviterName, 'Björn');
+      expect(
+        created.copyTextForLocale('en'),
+        'Hey Alice, Björn is inviting you to RealUnit: https://realunit.app/invite/AB12',
+      );
     });
 
     test('unwraps an {invite: {...}} create payload', () async {
@@ -470,6 +480,11 @@ void main() {
               'code': 'AB12',
               'url': 'https://realunit.app/invite/AB12',
               'guestName': 'Alice',
+              'copyText':
+                  'Hey Alice, Björn lädt dich ein zu RealUnit: https://realunit.app/invite/AB12',
+              'copyTextEn':
+                  'Hey Alice, Björn is inviting you to RealUnit: https://realunit.app/invite/AB12',
+              'inviterName': 'Björn',
               'status': 'Open',
               'created': '2026-08-24T10:00:00Z',
             },
@@ -483,6 +498,11 @@ void main() {
       expect(invites, hasLength(1));
       expect(invites.single.isOpen, isTrue);
       expect(invites.single.guestName, 'Alice');
+      expect(invites.single.inviterName, 'Björn');
+      expect(
+        invites.single.copyTextForLocale('en'),
+        'Hey Alice, Björn is inviting you to RealUnit: https://realunit.app/invite/AB12',
+      );
     });
 
     test('folds Bound and Review to Open (TB Ziff. 7)', () async {
