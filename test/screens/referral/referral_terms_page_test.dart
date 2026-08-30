@@ -129,6 +129,7 @@ void main() {
   testWidgets(
     'read-only loads GET /terms 1:1 instead of only the bundled asset',
     (tester) async {
+      var assetRequested = false;
       final service = _MockReferralService();
       when(() => service.getTerms()).thenAnswer(
         (_) async => const ReferralTermsDto(
@@ -153,13 +154,21 @@ void main() {
             GlobalWidgetsLocalizations.delegate,
           ],
           supportedLocales: S.delegate.supportedLocales,
-          home: const ReferralTermsPage(readOnly: true),
+          home: ReferralTermsPage(
+            readOnly: true,
+            loadAsset: (_) async {
+              assetRequested = true;
+              return '# Bundled fallback';
+            },
+          ),
         ),
       );
       await tester.pump();
       await tester.pump();
 
       expect(find.textContaining('Live TB after accept'), findsOneWidget);
+      expect(find.textContaining('Bundled fallback'), findsNothing);
+      expect(assetRequested, isFalse);
       expect(find.byType(CheckboxListTile), findsNothing);
     },
   );
