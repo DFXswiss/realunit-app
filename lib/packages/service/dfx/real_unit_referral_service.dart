@@ -147,7 +147,8 @@ class RealUnitReferralService extends DFXAuthService {
     final invites = <ReferralInviteDto>[];
     for (final row in referralJsonList(jsonDecode(response.body))) {
       try {
-        invites.add(ReferralInviteDto.fromJson(row));
+        final invite = ReferralInviteDto.fromJson(row);
+        if (!invite.isClosed) invites.add(invite);
       } catch (_) {
         // Skip a malformed row so one bad invite cannot hide copy/share.
       }
