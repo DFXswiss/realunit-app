@@ -14,6 +14,8 @@ import 'package:realunit_wallet/screens/referral/referral_create_page.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
+import 'support/test_view.dart';
+
 class _MockReferralCubit extends MockCubit<ReferralState> implements ReferralCubit {}
 
 const _summary = ReferralSummaryDto(
@@ -41,6 +43,7 @@ void main() {
     WidgetTester tester, {
     required ReferralCreatedInviteDto invite,
   }) {
+    configureHeadlessDesktopView(tester);
     when(() => cubit.state).thenReturn(
       ReferralInviteCreated(summary: _summary, invite: invite),
     );
