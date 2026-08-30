@@ -17,6 +17,8 @@ import 'package:realunit_wallet/screens/referral/referral_terms_page.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
+import 'support/test_view.dart';
+
 class _MockReferralCubit extends MockCubit<ReferralState> implements ReferralCubit {}
 
 class _MockService extends Mock implements RealUnitReferralService {}
@@ -54,6 +56,7 @@ void main() {
     WidgetTester tester, {
     required Widget home,
   }) {
+    configureHeadlessDesktopView(tester);
     return tester.pumpWidget(
       MaterialApp(
         theme: realUnitTheme,

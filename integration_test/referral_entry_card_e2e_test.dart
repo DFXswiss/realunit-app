@@ -12,6 +12,8 @@ import 'package:realunit_wallet/screens/referral/widgets/referral_entry_card.dar
 import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 
+import 'support/test_view.dart';
+
 class _MockService extends Mock implements RealUnitReferralService {}
 
 void main() {
@@ -85,11 +87,7 @@ void main() {
   });
 
   testWidgets('taps the Einstiegskarte through to the referral route', (tester) async {
-    tester.view
-      ..physicalSize = const Size(800, 600)
-      ..devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+    configureHeadlessDesktopView(tester);
 
     when(() => service.getSummary()).thenAnswer(
       (_) async => const ReferralSummaryDto(
