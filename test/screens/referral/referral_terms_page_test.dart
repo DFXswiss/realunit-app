@@ -23,11 +23,9 @@ import 'package:realunit_wallet/styles/language.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 
-class _MockReferralCubit extends MockCubit<ReferralState>
-    implements ReferralCubit {}
+class _MockReferralCubit extends MockCubit<ReferralState> implements ReferralCubit {}
 
-class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
-    implements SettingsBloc {}
+class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState> implements SettingsBloc {}
 
 const _summary = ReferralSummaryDto(
   eligible: true,
@@ -220,8 +218,7 @@ void main() {
           'Wir konnten den Code gerade nicht prüfen. Bitte versuche es später erneut.',
         ),
         matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is Semantics && widget.properties.liveRegion == true,
+          (widget) => widget is Semantics && widget.properties.liveRegion == true,
         ),
       ),
       findsOneWidget,
@@ -278,8 +275,7 @@ void main() {
       find.ancestor(
         of: find.text('Teilnahmebedingungen werden akzeptiert…'),
         matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is Semantics && widget.properties.liveRegion == true,
+          (widget) => widget is Semantics && widget.properties.liveRegion == true,
         ),
       ),
       findsOneWidget,
@@ -418,8 +414,7 @@ void main() {
       find.ancestor(
         of: find.text('Teilnahmebedingungen werden geladen…'),
         matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is Semantics && widget.properties.liveRegion == true,
+          (widget) => widget is Semantics && widget.properties.liveRegion == true,
         ),
       ),
       findsOneWidget,
@@ -479,9 +474,11 @@ void main() {
         findsOneWidget,
       );
       expect(
-        tester.widget<AppFilledButton>(
-          find.widgetWithText(AppFilledButton, 'Wiederholen'),
-        ).state,
+        tester
+            .widget<AppFilledButton>(
+              find.widgetWithText(AppFilledButton, 'Wiederholen'),
+            )
+            .state,
         FilledButtonState.loading,
       );
     },
@@ -646,8 +643,7 @@ void main() {
           builder: (_, _) => BlocProvider<ReferralCubit>.value(
             value: cubit,
             child: const ReferralTermsPage(
-              initialMarkdownContent:
-                  '[Prospekt](https://realunit.ch/downloads/p.pdf)',
+              initialMarkdownContent: '[Prospekt](https://realunit.ch/downloads/p.pdf)',
             ),
           ),
         ),
