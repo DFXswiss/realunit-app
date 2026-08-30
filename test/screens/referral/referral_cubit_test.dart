@@ -151,7 +151,9 @@ void main() {
     'acceptTerms ignores a second call while the POST is in flight',
     build: () {
       acceptRelease = Completer<void>();
-      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) => acceptRelease.future);
+      when(
+        () => service.acceptTerms(version: any(named: 'version')),
+      ).thenAnswer((_) => acceptRelease.future);
       when(() => service.getSummary()).thenAnswer((_) async => _eligible);
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
@@ -925,7 +927,9 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms maps a timed-out POST back to the checkbox',
     build: () {
-      when(() => service.acceptTerms(version: any(named: 'version'))).thenThrow(TimeoutException('accept'));
+      when(
+        () => service.acceptTerms(version: any(named: 'version')),
+      ).thenThrow(TimeoutException('accept'));
       return ReferralCubit(service);
     },
     seed: () => ReferralNeedsTerms(summary: _needsTerms),

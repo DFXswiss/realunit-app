@@ -106,9 +106,7 @@ class ReferralCubit extends Cubit<ReferralState> {
       ReferralCreating(
         summary: summary,
         guestName: name,
-        errorMessage: current is ReferralCreateReady
-            ? current.errorMessage
-            : null,
+        errorMessage: current is ReferralCreateReady ? current.errorMessage : null,
       ),
     );
     try {
