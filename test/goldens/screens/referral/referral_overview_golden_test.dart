@@ -12,11 +12,9 @@ import 'package:realunit_wallet/styles/language.dart';
 
 import '../../../helper/helper.dart';
 
-class _MockReferralCubit extends MockCubit<ReferralState>
-    implements ReferralCubit {}
+class _MockReferralCubit extends MockCubit<ReferralState> implements ReferralCubit {}
 
-class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState>
-    implements SettingsBloc {}
+class _MockSettingsBloc extends MockBloc<SettingsEvent, SettingsState> implements SettingsBloc {}
 
 void main() {
   late _MockReferralCubit cubit;
@@ -78,6 +76,25 @@ void main() {
         ];
         return buildOverview(
           ReferralOverviewLoaded(summary: summary, invites: invites),
+        );
+      },
+    );
+
+    goldenTest(
+      'empty overview with zero counts',
+      fileName: 'referral_overview_page_empty',
+      constraints: phoneConstraints,
+      builder: () {
+        const summary = ReferralSummaryDto(
+          eligible: true,
+          termsAccepted: true,
+          openCount: 0,
+          creditedCount: 0,
+          realuSum: 0,
+          chfSum: 0,
+        );
+        return buildOverview(
+          const ReferralOverviewLoaded(summary: summary, invites: []),
         );
       },
     );
