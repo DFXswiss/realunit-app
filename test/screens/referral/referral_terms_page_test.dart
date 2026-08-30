@@ -47,7 +47,7 @@ void main() {
       const Stream<ReferralState>.empty(),
       initialState: ReferralNeedsTerms(summary: _summary),
     );
-    when(() => cubit.acceptTerms()).thenAnswer((_) async {});
+    when(() => cubit.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
   });
 
   testWidgets(
@@ -92,7 +92,7 @@ void main() {
 
       await tester.tap(find.byType(AppFilledButton));
       await tester.pump();
-      verify(() => cubit.acceptTerms()).called(1);
+      verify(() => cubit.acceptTerms(version: ReferralTermsDto.bundledVersion)).called(1);
     },
   );
 
@@ -131,7 +131,7 @@ void main() {
       final service = _MockReferralService();
       when(() => service.getTerms()).thenAnswer(
         (_) async => const ReferralTermsDto(
-          version: '2026-08-14',
+          version: '2026-09-01',
           markdown: '# Live TB after accept',
           markdownEn: '# Live EN',
         ),
@@ -599,7 +599,7 @@ void main() {
       final service = _MockReferralService();
       when(() => service.getTerms()).thenAnswer(
         (_) async => const ReferralTermsDto(
-          version: '2026-08-14',
+          version: '2026-09-01',
           markdown: '# DE-TB-FROM-BLOC',
           markdownEn: '# EN-TB-FROM-LOCALE',
         ),
@@ -631,6 +631,11 @@ void main() {
 
       expect(find.textContaining('DE-TB-FROM-BLOC'), findsOneWidget);
       expect(find.textContaining('EN-TB-FROM-LOCALE'), findsNothing);
+
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pump();
+      await tester.tap(find.byType(AppFilledButton));
+      verify(() => cubit.acceptTerms(version: '2026-09-01')).called(1);
     },
   );
 
