@@ -535,6 +535,31 @@ void main() {
       expect(invites.every((i) => i.isOpen), isTrue);
     });
 
+    test('keeps only the backend contract states Open and Credited', () async {
+      Map<String, Object?> row(int id, String status) => {
+        'id': id,
+        'code': 'CODE$id',
+        'url': 'https://realunit.app/invite/CODE$id',
+        'guestName': 'Guest$id',
+        'status': status,
+        'created': '2026-08-24T10:00:00Z',
+      };
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode([
+            row(1, 'Open'),
+            row(2, 'Credited'),
+            row(3, 'Deleted'),
+            row(4, 'Expired'),
+          ]),
+          200,
+        ),
+      );
+
+      final invites = await build(client).getInvites();
+      expect(invites.map((invite) => invite.status), ['Open', 'Credited']);
+    });
+
     test('unwraps an {invites: [...]} payload', () async {
       final client = MockClient(
         (_) async => http.Response(
