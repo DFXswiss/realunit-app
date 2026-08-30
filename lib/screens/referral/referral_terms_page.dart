@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:go_router/go_router.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_terms_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
 import 'package:realunit_wallet/screens/referral/load_referral_terms.dart';
@@ -71,6 +72,7 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
   bool _loadFailed = false;
   bool _reloading = false;
   bool _accepted = false;
+  String _termsVersion = ReferralTermsDto.bundledVersion;
   String? _loadedForLang;
 
   /// Bumped on every fetch so a slower earlier GET cannot overwrite a
@@ -117,6 +119,9 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
       if (getIt.isRegistered<RealUnitReferralService>()) {
         final terms = await getIt<RealUnitReferralService>().getTerms();
         if (!mounted || generation != _loadGeneration) return;
+        if (terms.version.trim().isNotEmpty) {
+          _termsVersion = terms.version;
+        }
         apiText = terms.textForLang(code);
       }
     } catch (_) {
@@ -326,8 +331,9 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
                                 !accepting &&
                                 _markdown != null &&
                                 !_loadFailed
-                            ? () =>
-                                  context.read<ReferralCubit>().acceptTerms()
+                            ? () => context.read<ReferralCubit>().acceptTerms(
+                                version: _termsVersion,
+                              )
                             : null,
                       ),
                     ),

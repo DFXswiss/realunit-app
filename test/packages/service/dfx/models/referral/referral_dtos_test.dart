@@ -129,6 +129,10 @@ void main() {
   });
 
   group('$ReferralTermsDto', () {
+    test('pins the bundled fallback version used for offline acceptance', () {
+      expect(ReferralTermsDto.bundledVersion, '2026-08-14');
+    });
+
     test('EN falls back to DE markdown', () {
       final dto = ReferralTermsDto.fromJson({
         'version': '2026-08-14',

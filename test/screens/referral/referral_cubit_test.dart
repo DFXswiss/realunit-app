@@ -7,6 +7,7 @@ import 'package:realunit_wallet/packages/service/dfx/exceptions/api_exception.da
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_created_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_terms_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
 import 'package:realunit_wallet/screens/referral/referral_error_message.dart';
@@ -95,23 +96,26 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms posts acceptance then loads overview',
     build: () {
-      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
       when(() => service.getSummary()).thenAnswer((_) async => _eligible);
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
     seed: () => ReferralNeedsTerms(summary: _needsTerms),
-    act: (cubit) => cubit.acceptTerms(),
+    act: (cubit) => cubit.acceptTerms(version: '2026-09-01'),
     expect: () => [
       ReferralTermsAccepting(summary: _needsTerms),
       ReferralOverviewLoaded(summary: _eligible, invites: const []),
     ],
+    verify: (_) {
+      verify(() => service.acceptTerms(version: '2026-09-01')).called(1);
+    },
   );
 
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms returns to the checkbox with the API error',
     build: () {
-      when(() => service.acceptTerms()).thenThrow(
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenThrow(
         const ApiException(code: 'FAILED', message: 'nope'),
       );
       return ReferralCubit(service);
@@ -130,7 +134,7 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms keeps the previous error while the retry POST is in flight',
     build: () {
-      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
       when(() => service.getSummary()).thenAnswer((_) async => _eligible);
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
@@ -147,7 +151,7 @@ void main() {
     'acceptTerms ignores a second call while the POST is in flight',
     build: () {
       acceptRelease = Completer<void>();
-      when(() => service.acceptTerms()).thenAnswer((_) => acceptRelease.future);
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) => acceptRelease.future);
       when(() => service.getSummary()).thenAnswer((_) async => _eligible);
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
@@ -161,7 +165,7 @@ void main() {
       await second;
     },
     verify: (_) {
-      verify(() => service.acceptTerms()).called(1);
+      verify(() => service.acceptTerms(version: ReferralTermsDto.bundledVersion)).called(1);
     },
   );
 
@@ -400,7 +404,7 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms still shows overview when the invite list is down',
     build: () {
-      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
       when(() => service.getSummary()).thenAnswer((_) async => _eligible);
       when(() => service.getInvites()).thenThrow(
         const ApiException(code: 'SERVER_ERROR', message: 'invites down'),
@@ -604,7 +608,7 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms hides the programme when the refreshed gate is closed',
     build: () {
-      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
       when(() => service.getSummary()).thenAnswer(
         (_) async => const ReferralSummaryDto(
           eligible: false,
@@ -921,7 +925,7 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms maps a timed-out POST back to the checkbox',
     build: () {
-      when(() => service.acceptTerms()).thenThrow(TimeoutException('accept'));
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenThrow(TimeoutException('accept'));
       return ReferralCubit(service);
     },
     seed: () => ReferralNeedsTerms(summary: _needsTerms),
@@ -938,7 +942,7 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms maps a failed summary refresh to the failure copy',
     build: () {
-      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
       when(() => service.getSummary()).thenThrow(
         const ApiException(code: 'SERVER_ERROR', message: 'down'),
       );
@@ -955,7 +959,7 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'acceptTerms maps a timed-out summary refresh to the failure copy',
     build: () {
-      when(() => service.acceptTerms()).thenAnswer((_) async {});
+      when(() => service.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
       when(() => service.getSummary()).thenThrow(TimeoutException('summary'));
       return ReferralCubit(service);
     },
