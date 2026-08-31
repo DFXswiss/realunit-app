@@ -81,18 +81,31 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
     );
     final maxX = _prices.last.time.millisecondsSinceEpoch.toDouble();
 
-    // Filter price points to those within the selected time period (between minX and maxX)
-    final visibleSpots = _prices
-        .where(
-          (p) => p.time.millisecondsSinceEpoch >= minX && p.time.millisecondsSinceEpoch <= maxX,
-        )
-        .map(
-          (p) => FlSpot(
-            p.time.millisecondsSinceEpoch.toDouble(),
-            double.parse(formatFixed(p.value, 2)),
-          ),
-        )
-        .toList();
+    // Split into the last sample before the window and the samples inside it.
+    // Chronological `_prices` is the production order from the account API.
+    PortfolioValuePoint? prior;
+    final interior = <PortfolioValuePoint>[];
+    for (final p in _prices) {
+      final x = p.time.millisecondsSinceEpoch.toDouble();
+      if (x < minX) {
+        prior = p;
+      } else if (x <= maxX) {
+        interior.add(p);
+      }
+    }
+
+    double yOf(PortfolioValuePoint p) => double.parse(formatFixed(p.value, 2));
+
+    // Hold the last pre-window value at minX so the stroke spans the selected
+    // period instead of starting at the first interior sample (a 1Y window
+    // whose next point is six months in would otherwise draw a stub).
+    final visibleSpots = <FlSpot>[
+      if (interior.isNotEmpty &&
+          prior != null &&
+          interior.first.time.millisecondsSinceEpoch.toDouble() > minX)
+        FlSpot(minX, yOf(prior)),
+      for (final p in interior) FlSpot(p.time.millisecondsSinceEpoch.toDouble(), yOf(p)),
+    ];
 
     if (visibleSpots.isEmpty) {
       emit(
@@ -128,8 +141,12 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
       (min - average).abs(),
     );
 
-    // Add padding (20% extra space) and ensure minimum range for visual clarity
-    final paddedDeviation = math.max(maxDeviation * 1.2, average * 0.05);
+    // Add padding (20% extra space) and ensure minimum range for visual clarity.
+    // `average * 0.05` is 0 when the series is all zeros, which used to collapse
+    // minY/maxY and hide the LineChart; fall back to 5.0 currency units then.
+    final relativeFloor = average.abs() * 0.05;
+    final minFloor = relativeFloor > 0 ? relativeFloor : 5.0;
+    final paddedDeviation = math.max(maxDeviation * 1.2, minFloor);
 
     // Calculate rounded horizontal line values centered around average
     final horizontalLineValues = _calculateHorizontalLines(paddedDeviation, average);
@@ -153,9 +170,8 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
     const lineCount = 6;
     const intervalCount = lineCount - 1;
 
-    if (deviation <= 0) {
-      return List.generate(lineCount, (_) => average);
-    }
+    // Callers always pass a positive deviation (relative 5% floor, or 5.0
+    // for an all-zero series). A non-positive value would collapse minY/maxY.
 
     // Calculate an interval that spans the data range
     final rawInterval = (2 * deviation) / intervalCount;
@@ -164,7 +180,8 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
     // Center the lines around the average by rounding it to the nearest interval
     final centerLine = (average / interval).round() * interval;
 
-    // Position the bottom line so the center is roughly in the middle
+    // Position the bottom line so the center is roughly in the middle.
+    // Holdings cannot go negative — never draw a Y-axis below 0.
     final bottomLine = math.max(0.0, centerLine - 3 * interval);
 
     return List.generate(lineCount, (i) => bottomLine + i * interval);

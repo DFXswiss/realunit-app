@@ -6,8 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
-import 'package:realunit_wallet/screens/pay/pay_scan_page.dart';
-import 'package:realunit_wallet/screens/send/send_recipient_page.dart';
+import 'package:realunit_wallet/screens/pay/pay_info_page.dart';
+import 'package:realunit_wallet/screens/send/send_info_page.dart';
 import 'package:realunit_wallet/setup/routing/router_config.dart';
 import 'package:realunit_wallet/setup/routing/routes/app_routes.dart';
 
@@ -19,9 +19,8 @@ void main() {
   late _MockHomeBloc homeBloc;
 
   setUpAll(() {
-    // Both routed pages embed a QrScannerView (MobileScanner); the stub keeps
-    // the headless camera preview deterministic and free of
-    // MissingPluginException.
+    // /pay and /send land on info pages (no camera). The stub stays so a later
+    // Continue onto a scanner page does not throw MissingPluginException.
     stubMobileScannerChannel();
   });
 
@@ -55,21 +54,21 @@ void main() {
   // test so the /pay or /send location does not leak into any later test.
   tearDown(() => routerConfig.goNamed(AppRoutes.home));
 
-  testWidgets('the pay route builds PayScanPage', (tester) async {
+  testWidgets('the pay route builds PayInfoPage', (tester) async {
     await pumpRouter(tester);
 
     routerConfig.goNamed(AppRoutes.pay);
     await tester.pumpAndSettle();
 
-    expect(find.byType(PayScanPage), findsOneWidget);
+    expect(find.byType(PayInfoPage), findsOneWidget);
   });
 
-  testWidgets('the send route builds SendRecipientPage', (tester) async {
+  testWidgets('the send route builds SendInfoPage', (tester) async {
     await pumpRouter(tester);
 
     routerConfig.goNamed(AppRoutes.send);
     await tester.pumpAndSettle();
 
-    expect(find.byType(SendRecipientPage), findsOneWidget);
+    expect(find.byType(SendInfoPage), findsOneWidget);
   });
 }

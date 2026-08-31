@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/kyc/kyc_level.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/user/dto/user_dto.dart';
+import 'package:realunit_wallet/styles/currency.dart';
 
 void main() {
   group('$UserKycDto.fromJson', () {
@@ -325,6 +326,24 @@ void main() {
       expect(dto.capabilities.canEditMail, isTrue);
       expect(dto.capabilities.canEditPhone, isFalse);
       expect(dto.capabilities.canEditAddress, isTrue);
+    });
+
+    test('parses currency.name from the account payload', () {
+      final dto = UserDto.fromJson({
+        'kyc': kycJson(),
+        'currency': {'id': 2, 'name': 'CHF'},
+      });
+
+      expect(dto.currency, Currency.chf);
+    });
+
+    test('unknown or missing currency degrades to null', () {
+      expect(
+        UserDto.fromJson({'kyc': kycJson(), 'currency': {'name': 'USD'}}).currency,
+        isNull,
+      );
+      expect(UserDto.fromJson({'kyc': kycJson()}).currency, isNull);
+      expect(UserDto.fromJson({'kyc': kycJson(), 'currency': null}).currency, isNull);
     });
   });
 }

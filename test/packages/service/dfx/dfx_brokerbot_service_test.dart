@@ -131,22 +131,40 @@ void main() {
         expect(uri!.queryParameters['currency'], 'EUR');
       });
 
-      test('normalises a comma decimal separator before parsing (300,75 → amount=300.75)', () async {
-        // The fiat converter field allows a comma; without normalization
-        // `double.tryParse("300,75")` is null and the converter fails silently.
+      test(
+        'normalises a comma decimal separator before parsing (300,75 → amount=300.75)',
+        () async {
+          // The fiat converter field allows a comma; without normalization
+          // `double.tryParse("300,75")` is null and the converter fails silently.
+          Uri? uri;
+          final client = MockClient((request) async {
+            uri = request.url;
+            return http.Response(
+              jsonEncode({'shares': 3, 'pricePerShare': 100.25, 'availableShares': 100}),
+              200,
+            );
+          });
+
+          final shares = await build(client).getBuyShares('300,75', Currency.chf);
+
+          expect(shares.shares, 3);
+          expect(uri!.queryParameters['amount'], '300.75');
+        },
+      );
+
+      test('reads 105.000 as one hundred five thousand, not 105 francs', () async {
         Uri? uri;
         final client = MockClient((request) async {
           uri = request.url;
           return http.Response(
-            jsonEncode({'shares': 3, 'pricePerShare': 100.25, 'availableShares': 100}),
+            jsonEncode({'shares': 76086, 'pricePerShare': 1.38, 'availableShares': 76766}),
             200,
           );
         });
 
-        final shares = await build(client).getBuyShares('300,75', Currency.chf);
+        await build(client).getBuyShares('105.000', Currency.chf);
 
-        expect(shares.shares, 3);
-        expect(uri!.queryParameters['amount'], '300.75');
+        expect(double.parse(uri!.queryParameters['amount']!), 105000);
       });
 
       test('throws for non-numeric / zero / negative amount input', () {
@@ -265,27 +283,30 @@ void main() {
         );
       });
 
-      test('normalises a comma decimal separator before parsing (300,75 → amount=300.75)', () async {
-        sessionCache.setAuthToken('jwt-2');
-        Uri? uri;
-        final client = MockClient((request) async {
-          uri = request.url;
-          return http.Response(
-            jsonEncode({
-              'targetAmount': 300.75,
-              'shares': 3,
-              'pricePerShare': 100.25,
-              'currency': 'CHF',
-            }),
-            200,
-          );
-        });
+      test(
+        'normalises a comma decimal separator before parsing (300,75 → amount=300.75)',
+        () async {
+          sessionCache.setAuthToken('jwt-2');
+          Uri? uri;
+          final client = MockClient((request) async {
+            uri = request.url;
+            return http.Response(
+              jsonEncode({
+                'targetAmount': 300.75,
+                'shares': 3,
+                'pricePerShare': 100.25,
+                'currency': 'CHF',
+              }),
+              200,
+            );
+          });
 
-        final shares = await build(client).getSellShares('300,75', Currency.chf);
+          final shares = await build(client).getSellShares('300,75', Currency.chf);
 
-        expect(shares.shares, 3);
-        expect(uri!.queryParameters['amount'], '300.75');
-      });
+          expect(shares.shares, 3);
+          expect(uri!.queryParameters['amount'], '300.75');
+        },
+      );
 
       test('throws when amount is invalid (before any HTTP call)', () async {
         var called = false;

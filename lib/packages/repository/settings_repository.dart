@@ -25,7 +25,11 @@ class SettingsRepository {
 
   set language(String langCode) => _sharedPreferences.setString('language', langCode);
 
-  String get currency => _sharedPreferences.getString('currency') ?? 'CHF';
+  bool get hasStoredCurrency => _sharedPreferences.getString('currency') != null;
+
+  // Unset default is EUR. Residence-based CHF/EUR comes from the account
+  // currency on GET /v2/user (applied by SettingsBloc, not persisted here).
+  String get currency => _sharedPreferences.getString('currency') ?? 'EUR';
 
   set currency(String currencyCode) => _sharedPreferences.setString('currency', currencyCode);
 

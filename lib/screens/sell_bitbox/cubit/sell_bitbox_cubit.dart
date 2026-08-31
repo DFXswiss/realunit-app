@@ -25,6 +25,7 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
   final AppStore _appStore;
 
   Timer? _ethPollingTimer;
+  bool _started = false;
 
   SellBitboxCubit({
     required SellPaymentInfo paymentInfo,
@@ -37,7 +38,15 @@ class SellBitboxCubit extends Cubit<SellBitboxState> {
        _blockchainService = blockchainService,
        _sellService = sellService,
        _appStore = appStore,
-       super(SellBitboxCheckingEth()) {
+       super(SellBitboxCheckingEth());
+
+  /// Begins the ETH-balance check. Safe to call more than once; only the
+  /// first call schedules work.
+  void start() {
+    if (_started) {
+      return;
+    }
+    _started = true;
     scheduleMicrotask(_checkEthBalance);
   }
 

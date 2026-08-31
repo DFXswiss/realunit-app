@@ -33,7 +33,7 @@ const _info = BuyPaymentInfo(
   currency: Currency.chf,
 );
 
-// The quote echoes the charged amount; a fractional echo must render rounded.
+// The quote echoes the charged amount; rappen must render, not round to francs.
 const _quotedFractional = BuyPaymentInfo(
   amount: 300.75,
   id: 42,
@@ -48,6 +48,20 @@ const _quotedFractional = BuyPaymentInfo(
   currency: Currency.chf,
 );
 
+const _eurInfo = BuyPaymentInfo(
+  amount: 300,
+  id: 42,
+  iban: 'CH9708307000560946317',
+  bic: 'BICCBIC',
+  name: 'RealUnit AG',
+  street: 'Bahnhofstrasse',
+  number: '1',
+  zip: '8001',
+  city: 'Zurich',
+  country: 'Switzerland',
+  currency: Currency.eur,
+);
+
 void main() {
   late _MockBuyConfirmCubit cubit;
 
@@ -57,10 +71,10 @@ void main() {
     when(() => cubit.confirmPayment(any())).thenAnswer((_) async {});
   });
 
-  Widget host({GoRouter? router}) {
+  Widget host({GoRouter? router, BuyPaymentInfo info = _info}) {
     final view = BlocProvider<BuyConfirmCubit>.value(
       value: cubit,
-      child: const BuyConfirmButtonView(buyPaymentInfo: _info),
+      child: BuyConfirmButtonView(buyPaymentInfo: info),
     );
     if (router != null) {
       return MaterialApp.router(
@@ -97,6 +111,15 @@ void main() {
 
     testWidgets('tapping confirms the payment for the quote id', (tester) async {
       await tester.pumpWidget(host());
+
+      await tester.tap(find.text(S.current.buyPaymentConfirm));
+      await tester.pump();
+
+      verify(() => cubit.confirmPayment(42)).called(1);
+    });
+
+    testWidgets('tapping confirms an EUR quote; the CTA is not disabled', (tester) async {
+      await tester.pumpWidget(host(info: _eurInfo));
 
       await tester.tap(find.text(S.current.buyPaymentConfirm));
       await tester.pump();
@@ -200,7 +223,7 @@ void main() {
     });
 
     testWidgets('shows the charged amount echoed by the quote on the details '
-        'page, rounded (300.75 → 301) — never derived from keystrokes', (tester) async {
+        'page with rappen (300.75, not 301) — never derived from keystrokes', (tester) async {
       whenListen(
         cubit,
         Stream.fromIterable([
@@ -218,8 +241,30 @@ void main() {
 
       // The details amount is the quote's own echoed charge, so it can never
       // disagree with the SEPA transfer / QR the backend built for the quote.
-      expect(find.text('301'), findsOneWidget);
-      expect(find.text('300.75'), findsNothing);
+      expect(find.text('300.75'), findsOneWidget);
+      expect(find.text('301'), findsNothing);
+    });
+
+    testWidgets('after confirm success shows the EUR settlement IBAN and amount-in EUR, '
+        'not the CHF IBAN', (tester) async {
+      whenListen(
+        cubit,
+        Stream.fromIterable([
+          const BuyConfirmSuccess(
+            reference: 'RU-REF-EUR',
+            remittanceInfo: null,
+            paymentRequest: null,
+          ),
+        ]),
+        initialState: const BuyConfirmInitial(),
+      );
+
+      await tester.pumpWidget(host(router: detailsRouter(info: _eurInfo)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('CH97 0830 7000 5609 4631 7'), findsOneWidget);
+      expect(find.text('${S.current.amountIn} ${Currency.eur.code}'), findsOneWidget);
+      expect(find.text('CH22 0830 7000 5609 4630 9'), findsNothing);
     });
 
     testWidgets('forward path: remittanceInfo + paymentRequest drive the '

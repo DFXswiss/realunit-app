@@ -113,7 +113,7 @@ void main() {
         blockchainService: blockchain,
         sellService: sellService,
         appStore: appStore,
-      );
+      )..start();
 
   Future<SellBitboxState> settleToEthReady(SellBitboxCubit cubit) =>
       cubit.stream.firstWhere((s) => s is SellBitboxEthReady);

@@ -42,6 +42,11 @@ void main() {
       const TransferGasFundingUnavailableException(),
       const TransferConfirmMismatchException(),
       const TransferAlreadyConfirmedException(code: 'TEST', message: 'test'),
+      const TransferReceiptTimeoutException(
+        code: 'TEST',
+        message: 'test',
+        txHash: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      ),
     ];
 
     for (final ex in exceptions) {

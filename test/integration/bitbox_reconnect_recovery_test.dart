@@ -20,8 +20,8 @@
 //      `SellBitboxEthReady` (or the faucet/error branch) accordingly.
 //
 // Tests run inside `fakeAsync` so the observer's periodic timer and the
-// cubit's microtask-based `_checkEthBalance` are both bound to the same
-// virtual clock — no wallclock-sleeps, deterministic tick counting.
+// cubit's start()-scheduled `_checkEthBalance` microtask are both bound to
+// the same virtual clock — no wallclock-sleeps, deterministic tick counting.
 
 import 'dart:typed_data';
 
@@ -277,9 +277,9 @@ void main() {
             blockchainService: blockchain,
             sellService: sellService,
             appStore: appStore,
-          );
+          )..start();
 
-          // The constructor schedules `_checkEthBalance` via scheduleMicrotask.
+          // start() schedules `_checkEthBalance` via scheduleMicrotask.
           async.flushMicrotasks();
           expect(
             cubit.state,

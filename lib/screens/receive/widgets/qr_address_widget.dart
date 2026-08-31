@@ -35,29 +35,32 @@ class QRAddressWidget extends StatelessWidget {
             crossAxisAlignment: .center,
             spacing: 20.0,
             children: [
-              Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: _slice(subtitle, 0, 6),
-                      style: const TextStyle(fontWeight: .bold),
-                    ),
-                    const TextSpan(text: ' '),
-                    TextSpan(
-                      text: _slice(subtitle, 6, 21),
-                    ),
-                    const TextSpan(text: '\n'),
-                    TextSpan(
-                      text: _slice(subtitle, 21, 36),
-                    ),
-                    const TextSpan(text: ' '),
-                    TextSpan(
-                      text: _slice(subtitle, 36),
-                      style: const TextStyle(fontWeight: .bold),
-                    ),
-                  ],
+              Flexible(
+                child: Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: _slice(subtitle, 0, 6),
+                        style: const TextStyle(fontWeight: .bold),
+                      ),
+                      const TextSpan(text: ' '),
+                      TextSpan(
+                        text: _slice(subtitle, 6, 21),
+                      ),
+                      const TextSpan(text: '\n'),
+                      TextSpan(
+                        text: _slice(subtitle, 21, 36),
+                      ),
+                      const TextSpan(text: ' '),
+                      TextSpan(
+                        text: _slice(subtitle, 36),
+                        style: const TextStyle(fontWeight: .bold),
+                      ),
+                    ],
+                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: .center,
                 ),
-                style: Theme.of(context).textTheme.bodyMedium,
               ),
               const Icon(
                 Icons.copy_outlined,

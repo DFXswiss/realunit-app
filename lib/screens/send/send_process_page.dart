@@ -7,11 +7,13 @@ import 'package:realunit_wallet/packages/service/dfx/real_unit_transfer_service.
 import 'package:realunit_wallet/screens/send/cubits/send_process/send_process_cubit.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/route_animation_gate.dart';
 import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 /// Final step: prepare → sign (EIP-712 delegation + EIP-7702 authorization) →
 /// confirm, then render the txHash success or a typed failure. The cubit drives
-/// every outcome as a state — no error-string parsing in the view.
+/// every outcome as a state; the failure sheet never surfaces raw viem/exception
+/// text (generic always uses localized copy).
 class SendProcessPage extends StatelessWidget {
   final String recipient;
   final int amount;
@@ -26,8 +28,11 @@ class SendProcessPage extends StatelessWidget {
         appStore: getIt<AppStore>(),
         recipient: recipient,
         amount: amount,
-      )..start(),
-      child: const SendProcessView(),
+      ),
+      child: RouteAnimationGate(
+        onSettled: (c) => c.read<SendProcessCubit>().start(),
+        child: const SendProcessView(),
+      ),
     );
   }
 }
@@ -94,11 +99,7 @@ class SendProcessView extends StatelessWidget {
   };
 
   String _failureMessage(BuildContext context, SendProcessFailure state) {
-    final apiText = state.message;
-    if (apiText != null && apiText.isNotEmpty) {
-      return apiText;
-    }
-    return switch (state.reason) {
+    final localized = switch (state.reason) {
       SendProcessFailureReason.signatureUnsupported => S.of(context).sendFailureSignatureUnsupported,
       SendProcessFailureReason.signatureCancelled => S.of(context).sendFailureSignatureCancelled,
       SendProcessFailureReason.gasFundingUnavailable => S.of(context).sendFailureGasUnavailable,
@@ -108,6 +109,18 @@ class SendProcessView extends StatelessWidget {
       SendProcessFailureReason.confirmMismatch => S.of(context).sendFailureConfirmMismatch,
       SendProcessFailureReason.generic => S.of(context).sendFailureGeneric,
     };
+
+    // Generic failures always use localized copy — never raw API/exception text
+    // (e.g. viem receipt-timeout strings stored as e.toString()).
+    if (state.reason == SendProcessFailureReason.generic) {
+      return localized;
+    }
+
+    final apiText = state.message;
+    if (apiText != null && apiText.isNotEmpty) {
+      return apiText;
+    }
+    return localized;
   }
 
   /// Shows the terminal result sheet. Returns after the sheet is dismissed.
@@ -125,6 +138,11 @@ class SendProcessView extends StatelessWidget {
     required String description,
     bool canRetry = false,
   }) async {
+    await waitForIncomingRouteAnimation(context);
+    if (!context.mounted) {
+      return;
+    }
+
     final shouldPopPage = await showModalBottomSheet<bool>(
       context: context,
       isDismissible: false,

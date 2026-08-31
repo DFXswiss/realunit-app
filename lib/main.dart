@@ -8,6 +8,7 @@ import 'package:realunit_wallet/packages/utils/fuck_firebase.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/pin/bloc/auth/pin_auth_cubit.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
+import 'package:realunit_wallet/setup/account_currency_sync.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/error_handling/crash_reporting.dart';
 import 'package:realunit_wallet/setup/error_handling/error_handlers.dart';
@@ -60,6 +61,8 @@ class WalletApp extends StatefulWidget {
 }
 
 class _WalletAppState extends State<WalletApp> {
+  late final AccountCurrencySync _accountCurrency = getIt<AccountCurrencySync>();
+
   @override
   void initState() {
     super.initState();
@@ -88,6 +91,29 @@ class _WalletAppState extends State<WalletApp> {
         routerConfig: routerConfig,
         builder: (context, child) => MultiBlocListener(
           listeners: [
+            BlocListener<HomeBloc, HomeState>(
+              listenWhen: (previous, current) =>
+                  previous.openWallet == null && current.openWallet != null,
+              listener: (context, homeState) {
+                _accountCurrency.onOpened(homeState.openWallet);
+              },
+            ),
+            BlocListener<HomeBloc, HomeState>(
+              listenWhen: (previous, current) =>
+                  previous.openWallet != null &&
+                  current.openWallet != null &&
+                  !identical(previous.openWallet, current.openWallet),
+              listener: (context, homeState) {
+                _accountCurrency.onSwitched(homeState.openWallet);
+              },
+            ),
+            BlocListener<HomeBloc, HomeState>(
+              listenWhen: (previous, current) =>
+                  previous.openWallet != null && current.openWallet == null,
+              listener: (context, homeState) {
+                _accountCurrency.onClosed();
+              },
+            ),
             BlocListener<HomeBloc, HomeState>(
               listener: (context, homeState) {
                 if (!homeState.isLoadingWallet) {

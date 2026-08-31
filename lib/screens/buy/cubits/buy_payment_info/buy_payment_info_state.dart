@@ -31,7 +31,7 @@ class BuyPaymentInfoFailure extends BuyPaymentInfoState {
 
   /// User-facing API error text when this failure came from an API body.
   /// Empty for local hardware gates (BitBox) and for quote-code routing
-  /// that has its own structured UI (KYC / registration / min amount).
+  /// that has its own structured UI (KYC / registration / min / max amount).
   final String message;
 
   const BuyPaymentInfoFailure(
@@ -52,4 +52,13 @@ class BuyPaymentInfoMinAmountNotMetFailure extends BuyPaymentInfoFailure {
 
   @override
   List<Object?> get props => [error, minAmount];
+}
+
+class BuyPaymentInfoMaxAmountExceededFailure extends BuyPaymentInfoFailure {
+  final double maxAmount;
+
+  const BuyPaymentInfoMaxAmountExceededFailure(super.error, {required this.maxAmount});
+
+  @override
+  List<Object?> get props => [error, maxAmount];
 }

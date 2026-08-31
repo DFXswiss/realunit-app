@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:async/async.dart';
@@ -14,12 +15,13 @@ import 'package:realunit_wallet/styles/currency.dart';
 
 part 'buy_payment_info_state.dart';
 
-// Backend QuoteError code for the "amount below the per-currency minimum"
-// case. The API returns this in the success body's `error` field together
-// with the authoritative `minVolume`; the app surfaces it as a typed state
-// for the UI to render. Other QuoteError values (KYC, limit, …) are
-// already routed via dedicated ApiExceptions and dedicated failure states.
+// Backend QuoteError codes that arrive on the quote success body as
+// `isValid: false` plus the authoritative volume. AmountTooLow carries
+// `minVolume`; AmountTooHigh / LimitExceeded carry `maxVolume`. KYC and
+// registration still arrive as dedicated ApiExceptions.
 const String _quoteErrorAmountTooLow = 'AmountTooLow';
+const String _quoteErrorAmountTooHigh = 'AmountTooHigh';
+const String _quoteErrorLimitExceeded = 'LimitExceeded';
 
 // Backend QuoteError code for the "buyer has no primary email on record"
 // case. The API pre-tells this on the quote (`isValid: false`) so the app
@@ -36,25 +38,40 @@ const String _quoteErrorPrimaryEmailNotConfirmed = 'PrimaryEmailNotConfirmed';
 class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
   final RealUnitBuyPaymentInfoService _buyPaymentInfoService;
   CancelableOperation<BuyPaymentInfoState>? _completer;
+  int _seq = 0;
 
   BuyPaymentInfoCubit(
     RealUnitBuyPaymentInfoService buyPaymentInfoService,
   ) : _buyPaymentInfoService = buyPaymentInfoService,
       super(const BuyPaymentInfoInitial());
 
+  void clear() {
+    _seq++;
+    unawaited(_completer?.cancel() ?? Future<void>.value());
+    _completer = null;
+    if (state is BuyPaymentInfoInitial) return;
+    emit(const BuyPaymentInfoInitial());
+  }
+
   Future<void> getPaymentInfo({String amount = '300', Currency currency = Currency.chf}) async {
+    final mySeq = ++_seq;
     await _completer?.cancel();
+    if (isClosed || mySeq != _seq) return;
 
     if (state is! BuyPaymentInfoSuccess) {
       emit(const BuyPaymentInfoLoading());
     }
 
-    _completer = CancelableOperation.fromFuture(
+    final operation = CancelableOperation.fromFuture(
       _runGetPaymentInfo(amount, currency),
     );
+    _completer = operation;
 
-    final newState = await _completer!.value;
-    if (isClosed) return;
+    // `.value` never completes after cancel(); `.valueOrCancellation()`
+    // completes with null so a later getPaymentInfo is not stuck on the
+    // cancelled Future.
+    final newState = await operation.valueOrCancellation();
+    if (isClosed || mySeq != _seq || newState == null) return;
     emit(newState);
   }
 
@@ -73,6 +90,14 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
           return BuyPaymentInfoMinAmountNotMetFailure(
             PaymentInfoError.minAmountNotMet,
             minAmount: paymentInfo.minVolume!,
+          );
+        }
+        if ((paymentInfo.error == _quoteErrorAmountTooHigh ||
+                paymentInfo.error == _quoteErrorLimitExceeded) &&
+            paymentInfo.maxVolume != null) {
+          return BuyPaymentInfoMaxAmountExceededFailure(
+            PaymentInfoError.maxAmountExceeded,
+            maxAmount: paymentInfo.maxVolume!,
           );
         }
         if (paymentInfo.error == _quoteErrorPrimaryEmailRequired) {
@@ -105,7 +130,8 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       // (Aktionariat) is down, so no quote can be built — surface that
       // explicitly instead of a generic failure. Must stay below the
       // KYC/Registration clauses (those are ApiException subclasses).
-      if (e.statusCode == 503 || e.code == 'PRICE_SOURCE_UNAVAILABLE') {
+      // Gateway plain-text 502 is the same "no quote" situation as 503.
+      if (e.statusCode == 503 || e.statusCode == 502 || e.code == 'PRICE_SOURCE_UNAVAILABLE') {
         return BuyPaymentInfoFailure(
           PaymentInfoError.priceSourceUnavailable,
           message: e.message,
@@ -115,7 +141,7 @@ class BuyPaymentInfoCubit extends Cubit<BuyPaymentInfoState> {
       return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.message);
     } catch (e) {
       developer.log(e.toString());
-      return BuyPaymentInfoFailure(PaymentInfoError.unknown, message: e.toString());
+      return const BuyPaymentInfoFailure(PaymentInfoError.unknown, message: '');
     }
   }
 

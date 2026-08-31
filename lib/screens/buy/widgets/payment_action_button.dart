@@ -15,163 +15,180 @@ import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 /// Bottom call-to-action of the buy page. It mirrors the `BuyPaymentInfoCubit`
 /// state: on a valid quote it shows the binding-buy CTA, otherwise it offers
 /// the action the current gate requires (register, KYC, reconnect, retry) or a
-/// disabled button for the min-amount validation error.
+/// disabled button for the min-amount or max-amount validation error.
 class PaymentActionButton extends StatelessWidget {
-  final TextEditingController amountController;
+  const PaymentActionButton({super.key});
 
-  const PaymentActionButton({
-    super.key,
-    required this.amountController,
-  });
+  // Re-fetches the quote with the converter's Rappen-exact payable (falling
+  // back to the typed amount) — never with the raw text-field content.
+  void _refetchQuote(BuildContext context) {
+    final converterState = context.read<BuyConverterCubit>().state;
+    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
+      amount: converterState.quoteAmountText,
+      currency: converterState.currency,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<BuyPaymentInfoCubit, BuyPaymentInfoState>(
-      builder: (context, paymentState) {
-        if (paymentState is BuyPaymentInfoSuccess) {
-          return BuyConfirmButton(
-            buyPaymentInfo: paymentState.buyPaymentInfo,
-          );
-        }
-        if (paymentState is BuyPaymentInfoFailure) {
-          if (paymentState.error == PaymentInfoError.minAmountNotMet) {
-            final state = paymentState as BuyPaymentInfoMinAmountNotMetFailure;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20.0),
-              child: Column(
-                spacing: 8.0,
-                children: [
-                  Text(
-                    S
-                        .of(context)
-                        .buyMinAmount(
-                          '${state.minAmount.ceil()}',
-                          context.read<BuyConverterCubit>().state.currency.code,
+    return BlocBuilder<BuyConverterCubit, BuyConverterState>(
+      buildWhen: (previous, current) => previous.currency != current.currency,
+      builder: (context, converterState) {
+        return BlocBuilder<BuyPaymentInfoCubit, BuyPaymentInfoState>(
+          builder: (context, paymentState) {
+            if (paymentState is BuyPaymentInfoSuccess) {
+              if (paymentState.buyPaymentInfo.currency != converterState.currency) {
+                return const SizedBox.shrink();
+              }
+              return BuyConfirmButton(
+                buyPaymentInfo: paymentState.buyPaymentInfo,
+              );
+            }
+            if (paymentState is BuyPaymentInfoFailure) {
+              if (paymentState.error == PaymentInfoError.minAmountNotMet) {
+                final state = paymentState as BuyPaymentInfoMinAmountNotMetFailure;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: Column(
+                    spacing: 8.0,
+                    children: [
+                      Text(
+                        S
+                            .of(context)
+                            .buyMinAmount(
+                              '${state.minAmount.ceil()}',
+                              context.read<BuyConverterCubit>().state.currency.code,
+                            ),
+                        style: const TextStyle(
+                          color: RealUnitColors.neutral500,
+                          fontSize: 14,
                         ),
-                    style: const TextStyle(
-                      color: RealUnitColors.neutral500,
-                      fontSize: 14,
-                    ),
+                      ),
+                      AppFilledButton(
+                        onPressed: null,
+                        label: S.of(context).next,
+                      ),
+                    ],
                   ),
-                  AppFilledButton(
-                    onPressed: null,
+                );
+              }
+              if (paymentState.error == PaymentInfoError.maxAmountExceeded) {
+                final state = paymentState as BuyPaymentInfoMaxAmountExceededFailure;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20.0),
+                  child: Column(
+                    spacing: 8.0,
+                    children: [
+                      Text(
+                        S
+                            .of(context)
+                            .buyMaxAmount(
+                              '${state.maxAmount.floor()}',
+                              context.read<BuyConverterCubit>().state.currency.code,
+                            ),
+                        style: const TextStyle(
+                          color: RealUnitColors.neutral500,
+                          fontSize: 14,
+                        ),
+                      ),
+                      AppFilledButton(
+                        onPressed: null,
+                        label: S.of(context).next,
+                      ),
+                    ],
+                  ),
+                );
+              }
+              if (paymentState.error == PaymentInfoError.registrationRequired) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: AppFilledButton(
+                    onPressed: () async {
+                      await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
+                      if (context.mounted) _refetchQuote(context);
+                    },
                     label: S.of(context).next,
                   ),
-                ],
-              ),
-            );
-          }
-          if (paymentState.error == PaymentInfoError.registrationRequired) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: AppFilledButton(
-                onPressed: () async {
-                  await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
-                },
-                label: S.of(context).next,
-              ),
-            );
-          }
-          if (paymentState.error == PaymentInfoError.kycRequired) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: AppFilledButton(
-                onPressed: () async {
-                  await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
-                },
-                label: S.of(context).next,
-              ),
-            );
-          }
-          if (paymentState.error == PaymentInfoError.primaryEmailRequired) {
-            // Pre-tap gate: the API flagged the quote invalid because the
-            // account has no primary email. Route to email capture first,
-            // then re-fetch the quote so a now-valid quote surfaces the
-            // binding-buy CTA — mirrors the registration / KYC gates above.
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: AppFilledButton(
-                onPressed: () async {
-                  await context.pushNamed(
-                    SupportRoutes.emailCapture,
-                    extra: S.of(context).buyPrimaryEmailRequiredCaptureDescription,
-                  );
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
-                },
-                label: S.of(context).next,
-              ),
-            );
-          }
-          if (paymentState.error == PaymentInfoError.primaryEmailNotConfirmed) {
-            // The buyer has a primary email on record but has not yet confirmed it.
-            // The KYC page auto-routes to its confirm-email step in this case, so
-            // route there instead of to email capture, then re-fetch
-            // the quote so a now-confirmed email surfaces the binding-buy CTA.
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: AppFilledButton(
-                onPressed: () async {
-                  await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
-                  if (context.mounted) {
-                    context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                      amount: amountController.text,
-                      currency: context.read<BuyConverterCubit>().state.currency,
-                    );
-                  }
-                },
-                label: S.of(context).next,
-              ),
-            );
-          }
-          if (paymentState.error == PaymentInfoError.bitboxDisconnected) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: AppFilledButton(
-                onPressed: () async {
-                  final paymentInfoCubit = context.read<BuyPaymentInfoCubit>();
-                  final converterCubit = context.read<BuyConverterCubit>();
-                  await showBitboxReconnectSheet(context);
-                  paymentInfoCubit.getPaymentInfo(
-                    amount: amountController.text,
-                    currency: converterCubit.state.currency,
-                  );
-                },
-                label: S.of(context).bitboxReconnect,
-              ),
-            );
-          }
-          if (paymentState.error == PaymentInfoError.unknown ||
-              paymentState.error == PaymentInfoError.priceSourceUnavailable) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 20),
-              child: AppFilledButton(
-                onPressed: () => context.read<BuyPaymentInfoCubit>().getPaymentInfo(
-                  amount: amountController.text,
-                  currency: context.read<BuyConverterCubit>().state.currency,
-                ),
-                label: S.of(context).retry,
-              ),
-            );
-          }
-        }
-        return const SizedBox.shrink();
+                );
+              }
+              if (paymentState.error == PaymentInfoError.kycRequired) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: AppFilledButton(
+                    onPressed: () async {
+                      await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
+                      if (context.mounted) _refetchQuote(context);
+                    },
+                    label: S.of(context).next,
+                  ),
+                );
+              }
+              if (paymentState.error == PaymentInfoError.primaryEmailRequired) {
+                // Pre-tap gate: the API flagged the quote invalid because the
+                // account has no primary email. Route to email capture first,
+                // then re-fetch the quote so a now-valid quote surfaces the
+                // binding-buy CTA — mirrors the registration / KYC gates above.
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: AppFilledButton(
+                    onPressed: () async {
+                      await context.pushNamed(
+                        SupportRoutes.emailCapture,
+                        extra: S.of(context).buyPrimaryEmailRequiredCaptureDescription,
+                      );
+                      if (context.mounted) _refetchQuote(context);
+                    },
+                    label: S.of(context).next,
+                  ),
+                );
+              }
+              if (paymentState.error == PaymentInfoError.primaryEmailNotConfirmed) {
+                // The buyer has a primary email on record but has not yet confirmed it.
+                // The KYC page auto-routes to its confirm-email step in this case, so
+                // route there instead of to email capture, then re-fetch
+                // the quote so a now-confirmed email surfaces the binding-buy CTA.
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: AppFilledButton(
+                    onPressed: () async {
+                      await context.pushNamed(AppRoutes.kyc, extra: paymentState.context);
+                      if (context.mounted) _refetchQuote(context);
+                    },
+                    label: S.of(context).next,
+                  ),
+                );
+              }
+              if (paymentState.error == PaymentInfoError.bitboxDisconnected) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: AppFilledButton(
+                    onPressed: () async {
+                      final paymentInfoCubit = context.read<BuyPaymentInfoCubit>();
+                      final converterCubit = context.read<BuyConverterCubit>();
+                      await showBitboxReconnectSheet(context);
+                      paymentInfoCubit.getPaymentInfo(
+                        amount: converterCubit.state.quoteAmountText,
+                        currency: converterCubit.state.currency,
+                      );
+                    },
+                    label: S.of(context).bitboxReconnect,
+                  ),
+                );
+              }
+              if (paymentState.error == PaymentInfoError.unknown ||
+                  paymentState.error == PaymentInfoError.priceSourceUnavailable) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: AppFilledButton(
+                    onPressed: () => _refetchQuote(context),
+                    label: S.of(context).retry,
+                  ),
+                );
+              }
+            }
+            return const SizedBox.shrink();
+          },
+        );
       },
     );
   }

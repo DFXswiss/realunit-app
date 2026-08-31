@@ -10,6 +10,7 @@ import 'package:realunit_wallet/packages/service/wallet_service.dart';
 import 'package:realunit_wallet/screens/pay/cubits/pay_process/pay_process_cubit.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
+import 'package:realunit_wallet/widgets/route_animation_gate.dart';
 
 class PayProcessPage extends StatelessWidget {
   final String paymentLinkId;
@@ -32,8 +33,11 @@ class PayProcessPage extends StatelessWidget {
         appStore: getIt<AppStore>(),
         paymentLinkId: paymentLinkId,
         zchfNeeded: zchfNeeded,
-      )..start(),
-      child: const PayProcessView(),
+      ),
+      child: RouteAnimationGate(
+        onSettled: (c) => c.read<PayProcessCubit>().start(),
+        child: const PayProcessView(),
+      ),
     );
   }
 }
@@ -138,6 +142,11 @@ class PayProcessView extends StatelessWidget {
     required String title,
     required String description,
   }) async {
+    await waitForIncomingRouteAnimation(context);
+    if (!context.mounted) {
+      return;
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       isDismissible: false,
@@ -174,6 +183,11 @@ class PayProcessView extends StatelessWidget {
   /// swap is never redone, so the ZCHF already held is reused. Dismissing leaves
   /// that ZCHF safely in the wallet.
   Future<void> _showRetrySheet(BuildContext context, PayProcessPayRetry state) async {
+    await waitForIncomingRouteAnimation(context);
+    if (!context.mounted) {
+      return;
+    }
+
     final cubit = context.read<PayProcessCubit>();
     // The sheet returns true when the user retries (keep the page) and false
     // when they close (leave the flow); a barrier dismissal yields null.

@@ -15,7 +15,7 @@ class RealUnitBuyPaymentInfoService extends DFXAuthService {
 
   RealUnitBuyPaymentInfoService(super.appStore, super.walletService);
 
-  Future<BuyPaymentInfo> getPaymentInfo(int amount, {Currency currency = Currency.chf}) async {
+  Future<BuyPaymentInfo> getPaymentInfo(num amount, {Currency currency = Currency.chf}) async {
     final buyDto = RealUnitBuyDto(amount: amount, currency: currency);
 
     final uri = buildUri(host, _buyPaymentInfoPath);
@@ -51,11 +51,9 @@ class RealUnitBuyPaymentInfoService extends DFXAuthService {
         error: responseDto.error,
       );
     } else if (response.statusCode == 403) {
-      final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
-      throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+      throw ApiException.fromBody(response.body, httpStatusCode: response.statusCode);
     } else {
-      final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
-      throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+      throw ApiException.fromBody(response.body, httpStatusCode: response.statusCode);
     }
   }
 
@@ -67,8 +65,7 @@ class RealUnitBuyPaymentInfoService extends DFXAuthService {
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {
-      final errorJson = jsonDecode(response.body) as Map<String, dynamic>;
-      throw ApiException.fromJson(errorJson, httpStatusCode: response.statusCode);
+      throw ApiException.fromBody(response.body, httpStatusCode: response.statusCode);
     }
 
     final json = jsonDecode(response.body) as Map<String, dynamic>;

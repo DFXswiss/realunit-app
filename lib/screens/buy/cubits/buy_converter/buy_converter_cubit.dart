@@ -11,7 +11,8 @@ part 'buy_converter_state.dart';
 class BuyConverterCubit extends Cubit<BuyConverterState> {
   final DfxBrokerbotService _brokerbotService;
 
-  BuyConverterCubit(this._brokerbotService) : super(const BuyConverterState());
+  BuyConverterCubit(this._brokerbotService, {Currency currency = Currency.eur})
+    : super(BuyConverterState(currency: currency));
 
   Timer? _fiatDebounce;
   Timer? _sharesDebounce;
@@ -26,9 +27,12 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
   // newer result (e.g. `460 → shares=321` overwriting `4600 → shares=3216`).
   int _seq = 0;
 
-  /// User changed fiat → convert to shares
+  /// User changed fiat → convert to shares. The conversion result lands in
+  /// [BuyConverterState.sharesText] and [BuyConverterState.payableText] only:
+  /// writing it back into [BuyConverterState.fiatText] would overwrite the
+  /// text field mid-edit and make typing/deleting impossible.
   Future<void> onFiatChanged(String value) async {
-    emit(state.copyWith(fiatText: value));
+    emit(state.copyWith(fiatText: value, payableText: ''));
 
     _fiatDebounce?.cancel();
     final mySeq = ++_seq;
@@ -39,9 +43,12 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
       try {
         final result = await _brokerbotService.getBuyShares(value, state.currency);
         if (isClosed || mySeq != _seq) return;
+        final priceMinor = (result.pricePerShare * 100).round();
+        final payable = result.shares * priceMinor / 100;
         emit(
           state.copyWith(
             sharesText: result.shares.toString(),
+            payableText: payable.toStringAsFixed(2),
             loading: false,
           ),
         );
@@ -53,9 +60,11 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
     });
   }
 
-  /// User changed shares → convert to fiat
+  /// User changed shares → convert to fiat. Writing the result into
+  /// [BuyConverterState.fiatText] is safe here: the user is typing in the
+  /// shares field, so the fiat field is pure conversion output.
   Future<void> onSharesChanged(String value) async {
-    emit(state.copyWith(sharesText: value));
+    emit(state.copyWith(sharesText: value, payableText: ''));
 
     _sharesDebounce?.cancel();
     final mySeq = ++_seq;
@@ -69,6 +78,7 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
         emit(
           state.copyWith(
             fiatText: result.totalCost.toStringAsFixed(_fractionDigits(value)),
+            payableText: result.totalCost.toStringAsFixed(2),
             loading: false,
           ),
         );
@@ -85,14 +95,17 @@ class BuyConverterCubit extends Cubit<BuyConverterState> {
     // Flip currency immediately so the picker reflects the user choice
     // even if an in-flight conversion arrives later and gets dropped by
     // the seq guard.
-    emit(state.copyWith(loading: true, currency: currency));
+    emit(state.copyWith(loading: true, currency: currency, payableText: ''));
 
     try {
       final result = await _brokerbotService.getBuyShares(state.fiatText, currency);
       if (isClosed || mySeq != _seq) return;
+      final priceMinor = (result.pricePerShare * 100).round();
+      final payable = result.shares * priceMinor / 100;
       emit(
         state.copyWith(
           sharesText: result.shares.toString(),
+          payableText: payable.toStringAsFixed(2),
           loading: false,
         ),
       );

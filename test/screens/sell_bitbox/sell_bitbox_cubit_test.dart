@@ -123,17 +123,17 @@ void main() {
     blockchainService: blockchain,
     sellService: sellService,
     appStore: appStore,
-  );
+  )..start();
 
-  // Helper: wait until the cubit settles into a non-Checking state. The
-  // constructor schedules _checkEthBalance via scheduleMicrotask, so the
-  // first emit lands after a microtask.
+  // Helper: wait until the cubit settles into a non-Checking state. start()
+  // schedules _checkEthBalance via scheduleMicrotask, so the first emit lands
+  // after a microtask.
   Future<SellBitboxState> settle(SellBitboxCubit cubit) async {
     if (cubit.state is! SellBitboxCheckingEth) return cubit.state;
     return cubit.stream.firstWhere((s) => s is! SellBitboxCheckingEth);
   }
 
-  group('constructor / _checkEthBalance', () {
+  group('start / _checkEthBalance', () {
     test('disconnected BitBox → SellBitboxBitboxRequired', () async {
       when(() => account.primaryAddress).thenReturn(
         FakeBitboxCredentials(behavior: FakeBitboxBehavior.disconnect)..bitboxManager = null,
@@ -350,7 +350,7 @@ void main() {
           });
 
           final cubit = build(info: _info(ethBalance: 0, requiredGasEth: 0.001));
-          // Drive the constructor microtask + the awaited faucet request to
+          // Drive the start() microtask + the awaited faucet request to
           // completion so the periodic Timer is installed.
           async.flushMicrotasks();
           async.elapse(Duration.zero);

@@ -66,11 +66,12 @@ void main() {
     });
 
     group('currency', () {
-      test('defaults to CHF when no value is stored', () async {
+      test('defaults to EUR when nothing is stored', () async {
         SharedPreferences.setMockInitialValues({});
         final repo = SettingsRepository(await SharedPreferences.getInstance());
 
-        expect(repo.currency, 'CHF');
+        expect(repo.currency, 'EUR');
+        expect(repo.hasStoredCurrency, isFalse);
       });
 
       test('returns the stored currency when set', () async {
@@ -78,6 +79,7 @@ void main() {
         final repo = SettingsRepository(await SharedPreferences.getInstance());
 
         expect(repo.currency, 'EUR');
+        expect(repo.hasStoredCurrency, isTrue);
       });
 
       test('currency setter persists', () async {

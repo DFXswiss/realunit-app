@@ -145,6 +145,13 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
         'lib/screens/settings_user_data/subpages/edit_address/settings_edit_address_page.dart',
   ),
   ResponsiveSurface(
+    id: 'settings_wallet_address_page',
+    description: 'Wallet address QR page (sticky Send CTA)',
+    matrixTestPath:
+        'test/screens/settings_wallet_address/settings_wallet_address_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/settings_wallet_address/settings_wallet_address_page.dart',
+  ),
+  ResponsiveSurface(
     id: 'settings_edit_name_page',
     description: 'Settings edit name form',
     matrixTestPath:
@@ -201,6 +208,18 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     productionPath: 'lib/screens/pay/pay_quote_page.dart',
   ),
   ResponsiveSurface(
+    id: 'pay_info_page',
+    description: 'Pay info disclosure (Continue CTA)',
+    matrixTestPath: 'test/screens/pay/pay_info_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/pay/pay_info_page.dart',
+  ),
+  ResponsiveSurface(
+    id: 'receive_page',
+    description: 'Receive QR page (sticky Send CTA)',
+    matrixTestPath: 'test/screens/receive/receive_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/receive/receive_page.dart',
+  ),
+  ResponsiveSurface(
     id: 'sell_page',
     description: 'Sell page (primary CTA)',
     matrixTestPath: 'test/screens/sell/sell_responsive_matrix_test.dart',
@@ -211,6 +230,12 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     description: 'Send amount page (next CTA)',
     matrixTestPath: 'test/screens/send/send_amount_responsive_matrix_test.dart',
     productionPath: 'lib/screens/send/send_amount_page.dart',
+  ),
+  ResponsiveSurface(
+    id: 'send_info_page',
+    description: 'Send info disclosure (Continue CTA)',
+    matrixTestPath: 'test/screens/send/send_info_responsive_matrix_test.dart',
+    productionPath: 'lib/screens/send/send_info_page.dart',
   ),
   ResponsiveSurface(
     id: 'send_confirm_page',
@@ -273,7 +298,7 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     matrixTestPath: 'test/screens/pin/pin_sheets_responsive_matrix_test.dart',
     productionPath: 'lib/screens/pin/widgets/enable_biometric_bottom_sheet.dart',
   ),
-  // Migration covers 36 surfaces total (bitbox_connect_sheet + 35 above). No
+  // Migration covers 40 surfaces total (bitbox_connect_sheet + 39 above). No
   // further known candidates remain from the prior sweep. welcome_page was
   // reviewed and found safe (scrolls end-to-end, no separate sticky CTA) — not
   // a migration candidate. Not exhaustive — review responsibility for every

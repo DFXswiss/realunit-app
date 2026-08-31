@@ -21,7 +21,7 @@ deployten Image (`handbook.realunit.app`).
 
 ## Screenshots regenerieren
 
-Es gibt keinen separaten Regeneration-Schritt: Die 278 Handbook-Screenshots
+Es gibt keinen separaten Regeneration-Schritt: Die 284 Handbook-Screenshots
 sind direkt die Golden-Baselines unter `test/goldens/` (gemappt in
 `scripts/assemble-handbook-screenshots.sh`). Eine UI-Änderung an einer der
 gemappten Pages produziert beim `flutter test test/goldens` einen Diff —
@@ -63,6 +63,15 @@ Auch der Tier-3-GitHub-Workflow hat dafür einen `flows`-`workflow_dispatch`-Inp
 — so lässt sich in der CI gezielt eine Teilmenge der Flows als Navigation-Smoke
 neu laufen lassen. (Die Screenshots zieht das Handbook aus den Goldens, nicht
 mehr aus diesen Maestro-Läufen.)
+
+## Live Geo-Filter-Tabelle
+
+Die Sektion **Aktientoken — Geo-Filter** (`#spec-geo`) lädt `GET /v1/country`
+zur Laufzeit. Länderzeilen gehören nicht ins Repo. Namen kommen als Deutsch und
+Englisch aus `Intl.DisplayNames` (ISO 3166), nicht aus `foreignName`. CSV, Excel
+und PDF exportieren die angezeigte Liste. Im Image proxied nginx `/v1/country`
+auf `https://api.dfx.swiss/v1/country`; eine lokale HTML-Vorschau fällt auf die
+öffentliche API zurück.
 
 ## Einen neuen Handbook-Eintrag hinzufügen
 

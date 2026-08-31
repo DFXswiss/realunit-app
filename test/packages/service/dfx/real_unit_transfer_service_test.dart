@@ -475,6 +475,90 @@ void main() {
       );
     });
 
+    test('400 with timeout-like message stays a plain ApiException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 400,
+            'message': 'Timed out while waiting for transaction with hash "$hash"',
+            'error': 'Bad Request',
+          }),
+          400,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          predicate((e) => e is ApiException && e is! TransferReceiptTimeoutException),
+        ),
+      );
+    });
+
+    test('500 viem receipt-timeout with hash → TransferReceiptTimeoutException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 500,
+            'message': 'Timed out while waiting for transaction with hash "$hash"\nVersion: viem@2.21.0',
+            'error': 'Internal Server Error',
+          }),
+          500,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          isA<TransferReceiptTimeoutException>().having((e) => e.txHash, 'txHash', hash),
+        ),
+      );
+    });
+
+    test('HTTP 400 with body statusCode 500 and timeout phrase stays a plain ApiException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 500,
+            'message': 'Timed out while waiting for transaction with hash "$hash"',
+            'error': 'Internal Server Error',
+          }),
+          400,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          predicate((e) => e is ApiException && e is! TransferReceiptTimeoutException),
+        ),
+      );
+    });
+
+    test('HTTP 500 with hash but no timeout phrase stays a plain ApiException', () async {
+      const hash = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      final client = MockClient(
+        (_) async => http.Response(
+          jsonEncode({
+            'statusCode': 500,
+            'message': 'relay failed for $hash',
+            'error': 'Internal Server Error',
+          }),
+          500,
+        ),
+      );
+
+      await expectLater(
+        _confirm(build(client), _info()),
+        throwsA(
+          predicate((e) => e is ApiException && e is! TransferReceiptTimeoutException),
+        ),
+      );
+    });
+
     test('any other 409 conflict stays a plain ApiException', () async {
       final client = MockClient(
         (_) async => http.Response(

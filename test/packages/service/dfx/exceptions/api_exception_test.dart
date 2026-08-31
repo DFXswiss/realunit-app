@@ -110,6 +110,58 @@ void main() {
       });
     });
 
+    group('fromBody', () {
+      test('JSON object body matches fromJson including KYC subclass', () {
+        final exception = ApiException.fromBody(
+          '{"statusCode":403,"code":"KYC_LEVEL_REQUIRED","message":"KYC level too low","requiredLevel":30,"currentLevel":20}',
+          httpStatusCode: 403,
+        );
+
+        expect(exception, isA<KycLevelRequiredException>());
+        expect(exception.statusCode, 403);
+        expect(exception.code, 'KYC_LEVEL_REQUIRED');
+        expect(exception.message, 'KYC level too low');
+        final kyc = exception as KycLevelRequiredException;
+        expect(kyc.requiredLevel, 30);
+        expect(kyc.currentLevel, 20);
+      });
+
+      test('plain-text 502 body yields empty-message ApiException', () {
+        final exception = ApiException.fromBody(
+          'error code: 502',
+          httpStatusCode: 502,
+        );
+
+        expect(exception, isA<ApiException>());
+        expect(exception, isNot(isA<KycLevelRequiredException>()));
+        expect(exception.statusCode, 502);
+        expect(exception.code, 'UNKNOWN');
+        expect(exception.message, '');
+      });
+
+      test('HTML 502 body yields empty-message ApiException', () {
+        final exception = ApiException.fromBody(
+          '<html>bad gateway</html>',
+          httpStatusCode: 502,
+        );
+
+        expect(exception.statusCode, 502);
+        expect(exception.code, 'UNKNOWN');
+        expect(exception.message, '');
+      });
+
+      test('JSON array body yields empty-message ApiException', () {
+        final exception = ApiException.fromBody(
+          '[1]',
+          httpStatusCode: 500,
+        );
+
+        expect(exception.statusCode, 500);
+        expect(exception.code, 'UNKNOWN');
+        expect(exception.message, '');
+      });
+    });
+
     group('userFacingMessage', () {
       test('returns ApiException.message 1:1', () {
         const error = ApiException(

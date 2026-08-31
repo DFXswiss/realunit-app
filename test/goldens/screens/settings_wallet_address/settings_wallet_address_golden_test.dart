@@ -7,7 +7,6 @@ import 'package:realunit_wallet/screens/settings_wallet_address/settings_wallet_
 import '../../../helper/helper.dart';
 
 void main() {
-
   final MockAppStore appStore = MockAppStore();
 
   setUp(() {

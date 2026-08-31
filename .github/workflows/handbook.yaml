@@ -121,19 +121,20 @@ jobs:
         env:
           API_DIR: _api-checkout
           HANDLEBARS_PREFIX: _handlebars-only
-          # Exact expected mail-preview file count: 24 mails + 1 index = 25.
-          # `-ne` below makes ANY drift (drop OR addition) fail the build —
-          # adding a new mail upstream therefore requires an explicit edit
-          # here, which is the whole point: a silently-added (or silently-
-          # removed) mail must never reach the handbook image undetected.
-          # When you legitimately add/remove a mail in
-          # DFXswiss/api/scripts/generate-realunit-previews.js, bump this
-          # number in the SAME PR as the api-side change-PR (or its
-          # follow-up). The exact count is computed as:
-          #   N(add() calls in the generator)
+          # Exact expected mail-preview file count: 24 standalone add() mails
+          # + 3 pendingTypes expansions + 1 index = 28. `-ne` below makes ANY
+          # drift (drop OR addition) fail the build — adding a new mail
+          # upstream therefore requires an explicit edit here, which is the
+          # whole point: a silently-added (or silently-removed) mail must
+          # never reach the handbook image undetected. When you legitimately
+          # add/remove a mail in DFXswiss/api/scripts/generate-realunit-previews.js,
+          # bump this number in the SAME PR as the api-side change-PR (or
+          # its follow-up). The exact count is computed as:
+          #   N(standalone add() calls in the generator; the loop template
+          #     is not counted here)
           #   + N(pendingTypes entries the for-loop expands)
           #   + 1 (00_index.html)
-          EXPECTED_HTML_COUNT: 25
+          EXPECTED_HTML_COUNT: 28
         run: |
           set -euo pipefail
 
