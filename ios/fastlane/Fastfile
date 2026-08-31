@@ -49,16 +49,25 @@ def upload_sentry_symbols(marketing_version:, version_code:)
       UI.user_error!("Sentry upload: no dSYMs found under build/ios/archive")
     end
 
+    # Same stuck-assemble pair as Android: files already on the server
+    # and assemble cannot finish. Continue so TestFlight still runs.
     max_attempts = 3
     attempt = 0
     begin
       attempt += 1
       sh("dart", "run", "sentry_dart_plugin")
-    rescue FastlaneCore::Interface::FastlaneShellError
-      raise if attempt >= max_attempts
-      UI.important("Sentry symbol upload failed (#{attempt}/#{max_attempts}), retrying in 20s")
-      sleep 20
-      retry
+    rescue FastlaneCore::Interface::FastlaneShellError => e
+      stuck = e.message.include?("Not all chunks available for assembling") &&
+              e.message.include?("Nothing to upload")
+      if stuck
+        UI.important("Sentry already has these files but assemble is stuck; continuing")
+      elsif attempt >= max_attempts
+        raise
+      else
+        UI.important("Sentry symbol upload failed (#{attempt}/#{max_attempts}), retrying in 20s")
+        sleep 20
+        retry
+      end
     end
   end
 end

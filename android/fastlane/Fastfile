@@ -51,10 +51,10 @@ def upload_sentry_symbols(marketing_version:, version_code:, symbols_path:, dart
       UI.user_error!("Sentry upload: Dart obfuscation map not found at #{dart_symbol_map_path}")
     end
 
-    # Self-hosted Sentry sometimes returns "Not all chunks available
-    # for assembling" on libapp.so after the CLI already said the
-    # files were on the server. Retry that class instead of failing
-    # the Play Store upload on the first assemble flake.
+    # Self-hosted Sentry can return "Not all chunks available for
+    # assembling" after "Nothing to upload" (files already on the
+    # server, assemble stuck). That pair continues. Other plugin
+    # errors retry up to max_attempts, then fail the lane.
     max_attempts = 3
     attempt = 0
     begin
@@ -63,11 +63,20 @@ def upload_sentry_symbols(marketing_version:, version_code:, symbols_path:, dart
          "--sentry-define=symbols_path=#{symbols_path}",
          "--sentry-define=dart_symbol_map_path=#{dart_symbol_map_path}"
       )
-    rescue FastlaneCore::Interface::FastlaneShellError
-      raise if attempt >= max_attempts
-      UI.important("Sentry symbol upload failed (#{attempt}/#{max_attempts}), retrying in 20s")
-      sleep 20
-      retry
+    rescue FastlaneCore::Interface::FastlaneShellError => e
+      stuck = e.message.include?("Not all chunks available for assembling") &&
+              e.message.include?("Nothing to upload")
+      if stuck
+        # Files are already on the server; waiting for assemble loops on
+        # incomplete chunks. Do not fail the lane after that.
+        UI.important("Sentry already has these files but assemble is stuck; continuing")
+      elsif attempt >= max_attempts
+        raise
+      else
+        UI.important("Sentry symbol upload failed (#{attempt}/#{max_attempts}), retrying in 20s")
+        sleep 20
+        retry
+      end
     end
   end
 end
@@ -147,23 +156,11 @@ platform :android do
       end
     end
 
-    upload_sentry_symbols(
-      marketing_version: marketing_version,
-      version_code: version_code,
-      symbols_path: "build/debug_info/appbundle",
-      dart_symbol_map_path: "build/appbundle-obfuscation-map.json"
-    )
-    upload_sentry_symbols(
-      marketing_version: marketing_version,
-      version_code: version_code,
-      symbols_path: "build/debug_info/apk",
-      dart_symbol_map_path: "build/apk-obfuscation-map.json"
-    )
-
     # Upload the binary + changelog only. The changelog is tied to this
     # build's version code (taken from the AAB); the listing metadata and
     # images are pushed by the dedicated call below, keeping the two
     # concerns separate and avoiding a duplicate metadata upload.
+    # Play Store first: a stuck Sentry assemble must not block testers.
     upload_to_play_store(
       track: release_track,
       aab: aab_path,
@@ -186,6 +183,19 @@ platform :android do
       skip_upload_images: false,
       skip_upload_screenshots: false,
       track: release_track
+    )
+
+    upload_sentry_symbols(
+      marketing_version: marketing_version,
+      version_code: version_code,
+      symbols_path: "build/debug_info/appbundle",
+      dart_symbol_map_path: "build/appbundle-obfuscation-map.json"
+    )
+    upload_sentry_symbols(
+      marketing_version: marketing_version,
+      version_code: version_code,
+      symbols_path: "build/debug_info/apk",
+      dart_symbol_map_path: "build/apk-obfuscation-map.json"
     )
   end
 
