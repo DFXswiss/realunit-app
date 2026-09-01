@@ -101,7 +101,11 @@ class TransactionHistoryRowView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isOutbound ? S.of(context).transactionSell : S.of(context).transactionBuy,
+                          transaction.type == TransactionTypes.referralPayout
+                              ? S.of(context).referralPayout
+                              : isOutbound
+                                  ? S.of(context).transactionSell
+                                  : S.of(context).transactionBuy,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -116,11 +120,25 @@ class TransactionHistoryRowView extends StatelessWidget {
                             color: RealUnitColors.neutral500,
                           ),
                         ),
+                        if (transaction.type == TransactionTypes.referralPayout &&
+                            transaction.data != null &&
+                            transaction.data!.isNotEmpty)
+                          Text(
+                            S.of(context).referralPayoutChf(transaction.data!),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 16 / 12,
+                              color: RealUnitColors.neutral500,
+                            ),
+                          ),
                       ],
                     ),
                   ),
                   HideAmountText(
-                    leadingSymbol: isOutbound ? '-' : '+',
+                    leadingSymbol: isOutbound &&
+                            transaction.type != TransactionTypes.referralPayout
+                        ? '-'
+                        : '+',
                     amount: transaction.amount,
                     decimals: transaction.asset.decimals,
                     fractionalDigits: 0,
@@ -132,32 +150,33 @@ class TransactionHistoryRowView extends StatelessWidget {
                       height: 20 / 16,
                     ),
                   ),
-                  state is TransactionHistoryReceiptLoading
-                      ? const Padding(
-                          padding: EdgeInsets.all(4.0),
-                          child: SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.5,
+                  if (transaction.type != TransactionTypes.referralPayout)
+                    state is TransactionHistoryReceiptLoading
+                        ? const Padding(
+                            padding: EdgeInsets.all(4.0),
+                            child: SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.5,
+                                color: RealUnitColors.realUnitBlue,
+                              ),
+                            ),
+                          )
+                        : GestureDetector(
+                            onTap: () {
+                              context.read<TransactionHistoryReceiptCubit>().generateReceipt(
+                                transaction.txId,
+                                currency: context.read<SettingsBloc>().state.currency,
+                                language: context.read<SettingsBloc>().state.language,
+                              );
+                            },
+                            child: const Icon(
+                              size: 20,
+                              Icons.file_download_outlined,
                               color: RealUnitColors.realUnitBlue,
                             ),
                           ),
-                        )
-                      : GestureDetector(
-                          onTap: () {
-                            context.read<TransactionHistoryReceiptCubit>().generateReceipt(
-                              transaction.txId,
-                              currency: context.read<SettingsBloc>().state.currency,
-                              language: context.read<SettingsBloc>().state.language,
-                            );
-                          },
-                          child: const Icon(
-                            size: 20,
-                            Icons.file_download_outlined,
-                            color: RealUnitColors.realUnitBlue,
-                          ),
-                        ),
                 ],
               ),
             ],

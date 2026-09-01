@@ -18,6 +18,8 @@ import 'package:realunit_wallet/screens/pay/pay_info_page.dart';
 import 'package:realunit_wallet/screens/pin/setup_pin_page.dart';
 import 'package:realunit_wallet/screens/pin/verify_pin_page.dart';
 import 'package:realunit_wallet/screens/receive/receive_page.dart';
+import 'package:realunit_wallet/screens/referral/referral_create_page.dart';
+import 'package:realunit_wallet/screens/referral/referral_page.dart';
 import 'package:realunit_wallet/screens/restore_wallet/restore_wallet_page.dart';
 import 'package:realunit_wallet/screens/sell/sell_page.dart';
 import 'package:realunit_wallet/screens/sell_bitbox/sell_bitbox_page.dart';
@@ -327,6 +329,18 @@ final GoRouter routerConfig = GoRouter(
               name: SettingsRoutes.editPhone,
               path: 'editPhoneNumber',
               builder: (_, _) => const SettingsEditPhoneNumberPage(),
+            ),
+          ],
+        ),
+        GoRoute(
+          name: SettingsRoutes.referral,
+          path: 'referral',
+          builder: (_, _) => const ReferralPage(),
+          routes: [
+            GoRoute(
+              name: SettingsRoutes.referralCreate,
+              path: 'create',
+              builder: (_, _) => const ReferralCreatePage(),
             ),
           ],
         ),

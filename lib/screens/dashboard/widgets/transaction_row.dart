@@ -33,6 +33,8 @@ class TransactionRow extends StatelessWidget {
           secondRowTextColor: secondRowTextColor,
           showBlockchainIcon: showBlockchainIcon,
         )
+      : transaction.type == TransactionTypes.referralPayout
+      ? ReferralPayoutTransactionRow(transaction: transaction)
       : InkWell(
           child: Container(
             decoration: BoxDecoration(
@@ -116,6 +118,84 @@ class TransactionRow extends StatelessWidget {
             ),
           ),
         );
+}
+
+class ReferralPayoutTransactionRow extends StatelessWidget {
+  final Transaction transaction;
+
+  const ReferralPayoutTransactionRow({super.key, required this.transaction});
+
+  @override
+  Widget build(BuildContext context) {
+    final chf = transaction.data;
+    return InkWell(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: RealUnitColors.basic.white,
+        ),
+        child: Row(
+          spacing: 10.0,
+          children: [
+            Container(
+              height: 32,
+              width: 32,
+              decoration: BoxDecoration(
+                color: RealUnitColors.brand200,
+                borderRadius: BorderRadius.circular(24.0),
+              ),
+              child: const Icon(Icons.add, color: RealUnitColors.darkBlue),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    S.of(context).referralPayout,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      height: 20 / 16,
+                    ),
+                  ),
+                  Text(
+                    DateFormat('MMM dd, yyyy | H:mm').format(transaction.timestamp.toLocal()),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      height: 16 / 12,
+                      color: RealUnitColors.neutral500,
+                    ),
+                  ),
+                  if (chf != null && chf.isNotEmpty)
+                    Text(
+                      S.of(context).referralPayoutChf(chf),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        height: 16 / 12,
+                        color: RealUnitColors.neutral500,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            HideAmountText(
+              leadingSymbol: '+',
+              amount: transaction.amount,
+              decimals: transaction.asset.decimals,
+              fractionalDigits: 0,
+              trimZeros: false,
+              trailingSymbol: transaction.asset.symbol,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                height: 20 / 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class SavingsTransactionRow extends StatelessWidget {
