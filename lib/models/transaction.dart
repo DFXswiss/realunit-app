@@ -3,6 +3,28 @@ import 'package:realunit_wallet/packages/service/transaction_history_service.dar
 
 enum TransactionTypes { transfer, genericContractCall, tokenTransfer, savingsAdd, savingsRemove }
 
+/// Business classification of a REALU transfer, resolved by the API (decision authority):
+/// the Brokerbot as counterparty marks a share purchase or sale, everything else is a plain
+/// token movement. Unknown or missing values stay null, so the UI falls back to the
+/// direction-based labels used before the category existed.
+enum TransferCategory {
+  purchase('purchase'),
+  sale('sale'),
+  transferIn('transferIn'),
+  transferOut('transferOut');
+
+  final String value;
+  const TransferCategory(this.value);
+
+  static TransferCategory? fromValue(String? value) {
+    if (value == null) return null;
+    return TransferCategory.values.cast<TransferCategory?>().firstWhere(
+          (e) => e?.value == value,
+          orElse: () => null,
+        );
+  }
+}
+
 /// Transaction with on-chain metadata
 class Transaction {
   final int height;
@@ -13,6 +35,7 @@ class Transaction {
   final BigInt amount;
   final Asset asset;
   final TransactionTypes type;
+  final TransferCategory? category;
   final String? note;
   final String? data;
   final DateTime timestamp;
@@ -26,6 +49,7 @@ class Transaction {
     required this.amount,
     required this.asset,
     required this.type,
+    this.category,
     required this.note,
     required this.data,
     required this.timestamp,

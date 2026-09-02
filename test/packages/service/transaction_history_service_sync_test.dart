@@ -36,6 +36,7 @@ Map<String, dynamic> _historyEntry({
   String to = _wallet,
   String value = '1000000',
   String timestamp = '2026-01-01T00:00:00Z',
+  String? category,
 }) =>
     {
       'timestamp': timestamp,
@@ -45,6 +46,7 @@ Map<String, dynamic> _historyEntry({
         'to': to,
         'value': value,
       },
+      if (category != null) 'category': category,
     };
 
 Map<String, dynamic> _accountHistory(List<Map<String, dynamic>> events) => {
@@ -170,7 +172,46 @@ void main() {
       ).captured.single as Transaction;
       expect(captured.txId, '0xabc');
       expect(captured.amount, BigInt.from(1000000));
+      expect(captured.category, isNull);
       verifyNever(() => txRepo.insertDfxTransaction(any()));
+    });
+
+    test('carries the API transfer category into the stored transaction', () async {
+      final client = MockClient((request) async {
+        if (request.url.path.endsWith('/history')) {
+          return http.Response(
+            jsonEncode(_accountHistory([_historyEntry(txHash: '0xabc', category: 'transferIn')])),
+            200,
+          );
+        }
+        return http.Response('[]', 200);
+      });
+
+      await build(client).apiBasedSync();
+
+      final captured = verify(
+        () => txRepo.insertTransaction(captureAny()),
+      ).captured.single as Transaction;
+      expect(captured.category, TransferCategory.transferIn);
+    });
+
+    test('ignores an unknown category value instead of failing the sync', () async {
+      final client = MockClient((request) async {
+        if (request.url.path.endsWith('/history')) {
+          return http.Response(
+            jsonEncode(_accountHistory([_historyEntry(txHash: '0xabc', category: 'somethingNew')])),
+            200,
+          );
+        }
+        return http.Response('[]', 200);
+      });
+
+      await build(client).apiBasedSync();
+
+      final captured = verify(
+        () => txRepo.insertTransaction(captureAny()),
+      ).captured.single as Transaction;
+      expect(captured.category, isNull);
     });
 
     test('inserts a DFX-enriched transaction when /v1/transaction has a matching id', () async {

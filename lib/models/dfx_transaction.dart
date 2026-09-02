@@ -20,6 +20,7 @@ class DfxTransaction extends Transaction {
     required super.amount,
     required super.asset,
     required super.type,
+    super.category,
     required super.note,
     required super.data,
     required super.timestamp,

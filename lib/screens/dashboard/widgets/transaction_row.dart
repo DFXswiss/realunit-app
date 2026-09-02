@@ -5,6 +5,7 @@ import 'package:realunit_wallet/models/transaction.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/styles/icons.dart';
 import 'package:realunit_wallet/widgets/hide_amount_text.dart';
+import 'package:realunit_wallet/widgets/transaction_title_label.dart';
 
 class TransactionRow extends StatelessWidget {
   final Transaction transaction;
@@ -77,9 +78,7 @@ class TransactionRow extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _isOutbound
-                                ? S.of(context).transactionSell
-                                : S.of(context).transactionBuy,
+                            transactionTitleLabel(context, transaction, isOutbound: _isOutbound),
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

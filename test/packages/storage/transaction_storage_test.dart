@@ -40,6 +40,7 @@ void main() {
           0,
           '',
           '',
+          '',
           DateTime.utc(2025, 1, 1),
         );
         // One row for a different asset → must be excluded.
@@ -52,6 +53,7 @@ void main() {
           '0xff',
           assetId + 1,
           0,
+          '',
           '',
           '',
           DateTime.utc(2025, 1, 1),
@@ -99,6 +101,7 @@ void main() {
       type,
       '',
       '',
+      '',
       DateTime.utc(2025, 1, 1),
     );
 
@@ -108,6 +111,30 @@ void main() {
       final rows = await db.watchTransfersOfAssets({assetId}, walletLower).first;
 
       expect(rows.map((r) => r.txId), ['tx-sender']);
+    });
+
+    test('persists the transfer category and defaults it to empty', () async {
+      await db.insertTransactions(
+        1,
+        'tx-cat',
+        chainId,
+        checksummed,
+        other,
+        '0xff',
+        assetId,
+        2,
+        'transferIn',
+        '',
+        '',
+        DateTime.utc(2025, 1, 1),
+      );
+
+      final row = await db.getTransaction('tx-cat');
+      expect(row!.category, 'transferIn');
+
+      await insert('tx-nocat', checksummed, other, 2);
+      final plain = await db.getTransaction('tx-nocat');
+      expect(plain!.category, '');
     });
 
     test('watchTransfersOfAssets matches a checksummed receiver', () async {

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
-import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/models/transaction.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_pdf_service.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
@@ -10,6 +9,7 @@ import 'package:realunit_wallet/screens/transaction_history/cubits/receipt/trans
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/hide_amount_text.dart';
+import 'package:realunit_wallet/widgets/transaction_title_label.dart';
 
 class TransactionHistoryRow extends StatelessWidget {
   final Transaction transaction;
@@ -101,7 +101,7 @@ class TransactionHistoryRowView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isOutbound ? S.of(context).transactionSell : S.of(context).transactionBuy,
+                          transactionTitleLabel(context, transaction, isOutbound: isOutbound),
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

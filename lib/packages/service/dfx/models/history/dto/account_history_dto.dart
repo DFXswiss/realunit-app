@@ -24,11 +24,13 @@ class HistoryEventDto {
   final DateTime timestamp;
   final String txHash;
   final TransferDto? transfer;
+  final String? category;
 
   const HistoryEventDto({
     required this.timestamp,
     required this.txHash,
     this.transfer,
+    this.category,
   });
 
   factory HistoryEventDto.fromJson(Map<String, dynamic> json) {
@@ -38,6 +40,7 @@ class HistoryEventDto {
       transfer: json['transfer'] != null
           ? TransferDto.fromJson(json['transfer'] as Map<String, dynamic>)
           : null,
+      category: json['category'] as String?,
     );
   }
 }

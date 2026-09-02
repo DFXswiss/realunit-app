@@ -12,6 +12,7 @@ extension TransactionStorage on AppDatabase {
     String amount,
     int asset,
     int type,
+    String category,
     String note,
     String data,
     DateTime timeStamp,
@@ -25,6 +26,7 @@ extension TransactionStorage on AppDatabase {
       amount: amount,
       asset: asset,
       type: type,
+      category: Value(category),
       note: note,
       data: data,
       timeStamp: timeStamp,
@@ -40,6 +42,7 @@ extension TransactionStorage on AppDatabase {
     String? amount,
     int? asset,
     int? type,
+    String? category,
     String? note,
     String? data,
     DateTime? timeStamp,
@@ -52,6 +55,7 @@ extension TransactionStorage on AppDatabase {
       amount: Value.absentIfNull(amount),
       asset: Value.absentIfNull(asset),
       type: Value.absentIfNull(type),
+      category: Value.absentIfNull(category),
       note: Value.absentIfNull(note),
       data: Value.absentIfNull(data),
       timeStamp: Value.absentIfNull(timeStamp),
@@ -155,6 +159,10 @@ class Transactions extends Table {
   IntColumn get asset => integer()(); // coverage:ignore-line
 
   IntColumn get type => integer()(); // coverage:ignore-line
+
+  // Business category of the transfer as delivered by the API ('' = uncategorized, legacy
+  // rows and events without a category). Added in schema v3.
+  TextColumn get category => text().withDefault(const Constant(''))(); // coverage:ignore-line
 
   TextColumn get note => text()(); // coverage:ignore-line
 

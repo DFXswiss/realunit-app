@@ -18,8 +18,8 @@ void main() {
   });
 
   group('AppDatabase schema', () {
-    test('schema version is 2', () {
-      expect(db.schemaVersion, 2);
+    test('schema version is 3', () {
+      expect(db.schemaVersion, 3);
     });
 
     test('creates all expected tables on fresh database', () async {
@@ -69,6 +69,7 @@ void main() {
         0,
         '',
         '',
+        '',
         DateTime.now(),
       );
 
@@ -94,17 +95,17 @@ void main() {
       expect(tables, isNotEmpty);
     });
 
-    test('onUpgrade from v1 → v2 creates the dfx_transaction_details table', () async {
-      // Simulate a pre-v2 database: drop the dfx_transaction_details
-      // table (added in v2) and then drive the migration manually via
-      // the strategy exposed by `AppDatabase.migration`. After
-      // onUpgrade(1, 2) the table must exist again, exercising the
-      // `from < 2` branch in the migration callback.
+    test('onUpgrade from v1 → v3 creates the dfx table and the category column', () async {
+      // Simulate a pre-v2 database: drop the dfx_transaction_details table (added in v2)
+      // and the transactions.category column (added in v3), then drive the migration
+      // manually via the strategy exposed by `AppDatabase.migration`. After
+      // onUpgrade(1, 3) both must exist again, exercising both `from <` branches.
       await db.customStatement('DROP TABLE dfx_transaction_details');
+      await db.customStatement('ALTER TABLE transactions DROP COLUMN category');
 
       final strategy = db.migration;
       final migrator = Migrator(db);
-      await strategy.onUpgrade(migrator, 1, 2);
+      await strategy.onUpgrade(migrator, 1, 3);
 
       final rows = await db
           .customSelect(
@@ -112,18 +113,31 @@ void main() {
           )
           .get();
       expect(rows, hasLength(1));
+
+      final columns = await db.customSelect("PRAGMA table_info('transactions')").get();
+      expect(columns.map((r) => r.read<String>('name')), contains('category'));
     });
 
-    test('onUpgrade does nothing when starting at v2 or later', () async {
-      // The `if (from < 2)` guard means an upgrade from v2 → v3 (a
-      // future version) must NOT try to recreate the table. We assert
-      // that by leaving the table in place and running the callback,
-      // which would throw "table already exists" if the guard
-      // regressed.
+    test('onUpgrade from v2 → v3 adds the category column with its default', () async {
+      await db.customStatement('ALTER TABLE transactions DROP COLUMN category');
+
       final strategy = db.migration;
       final migrator = Migrator(db);
-      // from == 2 → guard short-circuits, no SQL executed.
       await strategy.onUpgrade(migrator, 2, 3);
+
+      final columns = await db.customSelect("PRAGMA table_info('transactions')").get();
+      expect(columns.map((r) => r.read<String>('name')), contains('category'));
+    });
+
+    test('onUpgrade does nothing when starting at v3 or later', () async {
+      // The `if (from <` guards mean an upgrade from v3 → v4 (a future
+      // version) must NOT try to recreate the table or the column. We
+      // assert that by leaving both in place and running the callback,
+      // which would throw "already exists" if a guard regressed.
+      final strategy = db.migration;
+      final migrator = Migrator(db);
+      // from == 3 → guards short-circuit, no SQL executed.
+      await strategy.onUpgrade(migrator, 3, 4);
 
       final rows = await db
           .customSelect(
