@@ -220,14 +220,27 @@ void main() {
     });
 
     testWidgets('keeps a leading Liechtenstein zero in the stored number', (tester) async {
-      // Liechtenstein has no national trunk 0, so the entered leading zero
-      // must remain part of the national number.
+      // Length check, not a missing trunk prefix: stripping 0 would leave a
+      // length that is not possible for LI, so libphonenumber keeps the raw value.
       final harness = await _pumpPhoneField(tester);
 
       await tester.enterText(_prefixField(), '423');
       final isValid = await _enterAndValidate(tester, harness, '0123456');
 
       expect(harness.controller.value, '+4230123456');
+      expect(isValid, isTrue);
+    });
+
+    testWidgets('strips a leading Liechtenstein trunk zero when the result has a valid length', (
+      tester,
+    ) async {
+      // LI has a trunk prefix; the zero is stripped once the result has a valid length.
+      final harness = await _pumpPhoneField(tester);
+
+      await tester.enterText(_prefixField(), '423');
+      final isValid = await _enterAndValidate(tester, harness, '07912345');
+
+      expect(harness.controller.value, '+4237912345');
       expect(isValid, isTrue);
     });
 
@@ -257,6 +270,36 @@ void main() {
       final isValid = await _enterAndValidate(tester, harness, '00791234567');
 
       expect(harness.controller.value, '+4100791234567');
+      expect(isValid, isFalse);
+      expect(
+        find.text(_phoneError(tester, (s) => s.registerPhoneNumberLeadingZero)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('rejects multiple leading German trunk zeros', (tester) async {
+      final harness = await _pumpPhoneField(tester);
+
+      await tester.enterText(_prefixField(), '49');
+      final isValid = await _enterAndValidate(tester, harness, '00691234567');
+
+      // One of the two zeros is stripped; the surviving one leaves +490… and trips the validator.
+      expect(harness.controller.value, '+490691234567');
+      expect(isValid, isFalse);
+      expect(
+        find.text(_phoneError(tester, (s) => s.registerPhoneNumberLeadingZero)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('rejects multiple leading Austrian trunk zeros', (tester) async {
+      final harness = await _pumpPhoneField(tester);
+
+      await tester.enterText(_prefixField(), '43');
+      final isValid = await _enterAndValidate(tester, harness, '006641234567');
+
+      // One of the two zeros is stripped; the surviving one leaves +430… and trips the validator.
+      expect(harness.controller.value, '+4306641234567');
       expect(isValid, isFalse);
       expect(
         find.text(_phoneError(tester, (s) => s.registerPhoneNumberLeadingZero)),

@@ -1,6 +1,6 @@
-import 'package:dlibphonenumber/dlibphonenumber.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dlibphonenumber/dlibphonenumber.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
 
@@ -46,7 +46,8 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
     // so the validator still blocks submit until it is re-entered.
     prefix ??= prefixes.first;
 
-    // Seeded values must use the same trunk-0 composition as later edits.
+    // Canonicalization here only applies when the loop above split the seed.
+    // An unrecognized dial code leaves number null, so updatePhoneNumber() writes nothing.
     updatePhoneNumber();
   }
 
