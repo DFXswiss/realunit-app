@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/models/asset.dart';
 import 'package:realunit_wallet/models/dfx_transaction.dart';
 import 'package:realunit_wallet/models/transaction.dart';
@@ -27,7 +28,12 @@ Transaction _tx({TransferCategory? category, String sender = _other, String rece
       timestamp: DateTime.utc(2026, 9, 1),
     );
 
-DfxTransaction _dfxTx({String sender = _wallet, String receiver = _other}) => DfxTransaction(
+DfxTransaction _dfxTx({
+  TransferCategory? category,
+  String sender = _wallet,
+  String receiver = _other,
+}) =>
+    DfxTransaction(
       dfxId: 42,
       height: 1,
       txId: '0xabc',
@@ -37,68 +43,65 @@ DfxTransaction _dfxTx({String sender = _wallet, String receiver = _other}) => Df
       amount: BigInt.from(20),
       asset: _asset,
       type: TransactionTypes.tokenTransfer,
+      category: category,
       note: '',
       data: null,
       timestamp: DateTime.utc(2026, 9, 1),
     );
 
 void main() {
-  Future<String> label(WidgetTester tester, Transaction tx, {required bool isOutbound}) async {
+  Future<(S, String)> label(WidgetTester tester, Transaction tx, {required bool isOutbound}) async {
+    late S s;
     late String result;
     await tester.pumpApp(Builder(
       builder: (context) {
+        s = S.of(context);
         result = transactionTitleLabel(context, tx, isOutbound: isOutbound);
         return const SizedBox.shrink();
       },
     ));
-    return result;
+    return (s, result);
   }
 
   group('transactionTitleLabel', () {
     testWidgets('labels a Brokerbot purchase as a buy', (tester) async {
-      final buy = await label(tester, _tx(category: TransferCategory.purchase), isOutbound: false);
-      final sale = await label(
+      final (sBuy, buy) = await label(tester, _tx(category: TransferCategory.purchase), isOutbound: false);
+      final (sSale, sale) = await label(
         tester,
         _tx(category: TransferCategory.sale, sender: _wallet, receiver: _other),
         isOutbound: true,
       );
-      expect(buy, isNot(sale));
+      expect(buy, sBuy.transactionBuy);
+      expect(sale, sSale.transactionSell);
     });
 
     testWidgets('labels plain transfers as received/sent, not as buy/sell', (tester) async {
-      final received = await label(tester, _tx(category: TransferCategory.transferIn), isOutbound: false);
-      final sent = await label(
+      final (s, received) = await label(tester, _tx(category: TransferCategory.transferIn), isOutbound: false);
+      final (_, sent) = await label(
         tester,
         _tx(category: TransferCategory.transferOut, sender: _wallet, receiver: _other),
         isOutbound: true,
       );
-      final buy = await label(tester, _tx(category: TransferCategory.purchase), isOutbound: false);
-      final sale = await label(
-        tester,
-        _tx(category: TransferCategory.sale, sender: _wallet, receiver: _other),
-        isOutbound: true,
-      );
-      expect(received, isNot(buy));
-      expect(sent, isNot(sale));
-      expect(received, isNot(sent));
+      expect(received, s.transactionReceived);
+      expect(sent, s.transactionSent);
+      expect(received, isNot(s.transactionBuy));
+      expect(sent, isNot(s.transactionSell));
     });
 
     testWidgets('falls back to direction labels without a category (legacy rows, older API)',
         (tester) async {
-      final inbound = await label(tester, _tx(), isOutbound: false);
-      final buy = await label(tester, _tx(category: TransferCategory.purchase), isOutbound: false);
-      expect(inbound, buy);
+      final (s, inbound) = await label(tester, _tx(), isOutbound: false);
+      expect(inbound, s.transactionBuy);
     });
 
     testWidgets('keeps direction labels for DFX-backed transactions regardless of category',
         (tester) async {
-      final outbound = await label(tester, _dfxTx(), isOutbound: true);
-      final sale = await label(
+      final (s, outbound) = await label(
         tester,
-        _tx(category: TransferCategory.sale, sender: _wallet, receiver: _other),
+        _dfxTx(category: TransferCategory.purchase),
         isOutbound: true,
       );
-      expect(outbound, sale);
+      expect(outbound, s.transactionSell);
     });
   });
 }
