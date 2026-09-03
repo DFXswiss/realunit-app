@@ -286,7 +286,7 @@
   "registerEmailVerificationFailed": "You have not yet confirmed your email address.",
   "registerEmailVerificationTitle": "Welcome back!",
   "registerPhoneNumberInvalid": "Phone number is required",
-  "registerPhoneNumberLeadingZero": "Enter the phone number without the leading zero",
+  "registerPhoneNumberLeadingZero": "Leave out the leading zero",
   "registerPhoneNumberOnlyDigits": "Only numbers are allowed",
   "registerPhoneNumberPrefixFormat": "Country code must be 1 to 3 digits",
   "registerPhoneNumberPrefixInvalid": "Country code is required",

@@ -286,7 +286,7 @@
   "registerEmailVerificationFailed": "Sie haben Ihre E-Mail noch nicht bestätigt.",
   "registerEmailVerificationTitle": "Willkommen zurück!",
   "registerPhoneNumberInvalid": "Telefonnummer ist erforderlich",
-  "registerPhoneNumberLeadingZero": "Telefonnummer ohne führende Null eingeben",
+  "registerPhoneNumberLeadingZero": "Ohne führende Null eingeben",
   "registerPhoneNumberOnlyDigits": "Nur Zahlen sind erlaubt",
   "registerPhoneNumberPrefixFormat": "Vorwahl muss aus 1 bis 3 Ziffern bestehen",
   "registerPhoneNumberPrefixInvalid": "Vorwahl ist erforderlich",
