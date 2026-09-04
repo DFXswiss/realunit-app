@@ -10,8 +10,6 @@ import 'package:realunit_wallet/packages/io/install_referrer_port.dart';
 /// [BackupExclusionAdapter] — this body cannot be exercised under
 /// `flutter test` without re-introducing the native plugin. Callers are
 /// covered against an in-memory fake instead.
-// @no-integration-test: thin platform-channel forwarder; Play Install
-//   Referrer is only observable on a real Play-installed Android build.
 class InstallReferrerAdapter implements InstallReferrerPort {
   const InstallReferrerAdapter();
 
@@ -20,6 +18,8 @@ class InstallReferrerAdapter implements InstallReferrerPort {
   );
 
   // coverage:ignore-start
+  // @no-integration-test: thin platform-channel forwarder; Play Install
+  //   Referrer is only observable on a real Play-installed Android build.
   @override
   Future<String?> readInstallReferrer() async {
     if (!Platform.isAndroid) return null;

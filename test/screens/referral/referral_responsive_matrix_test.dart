@@ -10,6 +10,7 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
+import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart';
 import 'package:realunit_wallet/screens/referral/referral_create_page.dart';
 import 'package:realunit_wallet/screens/referral/referral_overview_page.dart';
 import 'package:realunit_wallet/screens/referral/referral_terms_page.dart';
@@ -225,6 +226,40 @@ void main() {
             find.byType(AppFilledButton),
             within: find.byType(ReferralCreateView),
             reason: '${cell.label}: create CTA not tappable',
+          );
+        });
+      });
+    }
+  });
+
+  group('KycRegistrationReferralStep responsive matrix', () {
+    for (final cell in kFullResponsiveMatrix) {
+      testWidgets(cell.id, (tester) async {
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
+        await withTargetPlatform(cell.device.platform, () async {
+          await expectNoLayoutOverflow(
+            tester,
+            () async {
+              await _pumpScreen(
+                tester,
+                Scaffold(
+                  body: KycRegistrationReferralStep(
+                    referralCodeCtrl: controller,
+                  ),
+                ),
+                cell.mediaQuery,
+                settings: settings,
+              );
+            },
+            reason: 'overflow on ${cell.label}',
+          );
+
+          await expectFullyTappable(
+            tester,
+            find.byType(AppFilledButton),
+            within: find.byType(KycRegistrationReferralStep),
+            reason: '${cell.label}: KYC next CTA not tappable',
           );
         });
       });

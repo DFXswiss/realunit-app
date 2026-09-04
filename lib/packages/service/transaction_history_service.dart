@@ -12,7 +12,7 @@ import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referra
 import 'package:realunit_wallet/packages/service/dfx/models/referral/referral_json_list.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/transactions/dto/transactions_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
-import 'package:realunit_wallet/screens/referral/format_frozen_chf.dart';
+import 'package:realunit_wallet/packages/io/format_frozen_chf.dart';
 import 'package:web3dart/credentials.dart';
 
 class TransactionHistoryService extends DFXAuthService {

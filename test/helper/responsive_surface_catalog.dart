@@ -316,6 +316,13 @@ const kResponsiveSurfaceCatalog = <ResponsiveSurface>[
     matrixTestPath: 'test/screens/referral/referral_responsive_matrix_test.dart',
     productionPath: 'lib/screens/referral/referral_overview_page.dart',
   ),
+  ResponsiveSurface(
+    id: 'kyc_registration_referral_step',
+    description: 'KYC registration invite/promo code step (sticky next/skip CTAs)',
+    matrixTestPath: 'test/screens/referral/referral_responsive_matrix_test.dart',
+    productionPath:
+        'lib/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart',
+  ),
   // Migration covers 43 surfaces total (bitbox_connect_sheet + 42 above). No
   // further known candidates remain from the prior sweep. welcome_page was
   // reviewed and found safe (scrolls end-to-end, no separate sticky CTA) — not

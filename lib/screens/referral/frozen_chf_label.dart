@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
-import 'package:realunit_wallet/screens/referral/format_frozen_chf.dart';
+import 'package:realunit_wallet/packages/io/format_frozen_chf.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
 import 'package:realunit_wallet/styles/colors.dart';
 
@@ -18,11 +18,9 @@ class FrozenChfLabel extends StatelessWidget {
         final value = state.hideAmounts ? '***.**' : formatFrozenChfAmount(raw);
         return Text(
           S.of(context).referralPayoutChf(value),
-          style: const TextStyle(
-            fontSize: 12,
-            height: 16 / 12,
-            color: RealUnitColors.neutral500,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: RealUnitColors.neutral500),
         );
       },
     );

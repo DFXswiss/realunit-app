@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:realunit_wallet/screens/referral/format_frozen_chf.dart';
+import 'package:realunit_wallet/packages/io/format_frozen_chf.dart';
 
 void main() {
   test('formats a frozen CHF amount to two decimals', () {
