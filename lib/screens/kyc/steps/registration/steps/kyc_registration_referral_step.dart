@@ -6,6 +6,7 @@ import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registrati
 import 'package:realunit_wallet/screens/kyc/steps/registration/widgets/referral_code_field.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/buttons/app_text_button.dart';
+import 'package:realunit_wallet/widgets/scrollable_actions_layout.dart';
 
 /// Optional invite/promo code step (Bilddokumentation Entwurf 4).
 /// Skip advances without requiring a code; the same field is used for both.
@@ -90,46 +91,33 @@ class _KycRegistrationReferralStepState
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    return SingleChildScrollView(
+    return ScrollableActionsLayout(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          spacing: 16,
-          children: [
-            ReferralCodeField(
-              key: _fieldKey,
-              controller: widget.referralCodeCtrl,
-              lookup: widget.lookup,
-              showHeading: false,
-              onResolved: widget.onResolved,
-              readClipboard: widget.readClipboard,
-              pendingCode: widget.pendingCode,
-              autoPasteOnEmpty: widget.autoPasteOnEmpty,
-              autofocus: true,
-              enabled: !_advancing,
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: AppFilledButton(
-                label: s.next,
-                state: _advancing && !_skipping
-                    ? FilledButtonState.loading
-                    : FilledButtonState.idle,
-                onPressed: _advancing
-                    ? null
-                    : () => _advance(context, skip: false),
-              ),
-            ),
-            AppTextButton(
-              label: s.skip,
-              onPressed: _skipping
-                  ? null
-                  : () => _advance(context, skip: true),
-            ),
-          ],
-        ),
+      body: ReferralCodeField(
+        key: _fieldKey,
+        controller: widget.referralCodeCtrl,
+        lookup: widget.lookup,
+        showHeading: false,
+        onResolved: widget.onResolved,
+        readClipboard: widget.readClipboard,
+        pendingCode: widget.pendingCode,
+        autoPasteOnEmpty: widget.autoPasteOnEmpty,
+        autofocus: true,
+        enabled: !_advancing,
       ),
+      actions: [
+        AppFilledButton(
+          label: s.next,
+          state: _advancing && !_skipping
+              ? FilledButtonState.loading
+              : FilledButtonState.idle,
+          onPressed: _advancing ? null : () => _advance(context, skip: false),
+        ),
+        AppTextButton(
+          label: s.skip,
+          onPressed: _skipping ? null : () => _advance(context, skip: true),
+        ),
+      ],
     );
   }
 }

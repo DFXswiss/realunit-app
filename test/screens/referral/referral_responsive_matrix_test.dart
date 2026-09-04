@@ -10,6 +10,8 @@ import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
 import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
+import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_step/kyc_registration_step_cubit.dart';
+import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart';
 import 'package:realunit_wallet/screens/referral/referral_create_page.dart';
 import 'package:realunit_wallet/screens/referral/referral_overview_page.dart';
 import 'package:realunit_wallet/screens/referral/referral_terms_page.dart';
@@ -90,6 +92,9 @@ Future<void> _pumpScreen(
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 50));
 }
+
+class _MockKycRegistrationStepCubit extends MockCubit<KycRegistrationStepState>
+    implements KycRegistrationStepCubit {}
 
 void main() {
   late _MockReferralCubit cubit;
@@ -225,6 +230,53 @@ void main() {
             find.byType(AppFilledButton),
             within: find.byType(ReferralCreateView),
             reason: '${cell.label}: create CTA not tappable',
+          );
+        });
+      });
+    }
+  });
+
+  group('KycRegistrationReferralStep responsive matrix', () {
+    for (final cell in kFullResponsiveMatrix) {
+      testWidgets(cell.id, (tester) async {
+        final controller = TextEditingController();
+        addTearDown(controller.dispose);
+        final stepCubit = _MockKycRegistrationStepCubit();
+        when(() => stepCubit.state).thenReturn(
+          const KycRegistrationStepState(
+            step: KycRegistrationStep.referral,
+            steps: [
+              KycRegistrationStep.referral,
+              KycRegistrationStep.personal,
+            ],
+          ),
+        );
+        await withTargetPlatform(cell.device.platform, () async {
+          await expectNoLayoutOverflow(
+            tester,
+            () async {
+              await _pumpScreen(
+                tester,
+                Scaffold(
+                  body: BlocProvider<KycRegistrationStepCubit>.value(
+                    value: stepCubit,
+                    child: KycRegistrationReferralStep(
+                      referralCodeCtrl: controller,
+                    ),
+                  ),
+                ),
+                cell.mediaQuery,
+                settings: settings,
+              );
+            },
+            reason: 'overflow on ${cell.label}',
+          );
+
+          await expectFullyTappable(
+            tester,
+            find.byType(AppFilledButton),
+            within: find.byType(KycRegistrationReferralStep),
+            reason: '${cell.label}: KYC next CTA not tappable',
           );
         });
       });
