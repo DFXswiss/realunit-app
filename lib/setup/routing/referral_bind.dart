@@ -225,7 +225,6 @@ class _UnavailableBindDialogState extends State<_UnavailableBindDialog> {
     } else {
       unawaited(_showInvalidBindDialog(widget.router, popped));
     }
-
   }
 
   @override
