@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:eth_sig_util_plus/eth_sig_util_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:eth_sig_util_plus/eth_sig_util_plus.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:mocktail/mocktail.dart';
@@ -70,6 +70,7 @@ void main() {
   Registration buildRegistration({
     bool swissTaxResidence = true,
     List<CountryAndTin>? countryAndTINs,
+    String phoneNumber = '+41 79 000 00 00',
   }) => Registration(
     type: RegistrationUserType.human,
     email: 'AdA@ExAmPlE.COM',
@@ -78,7 +79,7 @@ void main() {
     // round-trip below.
     firstName: 'Adä',
     lastName: 'Loveläce',
-    phoneNumber: '+41 79 000 00 00',
+    phoneNumber: phoneNumber,
     birthday: '1815-12-10',
     nationality: const Country(
       id: 41,
@@ -128,10 +129,16 @@ void main() {
   );
 
   group('completeRegistration happy path', () {
+    // Equality of signed and sent alone is not enough: both sides could
+    // agree on a non-canonical value and the test would still pass. The
+    // fixture below is the canonical E.164 form (no spaces, no trunk zero)
+    // — the shape the phone number field already produces before a
+    // Registration is ever built — so this test pins that value, not just
+    // that the two sides match each other.
     test(
       'signs and transmits phoneNumber as the same exact string',
       () async {
-        const expectedPhoneNumber = '+41 79 000 00 00';
+        const expectedPhoneNumber = '+41791234567';
         Map<String, dynamic>? body;
         final client = MockClient((request) async {
           if (request.url.path == '/v1/realunit/register/date') {
@@ -141,9 +148,12 @@ void main() {
           return http.Response(jsonEncode({'status': 'completed'}), 201);
         });
 
-        await build(client).completeRegistration(buildRegistration());
+        await build(client).completeRegistration(
+          buildRegistration(phoneNumber: expectedPhoneNumber),
+        );
 
-        expect(body!['phoneNumber'], expectedPhoneNumber);
+        // Pins the exact canonical E.164 value that was transmitted.
+        expect(body!['phoneNumber'], '+41791234567');
 
         // Keep this EIP-712 message in sync with Eip712Signer.signRegistration.
         // It catches mutations such as signing '$phoneNumber ' but sending phoneNumber.
