@@ -38,6 +38,7 @@ import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registr
 import 'package:realunit_wallet/styles/colors.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
+import 'package:realunit_wallet/widgets/form/phone_number_field.dart';
 
 import '../../../helper/helper.dart';
 
@@ -826,12 +827,22 @@ void main() {
     Future<void> showTaxStep(
       WidgetTester tester, {
       RealUnitUserDataDto dto = initialUserData,
+      String? nationalPhoneNumber,
     }) async {
       await tester.pumpApp(
         buildSubject(KycRegistrationView(initialUserData: dto)),
       );
       // Let the seeded country lookups resolve before we jump to the tax page.
       await tester.pumpAndSettle();
+
+      if (nationalPhoneNumber != null) {
+        final phoneNumberField = find.descendant(
+          of: find.byType(PhoneNumberField),
+          matching: find.byType(TextFormField),
+        );
+        await tester.enterText(phoneNumberField.at(1), nationalPhoneNumber);
+        await tester.pump();
+      }
 
       final index = registrationStepCubit.state.index;
       (tester.widget(find.byType(PageView)) as PageView).controller?.jumpToPage(index);
@@ -857,7 +868,7 @@ void main() {
         type: any(named: 'type'),
         firstName: any(named: 'firstName'),
         lastName: any(named: 'lastName'),
-        phoneNumber: any(named: 'phoneNumber'),
+        phoneNumber: captureAny(named: 'phoneNumber'),
         birthday: any(named: 'birthday'),
         nationality: any(named: 'nationality'),
         addressStreet: any(named: 'addressStreet'),
@@ -912,6 +923,15 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    testWidgets('submits the canonical Swiss phone number', (tester) async {
+      await showTaxStep(tester, nationalPhoneNumber: '0791234567');
+
+      await tapComplete(tester);
+
+      final captured = captureSubmit();
+      expect(captured[0], '+41791234567');
+    });
+
     // S1 — Address CH, tax: CH only → swiss=true, countryAndTINs=null
     testWidgets(
       'S1 CH only: locked Swiss address → swissTaxResidence true, null countryAndTINs',
@@ -921,9 +941,9 @@ void main() {
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
-        expect(captured[1], isTrue);
-        expect(captured[2], isNull);
+        expect(captured[1], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
+        expect(captured[2], isTrue);
+        expect(captured[3], isNull);
       },
     );
 
@@ -939,9 +959,9 @@ void main() {
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
-        expect(captured[1], isFalse);
-        final tins = captured[2] as List<CountryAndTin>;
+        expect(captured[1], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
+        expect(captured[2], isFalse);
+        final tins = captured[3] as List<CountryAndTin>;
         expect(tins, hasLength(1));
         expect(tins.single.country, 'DE');
         expect(tins.single.tin, '12 345 678 901');
@@ -960,9 +980,9 @@ void main() {
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
-        expect(captured[1], isTrue);
-        final tins = captured[2] as List<CountryAndTin>;
+        expect(captured[1], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
+        expect(captured[2], isTrue);
+        final tins = captured[3] as List<CountryAndTin>;
         expect(tins, hasLength(1));
         expect(tins.single.country, 'FR');
         expect(tins.single.tin, 'FR999');
@@ -983,9 +1003,9 @@ void main() {
         final captured = captureSubmit();
         // DE (address, with TIN) + CH (additional) → swissTaxResidence true,
         // countryAndTINs only carries the non-CH entry.
-        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
-        expect(captured[1], isTrue);
-        final tins = captured[2] as List<CountryAndTin>;
+        expect(captured[1], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
+        expect(captured[2], isTrue);
+        final tins = captured[3] as List<CountryAndTin>;
         expect(tins, hasLength(1));
         expect(tins.single.country, 'DE');
         expect(tins.single.tin, 'DE111');
@@ -1008,9 +1028,9 @@ void main() {
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
-        expect(captured[1], isFalse);
-        final tins = captured[2] as List<CountryAndTin>;
+        expect(captured[1], isA<Country>().having((c) => c.symbol, 'symbol', 'DE'));
+        expect(captured[2], isFalse);
+        final tins = captured[3] as List<CountryAndTin>;
         expect(tins, hasLength(3));
         expect(tins[0].country, 'DE');
         expect(tins[0].tin, 'DE111');
@@ -1068,9 +1088,9 @@ void main() {
         await tapComplete(tester);
 
         final captured = captureSubmit();
-        expect(captured[0], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
-        expect(captured[1], isTrue);
-        final tins = captured[2] as List<CountryAndTin>;
+        expect(captured[1], isA<Country>().having((c) => c.symbol, 'symbol', 'CH'));
+        expect(captured[2], isTrue);
+        final tins = captured[3] as List<CountryAndTin>;
         expect(tins, hasLength(1));
         expect(tins.single.country, 'DE');
         expect(tins.single.tin, 'DE123');

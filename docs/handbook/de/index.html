@@ -8056,7 +8056,7 @@
                 />
               </div>
               <div class="desc">
-                Zeigt den <b>Ausgangszustand</b> des Telefonnummer-Felds: die Überschrift <b>Telefonnummer</b>, links das frei eingebbare Vorwahlfeld mit der Standardvorwahl <b>+41</b> (1 bis 3 Ziffern) und rechts das noch leere Rufnummernfeld mit dem Platzhalter <b>1231234567</b>. So sehen Nutzer das Feld, bevor sie eine Nummer eingeben; die Länge der Nummer wird erst serverseitig geprüft. Eine führende Null wird beim Zusammenbauen nur entfernt, wenn der Nummernplan des Landes eine Verkehrsausscheidungsziffer kennt und die Nummer danach eine mögliche Länge behält; italienische Festnetznummern behalten ihre Null.
+                Zeigt den <b>Ausgangszustand</b> des Telefonnummer-Felds: die Überschrift <b>Telefonnummer</b>, links das frei eingebbare Vorwahlfeld mit der Standardvorwahl <b>+41</b> (1 bis 3 Ziffern) und rechts das noch leere Rufnummernfeld mit dem Platzhalter <b>1231234567</b>. So sehen Nutzer das Feld, bevor sie eine Nummer eingeben; die Länge der Nummer wird erst serverseitig geprüft. Die Nummer wird nach den Regeln von libphonenumber in die internationale Form gebracht; wo der Nummernplan keine Verkehrsausscheidungsziffer kennt — bei italienischen Festnetznummern etwa —, bleibt die Null erhalten.
               </div>
             </div>
           </div>

@@ -16,8 +16,8 @@ Column meaning:
   screen, or `—` if the screen has no Golden baseline. Each slot is a
   Visual-Regression Golden under `test/goldens/`, mapped to its handbook
   position by `scripts/assemble-handbook-screenshots.sh`. The handbook now
-  covers **all 284 Golden baselines** — every screen **plus every tested
-  state variant** (Default / Loading / Error / Snackbar / Dropdown /
+  covers **all 284 Golden baselines mapped to the handbook** — every mapped
+  screen and mapped state variant (Default / Loading / Error / Snackbar / Dropdown /
   Validation / Confirm / Success / Failure …), including the areas that were
   previously absent: Support (email capture, tickets, chat), Settings
   User-Data and its edit sub-pages, Settings Security, Receive, the BitBox
