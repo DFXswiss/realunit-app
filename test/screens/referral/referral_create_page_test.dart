@@ -51,12 +51,12 @@ void main() {
       guestName: 'Alice',
     );
     when(() => cubit.state).thenReturn(
-      ReferralInviteCreated(summary: _summary, invite: created),
+      const ReferralInviteCreated(summary: _summary, invite: created),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralInviteCreated(summary: _summary, invite: created),
+      initialState: const ReferralInviteCreated(summary: _summary, invite: created),
     );
 
     await tester.pumpWidget(
@@ -107,12 +107,12 @@ void main() {
       guestName: '  ',
     );
     when(() => cubit.state).thenReturn(
-      ReferralInviteCreated(summary: _summary, invite: created),
+      const ReferralInviteCreated(summary: _summary, invite: created),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralInviteCreated(summary: _summary, invite: created),
+      initialState: const ReferralInviteCreated(summary: _summary, invite: created),
     );
 
     await tester.pumpWidget(
@@ -162,12 +162,12 @@ void main() {
       guestName: 'Alice',
     );
     when(() => cubit.state).thenReturn(
-      ReferralInviteCreated(summary: _summary, invite: created),
+      const ReferralInviteCreated(summary: _summary, invite: created),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralInviteCreated(summary: _summary, invite: created),
+      initialState: const ReferralInviteCreated(summary: _summary, invite: created),
     );
 
     await tester.pumpWidget(
@@ -224,12 +224,12 @@ void main() {
       inviterName: 'Björn',
     );
     when(() => cubit.state).thenReturn(
-      ReferralInviteCreated(summary: _summary, invite: created),
+      const ReferralInviteCreated(summary: _summary, invite: created),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralInviteCreated(summary: _summary, invite: created),
+      initialState: const ReferralInviteCreated(summary: _summary, invite: created),
     );
 
     await tester.pumpWidget(
@@ -292,12 +292,12 @@ void main() {
       copyText: 'Hey Alice, Björn lädt dich ein: https://realunit.app/invite/AB12CD',
     );
     when(() => cubit.state).thenReturn(
-      ReferralInviteCreated(summary: _summary, invite: created),
+      const ReferralInviteCreated(summary: _summary, invite: created),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralInviteCreated(summary: _summary, invite: created),
+      initialState: const ReferralInviteCreated(summary: _summary, invite: created),
     );
 
     await tester.pumpWidget(
@@ -408,7 +408,7 @@ void main() {
 
   testWidgets('shows the API error on the name-entry form', (tester) async {
     when(() => cubit.state).thenReturn(
-      ReferralCreateReady(
+      const ReferralCreateReady(
         summary: _summary,
         errorMessage: referralQuotaMessage,
       ),
@@ -416,7 +416,7 @@ void main() {
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralCreateReady(
+      initialState: const ReferralCreateReady(
         summary: _summary,
         errorMessage: referralQuotaMessage,
       ),
@@ -468,12 +468,12 @@ void main() {
 
   testWidgets('creating announces a live region', (tester) async {
     when(() => cubit.state).thenReturn(
-      ReferralCreating(summary: _summary, guestName: 'Alice'),
+      const ReferralCreating(summary: _summary, guestName: 'Alice'),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralCreating(summary: _summary, guestName: 'Alice'),
+      initialState: const ReferralCreating(summary: _summary, guestName: 'Alice'),
     );
 
     await tester.pumpWidget(
@@ -514,7 +514,7 @@ void main() {
     'keeps the create error while the retry POST is in flight',
     (tester) async {
       when(() => cubit.state).thenReturn(
-        ReferralCreating(
+        const ReferralCreating(
           summary: _summary,
           guestName: 'Alice',
           errorMessage: referralQuotaMessage,
@@ -523,7 +523,7 @@ void main() {
       whenListen(
         cubit,
         const Stream<ReferralState>.empty(),
-        initialState: ReferralCreating(
+        initialState: const ReferralCreating(
           summary: _summary,
           guestName: 'Alice',
           errorMessage: referralQuotaMessage,
@@ -673,11 +673,11 @@ void main() {
   });
 
   testWidgets('does not create an invite when the guest name is empty', (tester) async {
-    when(() => cubit.state).thenReturn(ReferralCreateReady(summary: _summary));
+    when(() => cubit.state).thenReturn(const ReferralCreateReady(summary: _summary));
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralCreateReady(summary: _summary),
+      initialState: const ReferralCreateReady(summary: _summary),
     );
 
     await tester.pumpWidget(
@@ -709,11 +709,11 @@ void main() {
   });
 
   testWidgets('keyboard done submits the guest name', (tester) async {
-    when(() => cubit.state).thenReturn(ReferralCreateReady(summary: _summary));
+    when(() => cubit.state).thenReturn(const ReferralCreateReady(summary: _summary));
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralCreateReady(summary: _summary),
+      initialState: const ReferralCreateReady(summary: _summary),
     );
     when(() => cubit.createInvite(guestName: any(named: 'guestName')))
         .thenAnswer((_) async {});
@@ -753,11 +753,11 @@ void main() {
   });
 
   testWidgets('submit sanitizes extra spaces in the guest name', (tester) async {
-    when(() => cubit.state).thenReturn(ReferralCreateReady(summary: _summary));
+    when(() => cubit.state).thenReturn(const ReferralCreateReady(summary: _summary));
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralCreateReady(summary: _summary),
+      initialState: const ReferralCreateReady(summary: _summary),
     );
     when(() => cubit.createInvite(guestName: any(named: 'guestName')))
         .thenAnswer((_) async {});
@@ -794,11 +794,11 @@ void main() {
   testWidgets('guest-name field maps Unicode spaces as they are typed', (
     tester,
   ) async {
-    when(() => cubit.state).thenReturn(ReferralCreateReady(summary: _summary));
+    when(() => cubit.state).thenReturn(const ReferralCreateReady(summary: _summary));
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralCreateReady(summary: _summary),
+      initialState: const ReferralCreateReady(summary: _summary),
     );
 
     await tester.pumpWidget(
@@ -828,11 +828,11 @@ void main() {
   });
 
   testWidgets('ignores a second submit while create is in flight', (tester) async {
-    when(() => cubit.state).thenReturn(ReferralCreateReady(summary: _summary));
+    when(() => cubit.state).thenReturn(const ReferralCreateReady(summary: _summary));
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralCreateReady(summary: _summary),
+      initialState: const ReferralCreateReady(summary: _summary),
     );
     final release = Completer<void>();
     when(() => cubit.createInvite(guestName: any(named: 'guestName')))
@@ -868,12 +868,12 @@ void main() {
 
   testWidgets('needs-terms offers retry that reloads the summary', (tester) async {
     when(() => cubit.state).thenReturn(
-      ReferralNeedsTerms(summary: _summary),
+      const ReferralNeedsTerms(summary: _summary),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralNeedsTerms(summary: _summary),
+      initialState: const ReferralNeedsTerms(summary: _summary),
     );
     when(() => cubit.load()).thenAnswer((_) async {});
     when(() => cubit.openCreate()).thenReturn(null);
@@ -915,12 +915,12 @@ void main() {
     'needs-terms retry stays on the copy while the summary reloads',
     (tester) async {
       when(() => cubit.state).thenReturn(
-        ReferralNeedsTerms(summary: _summary, retrying: true),
+        const ReferralNeedsTerms(summary: _summary, retrying: true),
       );
       whenListen(
         cubit,
         const Stream<ReferralState>.empty(),
-        initialState: ReferralNeedsTerms(summary: _summary, retrying: true),
+        initialState: const ReferralNeedsTerms(summary: _summary, retrying: true),
       );
 
       await tester.pumpWidget(
@@ -966,12 +966,12 @@ void main() {
       guestName: 'Alice',
     );
     when(() => cubit.state).thenReturn(
-      ReferralInviteCreated(summary: _summary, invite: created),
+      const ReferralInviteCreated(summary: _summary, invite: created),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralInviteCreated(summary: _summary, invite: created),
+      initialState: const ReferralInviteCreated(summary: _summary, invite: created),
     );
 
     bool? popped;
@@ -1029,12 +1029,12 @@ void main() {
       guestName: 'Alice',
     );
     when(() => cubit.state).thenReturn(
-      ReferralInviteCreated(summary: _summary, invite: created),
+      const ReferralInviteCreated(summary: _summary, invite: created),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralInviteCreated(summary: _summary, invite: created),
+      initialState: const ReferralInviteCreated(summary: _summary, invite: created),
     );
 
     bool? popped;
@@ -1119,14 +1119,14 @@ void main() {
     'submit from overview opens create then posts the guest name',
     (tester) async {
       when(() => cubit.state).thenReturn(
-        ReferralOverviewLoaded(summary: _summary, invites: const []),
+        const ReferralOverviewLoaded(summary: _summary, invites: []),
       );
       whenListen(
         cubit,
         const Stream<ReferralState>.empty(),
-        initialState: ReferralOverviewLoaded(
+        initialState: const ReferralOverviewLoaded(
           summary: _summary,
-          invites: const [],
+          invites: [],
         ),
       );
       when(() => cubit.openCreate()).thenReturn(null);
@@ -1164,11 +1164,11 @@ void main() {
   testWidgets(
     'submit is a no-op when create is already in flight on the cubit',
     (tester) async {
-      when(() => cubit.state).thenReturn(ReferralCreateReady(summary: _summary));
+      when(() => cubit.state).thenReturn(const ReferralCreateReady(summary: _summary));
       whenListen(
         cubit,
         const Stream<ReferralState>.empty(),
-        initialState: ReferralCreateReady(summary: _summary),
+        initialState: const ReferralCreateReady(summary: _summary),
       );
       when(
         () => cubit.createInvite(guestName: any(named: 'guestName')),

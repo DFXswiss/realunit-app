@@ -304,14 +304,14 @@ void main() {
       realuSum: 0,
       chfSum: 0,
     );
-    when(() => cubit.state).thenReturn(ReferralNeedsTerms(summary: needs));
+    when(() => cubit.state).thenReturn(const ReferralNeedsTerms(summary: needs));
     when(() => cubit.refreshOverview()).thenAnswer((_) async {});
     whenListen(
       cubit,
       Stream.fromIterable([
         const ReferralOverviewLoaded(summary: eligible, invites: []),
       ]),
-      initialState: ReferralNeedsTerms(summary: needs),
+      initialState: const ReferralNeedsTerms(summary: needs),
     );
 
     final router = GoRouter(

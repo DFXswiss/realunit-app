@@ -41,11 +41,11 @@ void main() {
 
   setUp(() {
     cubit = _MockReferralCubit();
-    when(() => cubit.state).thenReturn(ReferralNeedsTerms(summary: _summary));
+    when(() => cubit.state).thenReturn(const ReferralNeedsTerms(summary: _summary));
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralNeedsTerms(summary: _summary),
+      initialState: const ReferralNeedsTerms(summary: _summary),
     );
     when(() => cubit.acceptTerms(version: any(named: 'version'))).thenAnswer((_) async {});
   });
@@ -173,7 +173,7 @@ void main() {
 
   testWidgets('shows the API error from a failed terms accept', (tester) async {
     when(() => cubit.state).thenReturn(
-      ReferralNeedsTerms(
+      const ReferralNeedsTerms(
         summary: _summary,
         errorMessage: referralUnavailableMessage,
       ),
@@ -181,7 +181,7 @@ void main() {
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralNeedsTerms(
+      initialState: const ReferralNeedsTerms(
         summary: _summary,
         errorMessage: referralUnavailableMessage,
       ),
@@ -241,12 +241,12 @@ void main() {
 
   testWidgets('accepting announces a live region', (tester) async {
     when(() => cubit.state).thenReturn(
-      ReferralTermsAccepting(summary: _summary),
+      const ReferralTermsAccepting(summary: _summary),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralTermsAccepting(summary: _summary),
+      initialState: const ReferralTermsAccepting(summary: _summary),
     );
 
     await tester.pumpWidget(
@@ -288,7 +288,7 @@ void main() {
     'keeps the accept error while the retry POST is in flight',
     (tester) async {
       when(() => cubit.state).thenReturn(
-        ReferralTermsAccepting(
+        const ReferralTermsAccepting(
           summary: _summary,
           errorMessage: referralUnavailableMessage,
         ),
@@ -296,7 +296,7 @@ void main() {
       whenListen(
         cubit,
         const Stream<ReferralState>.empty(),
-        initialState: ReferralTermsAccepting(
+        initialState: const ReferralTermsAccepting(
           summary: _summary,
           errorMessage: referralUnavailableMessage,
         ),

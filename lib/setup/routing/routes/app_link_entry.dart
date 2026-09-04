@@ -216,7 +216,7 @@ String? _extractReferralInviteCode(Uri uri) {
     final fromSeg = referralCodeFromInput(segments[1]);
     if (fromSeg != null) return fromSeg;
   }
-  if (segments.length >= 1 && _isReferralPathKind(segments.first)) {
+  if (segments.isNotEmpty && _isReferralPathKind(segments.first)) {
     return _referralCodeFromRawQuery(remainder) ?? _referralCodeFromFragment(uri);
   }
   return null;

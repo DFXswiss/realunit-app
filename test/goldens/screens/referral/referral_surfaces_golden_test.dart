@@ -99,12 +99,12 @@ void main() {
               'Hey Alice, Björn lädt dich ein zu RealUnit: https://realunit.app/invite/AB12CD',
         );
         when(() => cubit.state).thenReturn(
-          ReferralInviteCreated(summary: _summary, invite: created),
+          const ReferralInviteCreated(summary: _summary, invite: created),
         );
         whenListen(
           cubit,
           const Stream<ReferralState>.empty(),
-          initialState: ReferralInviteCreated(
+          initialState: const ReferralInviteCreated(
             summary: _summary,
             invite: created,
           ),

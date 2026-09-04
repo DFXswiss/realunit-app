@@ -83,7 +83,7 @@ class ReferralInviteDto {
     final url = referralInviteUrl(url: json['url'], code: code);
     final guestName = referralJsonString(json['guestName']) ?? '';
     if (code == null || url == null) {
-      throw FormatException('referral invite missing fields');
+      throw const FormatException('referral invite missing fields');
     }
     return ReferralInviteDto(
       id: referralJsonInt(json['id']),

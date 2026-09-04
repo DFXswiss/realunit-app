@@ -222,9 +222,10 @@ class _UnavailableBindDialogState extends State<_UnavailableBindDialog> {
         await _showPromoBindDialog(widget.router, result);
         await bindPendingReferralCode(widget.router);
       }());
-    } else if (popped != null) {
+    } else {
       unawaited(_showInvalidBindDialog(widget.router, popped));
     }
+
   }
 
   @override

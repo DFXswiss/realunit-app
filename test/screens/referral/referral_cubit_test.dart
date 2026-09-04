@@ -75,7 +75,7 @@ void main() {
     act: (cubit) => cubit.load(),
     expect: () => [
       const ReferralLoading(),
-      ReferralNeedsTerms(summary: _needsTerms),
+      const ReferralNeedsTerms(summary: _needsTerms),
     ],
   );
 
@@ -89,7 +89,7 @@ void main() {
     act: (cubit) => cubit.load(),
     expect: () => [
       const ReferralLoading(),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
   );
 
@@ -101,11 +101,11 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.acceptTerms(version: '2026-09-01'),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
     verify: (_) {
       verify(() => service.acceptTerms(version: '2026-09-01')).called(1);
@@ -120,11 +120,11 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.acceptTerms(),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms),
-      ReferralNeedsTerms(
+      const ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralNeedsTerms(
         summary: _needsTerms,
         errorMessage: referralUnavailableMessage,
       ),
@@ -139,11 +139,11 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms, errorMessage: 'nope'),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms, errorMessage: 'nope'),
     act: (cubit) => cubit.acceptTerms(),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms, errorMessage: 'nope'),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralTermsAccepting(summary: _needsTerms, errorMessage: 'nope'),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
   );
 
@@ -158,7 +158,7 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) async {
       final first = cubit.acceptTerms();
       final second = cubit.acceptTerms();
@@ -178,9 +178,9 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralInviteCreated(
+    seed: () => const ReferralInviteCreated(
       summary: _eligible,
-      invite: const ReferralCreatedInviteDto(
+      invite: ReferralCreatedInviteDto(
         code: 'AB12',
         url: 'https://realunit.app/invite/AB12',
         guestName: 'Alice',
@@ -188,7 +188,7 @@ void main() {
     ),
     act: (cubit) => cubit.refreshOverview(),
     expect: () => [
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
   );
 
@@ -200,9 +200,9 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralInviteCreated(
+    seed: () => const ReferralInviteCreated(
       summary: _eligible,
-      invite: const ReferralCreatedInviteDto(
+      invite: ReferralCreatedInviteDto(
         code: 'AB12',
         url: 'https://realunit.app/invite/AB12',
         guestName: 'Alice',
@@ -216,7 +216,7 @@ void main() {
       await second;
     },
     expect: () => [
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
     verify: (_) {
       verify(() => service.getSummary()).called(1);
@@ -231,7 +231,7 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.refreshOverview(),
     expect: () => <ReferralState>[],
   );
@@ -248,13 +248,13 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: 'Alice'),
     expect: () => [
-      ReferralCreating(summary: _eligible, guestName: 'Alice'),
-      ReferralInviteCreated(
+      const ReferralCreating(summary: _eligible, guestName: 'Alice'),
+      const ReferralInviteCreated(
         summary: _eligible,
-        invite: const ReferralCreatedInviteDto(
+        invite: ReferralCreatedInviteDto(
           code: 'AB12',
           url: 'https://realunit.app/invite/AB12',
           guestName: 'Alice',
@@ -275,10 +275,10 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: 'Alice'),
     expect: () => [
-      ReferralCreating(summary: _eligible, guestName: 'Alice'),
+      const ReferralCreating(summary: _eligible, guestName: 'Alice'),
       const ReferralNotEligible(),
     ],
   );
@@ -295,11 +295,11 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: 'Alice'),
     expect: () => [
-      ReferralCreating(summary: _eligible, guestName: 'Alice'),
-      ReferralNeedsTerms(summary: _eligible),
+      const ReferralCreating(summary: _eligible, guestName: 'Alice'),
+      const ReferralNeedsTerms(summary: _eligible),
     ],
   );
 
@@ -311,11 +311,11 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: 'Alice'),
     expect: () => [
-      ReferralCreating(summary: _eligible, guestName: 'Alice'),
-      ReferralCreateReady(
+      const ReferralCreating(summary: _eligible, guestName: 'Alice'),
+      const ReferralCreateReady(
         summary: _eligible,
         errorMessage: referralQuotaMessage,
       ),
@@ -334,11 +334,11 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: 'Alice'),
     expect: () => [
-      ReferralCreating(summary: _eligible, guestName: 'Alice'),
-      ReferralCreateReady(
+      const ReferralCreating(summary: _eligible, guestName: 'Alice'),
+      const ReferralCreateReady(
         summary: _eligible,
         errorMessage: referralUnavailableMessage,
       ),
@@ -357,17 +357,17 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible, errorMessage: 'limit'),
+    seed: () => const ReferralCreateReady(summary: _eligible, errorMessage: 'limit'),
     act: (cubit) => cubit.createInvite(guestName: 'Alice'),
     expect: () => [
-      ReferralCreating(
+      const ReferralCreating(
         summary: _eligible,
         guestName: 'Alice',
         errorMessage: 'limit',
       ),
-      ReferralInviteCreated(
+      const ReferralInviteCreated(
         summary: _eligible,
-        invite: const ReferralCreatedInviteDto(
+        invite: ReferralCreatedInviteDto(
           code: 'AB12',
           url: 'https://realunit.app/invite/AB12',
           guestName: 'Alice',
@@ -379,19 +379,19 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'openCreate moves from overview to the name-entry form',
     build: () => ReferralCubit(service),
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.openCreate(),
     expect: () => [
-      ReferralCreateReady(summary: _eligible),
+      const ReferralCreateReady(summary: _eligible),
     ],
   );
 
   blocTest<ReferralCubit, ReferralState>(
     'openCreate moves from a created invite back to the name-entry form',
     build: () => ReferralCubit(service),
-    seed: () => ReferralInviteCreated(
+    seed: () => const ReferralInviteCreated(
       summary: _eligible,
-      invite: const ReferralCreatedInviteDto(
+      invite: ReferralCreatedInviteDto(
         code: 'AB12',
         url: 'https://realunit.app/invite/AB12',
         guestName: 'Alice',
@@ -399,7 +399,7 @@ void main() {
     ),
     act: (cubit) => cubit.openCreate(),
     expect: () => [
-      ReferralCreateReady(summary: _eligible),
+      const ReferralCreateReady(summary: _eligible),
     ],
   );
 
@@ -413,13 +413,13 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.acceptTerms(),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms),
-      ReferralOverviewLoaded(
+      const ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesError: referralUnavailableMessage,
       ),
     ],
@@ -437,9 +437,9 @@ void main() {
     act: (cubit) => cubit.load(),
     expect: () => [
       const ReferralLoading(),
-      ReferralOverviewLoaded(
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesError: referralUnavailableMessage,
       ),
     ],
@@ -462,12 +462,12 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.reloadInvites(),
     expect: () => [
-      ReferralOverviewLoaded(
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesLoading: true,
       ),
       ReferralOverviewLoaded(
@@ -494,17 +494,17 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.reloadInvites(),
     expect: () => [
-      ReferralOverviewLoaded(
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesLoading: true,
       ),
-      ReferralOverviewLoaded(
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesError: referralUnavailableMessage,
       ),
     ],
@@ -516,20 +516,20 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => const []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(
+    seed: () => const ReferralOverviewLoaded(
       summary: _eligible,
-      invites: const [],
+      invites: [],
       invitesError: 'invites down',
     ),
     act: (cubit) => cubit.reloadInvites(),
     expect: () => [
-      ReferralOverviewLoaded(
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesError: 'invites down',
         invitesLoading: true,
       ),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
   );
 
@@ -541,7 +541,7 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) async {
       final refresh = cubit.refreshOverview();
       final reload = cubit.reloadInvites();
@@ -567,7 +567,7 @@ void main() {
       when(() => service.getSummary()).thenAnswer((_) async => _eligible);
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) async {
       final reload = cubit.reloadInvites();
       final refresh = cubit.refreshOverview();
@@ -585,12 +585,12 @@ void main() {
       await reload;
     },
     expect: () => [
-      ReferralOverviewLoaded(
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesLoading: true,
       ),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
   );
 
@@ -600,10 +600,10 @@ void main() {
       when(() => service.getSummary()).thenAnswer((_) async => _needsTerms);
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.refreshOverview(),
     expect: () => [
-      ReferralNeedsTerms(summary: _needsTerms),
+      const ReferralNeedsTerms(summary: _needsTerms),
     ],
   );
 
@@ -623,10 +623,10 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.acceptTerms(),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralTermsAccepting(summary: _needsTerms),
       const ReferralNotEligible(),
     ],
   );
@@ -646,7 +646,7 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.refreshOverview(),
     expect: () => const [ReferralNotEligible()],
   );
@@ -667,7 +667,7 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: 'A' * 120),
     expect: () => [
       ReferralCreating(
@@ -704,13 +704,13 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: ' Alice\nBob\t '),
     expect: () => [
       const ReferralCreating(summary: _eligible, guestName: 'Alice Bob'),
-      ReferralInviteCreated(
+      const ReferralInviteCreated(
         summary: _eligible,
-        invite: const ReferralCreatedInviteDto(
+        invite: ReferralCreatedInviteDto(
           code: 'AB12',
           url: 'https://realunit.app/invite/AB12',
           guestName: 'Alice Bob',
@@ -725,7 +725,7 @@ void main() {
   blocTest<ReferralCubit, ReferralState>(
     'createInvite ignores a blank guest name',
     build: () => ReferralCubit(service),
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: '   '),
     expect: () => <ReferralState>[],
     verify: (_) {
@@ -750,7 +750,7 @@ void main() {
     },
     expect: () => [
       const ReferralLoading(),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
     verify: (_) {
       verify(() => service.getSummary()).called(1);
@@ -768,7 +768,7 @@ void main() {
     act: (cubit) => cubit.load(),
     expect: () => [
       const ReferralFailure(message: 'boom', retrying: true),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
   );
 
@@ -790,7 +790,7 @@ void main() {
     },
     expect: () => [
       const ReferralFailure(message: 'boom', retrying: true),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
     verify: (_) {
       verify(() => service.getSummary()).called(1);
@@ -804,11 +804,11 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.load(),
     expect: () => [
-      ReferralNeedsTerms(summary: _needsTerms, retrying: true),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralNeedsTerms(summary: _needsTerms, retrying: true),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
   );
 
@@ -820,7 +820,7 @@ void main() {
       when(() => service.getInvites()).thenAnswer((_) async => []);
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) async {
       final first = cubit.load();
       final second = cubit.load();
@@ -829,8 +829,8 @@ void main() {
       await second;
     },
     expect: () => [
-      ReferralNeedsTerms(summary: _needsTerms, retrying: true),
-      ReferralOverviewLoaded(summary: _eligible, invites: const []),
+      const ReferralNeedsTerms(summary: _needsTerms, retrying: true),
+      const ReferralOverviewLoaded(summary: _eligible, invites: []),
     ],
     verify: (_) {
       verify(() => service.getSummary()).called(1);
@@ -932,11 +932,11 @@ void main() {
       ).thenThrow(TimeoutException('accept'));
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.acceptTerms(),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms),
-      ReferralNeedsTerms(
+      const ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralNeedsTerms(
         summary: _needsTerms,
         errorMessage: referralUnavailableMessage,
       ),
@@ -952,10 +952,10 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.acceptTerms(),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralTermsAccepting(summary: _needsTerms),
       const ReferralFailure(message: referralUnavailableMessage),
     ],
   );
@@ -967,10 +967,10 @@ void main() {
       when(() => service.getSummary()).thenThrow(TimeoutException('summary'));
       return ReferralCubit(service);
     },
-    seed: () => ReferralNeedsTerms(summary: _needsTerms),
+    seed: () => const ReferralNeedsTerms(summary: _needsTerms),
     act: (cubit) => cubit.acceptTerms(),
     expect: () => [
-      ReferralTermsAccepting(summary: _needsTerms),
+      const ReferralTermsAccepting(summary: _needsTerms),
       const ReferralFailure(message: referralUnavailableMessage),
     ],
   );
@@ -983,10 +983,10 @@ void main() {
       ).thenThrow(TimeoutException('create'));
       return ReferralCubit(service);
     },
-    seed: () => ReferralCreateReady(summary: _eligible),
+    seed: () => const ReferralCreateReady(summary: _eligible),
     act: (cubit) => cubit.createInvite(guestName: 'Alice'),
     expect: () => [
-      ReferralCreating(summary: _eligible, guestName: 'Alice'),
+      const ReferralCreating(summary: _eligible, guestName: 'Alice'),
       const ReferralCreateReady(
         summary: _eligible,
         errorMessage: referralUnavailableMessage,
@@ -1002,9 +1002,9 @@ void main() {
       );
       return ReferralCubit(service);
     },
-    seed: () => ReferralInviteCreated(
+    seed: () => const ReferralInviteCreated(
       summary: _eligible,
-      invite: const ReferralCreatedInviteDto(
+      invite: ReferralCreatedInviteDto(
         code: 'AB12',
         url: 'https://realunit.app/invite/AB12',
         guestName: 'Alice',
@@ -1022,7 +1022,7 @@ void main() {
       when(() => service.getSummary()).thenThrow(TimeoutException('summary'));
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.refreshOverview(),
     expect: () => <ReferralState>[],
   );
@@ -1033,9 +1033,9 @@ void main() {
       when(() => service.getSummary()).thenThrow(TimeoutException('summary'));
       return ReferralCubit(service);
     },
-    seed: () => ReferralInviteCreated(
+    seed: () => const ReferralInviteCreated(
       summary: _eligible,
-      invite: const ReferralCreatedInviteDto(
+      invite: ReferralCreatedInviteDto(
         code: 'AB12',
         url: 'https://realunit.app/invite/AB12',
         guestName: 'Alice',
@@ -1053,12 +1053,12 @@ void main() {
       when(() => service.getInvites()).thenThrow(TimeoutException('invites'));
       return ReferralCubit(service);
     },
-    seed: () => ReferralOverviewLoaded(summary: _eligible, invites: const []),
+    seed: () => const ReferralOverviewLoaded(summary: _eligible, invites: []),
     act: (cubit) => cubit.reloadInvites(),
     expect: () => [
-      ReferralOverviewLoaded(
+      const ReferralOverviewLoaded(
         summary: _eligible,
-        invites: const [],
+        invites: [],
         invitesLoading: true,
       ),
       const ReferralOverviewLoaded(

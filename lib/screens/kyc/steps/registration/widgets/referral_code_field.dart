@@ -170,7 +170,7 @@ class ReferralCodeFieldState extends State<ReferralCodeField> {
         _clipboardTimeout?.cancel();
         if (!done.isCompleted) done.complete(value);
       },
-      onError: (Object _, StackTrace __) {
+      onError: (Object _, StackTrace _) {
         _clipboardTimeout?.cancel();
         if (!done.isCompleted) done.complete(null);
       },

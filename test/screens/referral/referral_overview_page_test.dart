@@ -721,14 +721,14 @@ void main() {
       chfSum: 0,
     );
     when(() => cubit.state).thenReturn(
-      ReferralOverviewLoaded(summary: summary, invites: const []),
+      const ReferralOverviewLoaded(summary: summary, invites: []),
     );
     whenListen(
       cubit,
       const Stream<ReferralState>.empty(),
-      initialState: ReferralOverviewLoaded(
+      initialState: const ReferralOverviewLoaded(
         summary: summary,
-        invites: const [],
+        invites: [],
       ),
     );
 

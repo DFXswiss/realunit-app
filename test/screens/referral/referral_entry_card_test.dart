@@ -255,9 +255,9 @@ void main() {
       routes: [
         GoRoute(
           path: '/',
-          builder: (_, _) => Scaffold(
+          builder: (_, _) => const Scaffold(
             body: ReferralEntryCard(
-              unavailablePollInterval: const Duration(milliseconds: 20),
+              unavailablePollInterval: Duration(milliseconds: 20),
             ),
           ),
         ),

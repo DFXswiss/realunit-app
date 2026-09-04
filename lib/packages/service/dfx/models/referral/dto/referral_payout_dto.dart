@@ -42,7 +42,7 @@ class ReferralPayoutDto {
     final amount = referralJsonNum(json['amount']);
     final created = referralJsonDate(json['created']);
     if (amount == null || created == null) {
-      throw FormatException('referral payout missing amount/created');
+      throw const FormatException('referral payout missing amount/created');
     }
     return ReferralPayoutDto(
       id: referralJsonInt(json['id']),

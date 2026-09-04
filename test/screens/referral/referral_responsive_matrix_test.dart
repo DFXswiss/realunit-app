@@ -119,12 +119,12 @@ void main() {
     for (final cell in kFullResponsiveMatrix) {
       testWidgets(cell.id, (tester) async {
         when(() => cubit.state).thenReturn(
-          ReferralNeedsTerms(summary: _summary),
+          const ReferralNeedsTerms(summary: _summary),
         );
         whenListen(
           cubit,
           const Stream<ReferralState>.empty(),
-          initialState: ReferralNeedsTerms(summary: _summary),
+          initialState: const ReferralNeedsTerms(summary: _summary),
         );
         await withTargetPlatform(cell.device.platform, () async {
           await expectNoLayoutOverflow(
@@ -202,12 +202,12 @@ void main() {
     for (final cell in kFullResponsiveMatrix) {
       testWidgets(cell.id, (tester) async {
         when(() => cubit.state).thenReturn(
-          ReferralCreateReady(summary: _summary),
+          const ReferralCreateReady(summary: _summary),
         );
         whenListen(
           cubit,
           const Stream<ReferralState>.empty(),
-          initialState: ReferralCreateReady(summary: _summary),
+          initialState: const ReferralCreateReady(summary: _summary),
         );
         await withTargetPlatform(cell.device.platform, () async {
           await expectNoLayoutOverflow(
