@@ -9,7 +9,6 @@ import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referra
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_code_lookup_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_created_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_invite_dto.dart';
-import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_payout_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_terms_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/referral_json_list.dart';
@@ -233,35 +232,6 @@ class RealUnitReferralService extends DFXAuthService {
         ],
       ),
     );
-  }
-
-  Future<List<ReferralPayoutDto>> getPayouts() async {
-    final uri = buildUri(host, '$_basePath/payouts');
-    final response = await _timed(
-      authenticatedGet(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-      ),
-    );
-
-    if (response.statusCode != 200) {
-      throw ApiException.fromBody(
-        response.body,
-        httpStatusCode: response.statusCode,
-      );
-    }
-
-    final payouts = <ReferralPayoutDto>[];
-    for (final row in referralJsonList(jsonDecode(response.body))) {
-      try {
-        final dto = ReferralPayoutDto.fromJson(row);
-        if (!dto.isSettled) continue;
-        payouts.add(dto);
-      } catch (_) {
-        // Skip a malformed row so one bad prize cannot hide the rest.
-      }
-    }
-    return payouts;
   }
 
   String _requireCode(String code) {
