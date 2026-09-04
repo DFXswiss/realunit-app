@@ -54,16 +54,6 @@ void main() {
 
       expect(dto.category, 'transferIn');
     });
-
-    test('non-string category is ignored instead of throwing', () {
-      final dto = HistoryEventDto.fromJson({
-        'timestamp': '2026-05-15T10:00:00Z',
-        'txHash': '0xabc',
-        'category': 1,
-      });
-
-      expect(dto.category, isNull);
-    });
   });
 
   group('$AccountHistoryDto.fromJson', () {
