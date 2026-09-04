@@ -40,7 +40,7 @@ class HistoryEventDto {
       transfer: json['transfer'] != null
           ? TransferDto.fromJson(json['transfer'] as Map<String, dynamic>)
           : null,
-      category: json['category'] as String?,
+      category: json['category'] is String ? json['category'] as String : null,
     );
   }
 }
