@@ -102,8 +102,7 @@ class TransactionHistoryRowView extends StatelessWidget {
                       children: [
                         Text(
                           transactionTitleLabel(context, transaction, isOutbound: isOutbound),
-                          style: const TextStyle(
-                            fontSize: 16,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                             height: 20 / 16,
                           ),
