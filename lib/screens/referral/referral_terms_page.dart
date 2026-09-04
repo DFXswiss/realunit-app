@@ -121,8 +121,9 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
       if (getIt.isRegistered<RealUnitReferralService>()) {
         final terms = await getIt<RealUnitReferralService>().getTerms();
         if (!mounted || generation != _loadGeneration) return;
-        apiText = terms.textForLang(code);
-        if (terms.version.trim().isNotEmpty && (apiText?.trim().isNotEmpty ?? false)) {
+        final text = terms.textForLang(code);
+        if (terms.version.trim().isNotEmpty && text.trim().isNotEmpty) {
+          apiText = text;
           version = terms.version;
         }
       }
