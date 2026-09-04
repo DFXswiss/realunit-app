@@ -13,6 +13,7 @@ part 'referral_eligibility_state.dart';
 /// card hidden for half a minute.
 class ReferralEligibilityCubit extends Cubit<ReferralEligibilityState> {
   final RealUnitReferralService _service;
+  int _reloadGeneration = 0;
 
   ReferralEligibilityCubit(this._service)
     : super(const ReferralEligibilityInitial());
@@ -44,16 +45,19 @@ class ReferralEligibilityCubit extends Cubit<ReferralEligibilityState> {
   /// A tile that is already shown stays shown if this GET fails.
   Future<void> reload() async {
     if (state is ReferralEligibilityLoading || isClosed) return;
+    final generation = ++_reloadGeneration;
     try {
       final summary = await _service.getSummary();
-      if (isClosed) return;
+      if (isClosed || generation != _reloadGeneration) return;
       emit(ReferralEligibilityLoaded(eligible: summary.eligible));
     } on TimeoutException {
+      if (isClosed || generation != _reloadGeneration) return;
       if (state is ReferralEligibilityLoaded) return;
       emit(
         const ReferralEligibilityLoaded(eligible: false, unavailable: true),
       );
     } catch (_) {
+      if (isClosed || generation != _reloadGeneration) return;
       if (state is ReferralEligibilityLoaded) return;
       emit(
         const ReferralEligibilityLoaded(eligible: false, unavailable: true),
