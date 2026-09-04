@@ -40,17 +40,17 @@ class ReferralCodeLookupDto {
   String? campaignTextForLocale(String languageCode) {
     if (languageCode == 'en') {
       return firstNonEmpty([
-        campaignTextEn,
         actionTextEn,
-        campaignText,
+        campaignTextEn,
         actionText,
+        campaignText,
       ]);
     }
     return firstNonEmpty([
       actionText,
       campaignText,
-      campaignTextEn,
       actionTextEn,
+      campaignTextEn,
     ]);
   }
 

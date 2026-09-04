@@ -82,7 +82,22 @@ class ReferralOverviewLoaded extends ReferralState {
     summary.realuSum,
     summary.chfSum,
     summary.sharePrice,
-    invites.map((i) => i.id).toList(),
+    summary.sharePriceLabel,
+    // Compare every rendered per-invite field, not just the id, so a refresh
+    // that only resolves e.g. inviterName after a late bind still re-renders.
+    invites
+        .map(
+          (i) => [
+            i.id,
+            i.status,
+            i.url,
+            i.guestName,
+            i.copyText,
+            i.copyTextEn,
+            i.inviterName,
+          ],
+        )
+        .toList(),
     invitesError,
     invitesLoading,
   ];

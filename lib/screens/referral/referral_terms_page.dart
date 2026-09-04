@@ -99,6 +99,7 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
       setState(() {
         _markdown = null;
         _loadFailed = false;
+        _accepted = false;
       });
     }
     _loadMarkdown();
@@ -119,10 +120,11 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
       if (getIt.isRegistered<RealUnitReferralService>()) {
         final terms = await getIt<RealUnitReferralService>().getTerms();
         if (!mounted || generation != _loadGeneration) return;
-        if (terms.version.trim().isNotEmpty) {
+        apiText = terms.textForLang(code);
+        if (terms.version.trim().isNotEmpty &&
+            (apiText?.trim().isNotEmpty ?? false)) {
           _termsVersion = terms.version;
         }
-        apiText = terms.textForLang(code);
       }
     } catch (_) {
       // Bundled TB 14.08 is the fallback when the API is unreachable.
