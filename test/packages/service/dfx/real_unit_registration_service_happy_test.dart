@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:eth_sig_util_plus/eth_sig_util_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -127,6 +128,84 @@ void main() {
   );
 
   group('completeRegistration happy path', () {
+    test(
+      'signs and transmits phoneNumber as the same exact string',
+      () async {
+        const expectedPhoneNumber = '+41 79 000 00 00';
+        Map<String, dynamic>? body;
+        final client = MockClient((request) async {
+          if (request.url.path == '/v1/realunit/register/date') {
+            return http.Response(jsonEncode({'date': '2026-07-13'}), 200);
+          }
+          body = jsonDecode(request.body) as Map<String, dynamic>;
+          return http.Response(jsonEncode({'status': 'completed'}), 201);
+        });
+
+        await build(client).completeRegistration(buildRegistration());
+
+        expect(body!['phoneNumber'], expectedPhoneNumber);
+
+        // Keep this EIP-712 message in sync with Eip712Signer.signRegistration.
+        // It catches mutations such as signing '$phoneNumber ' but sending phoneNumber.
+        final typedData = {
+          'types': {
+            'EIP712Domain': [
+              {'name': 'name', 'type': 'string'},
+              {'name': 'version', 'type': 'string'},
+            ],
+            'RealUnitUser': [
+              {'name': 'email', 'type': 'string'},
+              {'name': 'name', 'type': 'string'},
+              {'name': 'type', 'type': 'string'},
+              {'name': 'phoneNumber', 'type': 'string'},
+              {'name': 'birthday', 'type': 'string'},
+              {'name': 'nationality', 'type': 'string'},
+              {'name': 'addressStreet', 'type': 'string'},
+              {'name': 'addressPostalCode', 'type': 'string'},
+              {'name': 'addressCity', 'type': 'string'},
+              {'name': 'addressCountry', 'type': 'string'},
+              {'name': 'swissTaxResidence', 'type': 'bool'},
+              {'name': 'registrationDate', 'type': 'string'},
+              {'name': 'walletAddress', 'type': 'address'},
+            ],
+          },
+          'primaryType': 'RealUnitUser',
+          'domain': {
+            'name': 'RealUnitUser',
+            'version': '1',
+          },
+          'message': {
+            'email': body!['email'],
+            'name': body!['name'],
+            'type': body!['type'],
+            'phoneNumber': body!['phoneNumber'],
+            'birthday': body!['birthday'],
+            'nationality': body!['nationality'],
+            'addressStreet': body!['addressStreet'],
+            'addressPostalCode': body!['addressPostalCode'],
+            'addressCity': body!['addressCity'],
+            'addressCountry': body!['addressCountry'],
+            'swissTaxResidence': body!['swissTaxResidence'],
+            'registrationDate': body!['registrationDate'],
+            'walletAddress': body!['walletAddress'],
+          },
+        };
+        final messageHash = TypedDataUtil.hashMessage(
+          jsonData: jsonEncode(typedData),
+          version: TypedDataVersion.V4,
+        );
+        final recoveredSigner = EthSigUtil.recoverSignature(
+          signature: body!['signature'] as String,
+          message: messageHash,
+        );
+
+        expect(
+          recoveredSigner.toLowerCase(),
+          _privKey.address.hexEip55.toLowerCase(),
+        );
+      },
+    );
+
     test(
       'POSTs to /v1/realunit/register/complete with the ASCII-transliterated '
       'envelope, the EIP-712 signature, and the original KYC personal data',
