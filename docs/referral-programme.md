@@ -217,13 +217,13 @@ fields (`id`, `amount`, `chfValue`, `created`, `kind`, `status`,
 and failed payouts stay out of history until the transfer
 is confirmed. The server persists the broadcast `txHash` while the
 row is still Pending and confirms that receipt on retry, so a
-restart does not send a second 20 REALU. `getPayouts` drops non-settled rows if a payload includes them. Missing
+restart does not send a second 20 REALU. Non-settled rows are dropped if a payload includes them. Missing
 status is treated as Settled (this list is Settled-only). Duplicate payout rows (same id or tx hash) are shown once, including
 when history sync writes a payload that repeats an id or hash casing.
 A settled row with neither id nor tx hash is dropped so it cannot
 collide as `referral-payout-0`.
 Frozen CHF
-is stored as two decimals (`246.50`) at merge time and when history
+is stored as two decimals (`246.50`) when history
 sync writes the row (amount is truncated, never rounded up). A locale-formatted
 `chfValue` (`246,5`, `1'246.50`, `CHF 246.50`) still parses as a payout
 row.

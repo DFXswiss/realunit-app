@@ -38,12 +38,10 @@ class KycRegistrationReferralStep extends StatefulWidget {
   });
 
   @override
-  State<KycRegistrationReferralStep> createState() =>
-      _KycRegistrationReferralStepState();
+  State<KycRegistrationReferralStep> createState() => _KycRegistrationReferralStepState();
 }
 
-class _KycRegistrationReferralStepState
-    extends State<KycRegistrationReferralStep> {
+class _KycRegistrationReferralStepState extends State<KycRegistrationReferralStep> {
   final _fieldKey = GlobalKey<ReferralCodeFieldState>();
   bool _advancing = false;
   bool _skipping = false;
@@ -91,33 +89,33 @@ class _KycRegistrationReferralStepState
   @override
   Widget build(BuildContext context) {
     final s = S.of(context);
-    return ScrollableActionsLayout(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      body: ReferralCodeField(
-        key: _fieldKey,
-        controller: widget.referralCodeCtrl,
-        lookup: widget.lookup,
-        showHeading: false,
-        onResolved: widget.onResolved,
-        readClipboard: widget.readClipboard,
-        pendingCode: widget.pendingCode,
-        autoPasteOnEmpty: widget.autoPasteOnEmpty,
-        autofocus: true,
-        enabled: !_advancing,
+    return SafeArea(
+      child: ScrollableActionsLayout(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        body: ReferralCodeField(
+          key: _fieldKey,
+          controller: widget.referralCodeCtrl,
+          lookup: widget.lookup,
+          showHeading: false,
+          onResolved: widget.onResolved,
+          readClipboard: widget.readClipboard,
+          pendingCode: widget.pendingCode,
+          autoPasteOnEmpty: widget.autoPasteOnEmpty,
+          autofocus: true,
+          enabled: !_advancing,
+        ),
+        actions: [
+          AppFilledButton(
+            label: s.next,
+            state: _advancing && !_skipping ? FilledButtonState.loading : FilledButtonState.idle,
+            onPressed: _advancing ? null : () => _advance(context, skip: false),
+          ),
+          AppTextButton(
+            label: s.skip,
+            onPressed: _skipping ? null : () => _advance(context, skip: true),
+          ),
+        ],
       ),
-      actions: [
-        AppFilledButton(
-          label: s.next,
-          state: _advancing && !_skipping
-              ? FilledButtonState.loading
-              : FilledButtonState.idle,
-          onPressed: _advancing ? null : () => _advance(context, skip: false),
-        ),
-        AppTextButton(
-          label: s.skip,
-          onPressed: _skipping ? null : () => _advance(context, skip: true),
-        ),
-      ],
     );
   }
 }

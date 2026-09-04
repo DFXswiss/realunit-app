@@ -116,14 +116,14 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
     final generation = ++_loadGeneration;
     final code = _languageCode();
     String? apiText;
+    var version = ReferralTermsDto.bundledVersion;
     try {
       if (getIt.isRegistered<RealUnitReferralService>()) {
         final terms = await getIt<RealUnitReferralService>().getTerms();
         if (!mounted || generation != _loadGeneration) return;
         apiText = terms.textForLang(code);
-        if (terms.version.trim().isNotEmpty &&
-            (apiText?.trim().isNotEmpty ?? false)) {
-          _termsVersion = terms.version;
+        if (terms.version.trim().isNotEmpty && (apiText?.trim().isNotEmpty ?? false)) {
+          version = terms.version;
         }
       }
     } catch (_) {
@@ -139,6 +139,7 @@ class _ReferralTermsPageState extends State<ReferralTermsPage> {
     if (content != null) {
       setState(() {
         _markdown = content;
+        _termsVersion = version;
         _loadFailed = false;
         _reloading = false;
       });

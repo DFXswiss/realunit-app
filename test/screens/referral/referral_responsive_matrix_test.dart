@@ -9,9 +9,9 @@ import 'package:mocktail/mocktail.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_invite_dto.dart';
 import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
-import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_step/kyc_registration_step_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart';
+import 'package:realunit_wallet/screens/referral/cubit/referral_cubit.dart';
 import 'package:realunit_wallet/screens/referral/referral_create_page.dart';
 import 'package:realunit_wallet/screens/referral/referral_overview_page.dart';
 import 'package:realunit_wallet/screens/referral/referral_terms_page.dart';
@@ -20,6 +20,7 @@ import 'package:realunit_wallet/setup/routing/routes/settings_routes.dart';
 import 'package:realunit_wallet/styles/language.dart';
 import 'package:realunit_wallet/styles/themes.dart';
 import 'package:realunit_wallet/widgets/buttons/app_filled_button.dart';
+import 'package:realunit_wallet/widgets/buttons/app_text_button.dart';
 
 import '../../helper/helper.dart';
 
@@ -277,6 +278,12 @@ void main() {
             find.byType(AppFilledButton),
             within: find.byType(KycRegistrationReferralStep),
             reason: '${cell.label}: KYC next CTA not tappable',
+          );
+          await expectFullyTappable(
+            tester,
+            find.byType(AppTextButton),
+            within: find.byType(KycRegistrationReferralStep),
+            reason: '${cell.label}: KYC skip CTA not tappable',
           );
         });
       });
