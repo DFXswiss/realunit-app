@@ -7280,7 +7280,7 @@
                 />
               </div>
               <div class="desc">
-                Das Formular <b>Telefonnummer ändern</b> im Ausgangszustand: eine Länderauswahl mit Vorwahl <b>+41</b> und das Eingabefeld für die Nummer (Platzhalter 1231234567), darunter <b>Speichern</b>. Hier trägt der Nutzer seine neue Telefonnummer ein.
+                Das Formular <b>Telefonnummer ändern</b> im Ausgangszustand: ein frei eingebbares Vorwahlfeld mit der Standardvorwahl <b>+41</b> und das Eingabefeld für die Nummer (Platzhalter 1231234567), darunter <b>Speichern</b>. Hier trägt der Nutzer seine neue Telefonnummer ein.
               </div>
             </div>
             <div class="test" id="238-settings-edit-address-page-default">
@@ -8039,7 +8039,7 @@
             </div>
           </summary>
           <p class="spec-intro">
-            Das Telefonnummer-Feld kombiniert eine Vorwahl-Auswahl mit einem separaten Eingabefeld für die Rufnummer. Es wird bei der Registrierung und in Formularen verwendet, in denen eine Telefonnummer erfasst wird.
+            Das Telefonnummer-Feld kombiniert ein frei eingebbares Vorwahlfeld (1 bis 3 Ziffern) mit einem separaten Eingabefeld für die Rufnummer. Es wird bei der Registrierung und in Formularen verwendet, in denen eine Telefonnummer erfasst wird.
           </p>
 
           <div class="tests cols-2">
@@ -8056,7 +8056,7 @@
                 />
               </div>
               <div class="desc">
-                Zeigt den <b>Ausgangszustand</b> des Telefonnummer-Felds: die Überschrift <b>Telefonnummer</b>, links das Vorwahl-Dropdown mit der Standardvorwahl <b>+41</b> (Schweiz, alternativ <b>+49</b> für Deutschland) und rechts das noch leere Rufnummernfeld mit dem Platzhalter <b>1231234567</b>. So sehen Nutzer das Feld, bevor sie eine Nummer eingeben; die Länge der Nummer wird erst serverseitig geprüft.
+                Zeigt den <b>Ausgangszustand</b> des Telefonnummer-Felds: die Überschrift <b>Telefonnummer</b>, links das frei eingebbare Vorwahlfeld mit der Standardvorwahl <b>+41</b> (1 bis 3 Ziffern) und rechts das noch leere Rufnummernfeld mit dem Platzhalter <b>1231234567</b>. So sehen Nutzer das Feld, bevor sie eine Nummer eingeben; die Länge der Nummer wird erst serverseitig geprüft. Die Nummer wird nach den Regeln von libphonenumber in die internationale Form gebracht; wo der Nummernplan keine Verkehrsausscheidungsziffer kennt — bei italienischen Festnetznummern etwa —, bleibt die Null erhalten.
               </div>
             </div>
           </div>

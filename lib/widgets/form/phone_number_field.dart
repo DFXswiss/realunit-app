@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dlibphonenumber/dlibphonenumber.dart';
 import 'package:realunit_wallet/generated/i18n.dart';
 import 'package:realunit_wallet/widgets/form/labeled_text_field.dart';
 
@@ -16,6 +17,10 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
   // Used only to decompose a seeded value. Input is free-form and not limited to this list.
   // `+41` stays first: it is the fallback default (`prefix ??= prefixes.first`).
   final prefixes = ['+41', '+49', '+43', '+423'];
+  // Canonicalization uses libphonenumber metadata, not this list. These main-market
+  // prefixes remain only to report a surviving second leading zero in the field
+  // instead of letting the API return a 400.
+  static const _trunkZeroPrefixes = ['+41', '+49', '+43'];
   String? prefix;
   String? number;
 
@@ -40,12 +45,29 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
     // what the user typed. Fall back to the first prefix; the number field starts empty,
     // so the validator still blocks submit until it is re-entered.
     prefix ??= prefixes.first;
+
+    // Canonicalization here only applies when the loop above split the seed.
+    // An unrecognized dial code leaves number null, so updatePhoneNumber() writes nothing.
+    updatePhoneNumber();
   }
 
   void updatePhoneNumber() {
-    if (prefix != null && number != null) {
-      final value = '$prefix$number';
-      widget.controller.value = value;
+    final prefix = this.prefix;
+    final number = this.number;
+    if (prefix == null || number == null) return;
+
+    widget.controller.value = _canonicalize('$prefix$number');
+  }
+
+  static String _canonicalize(String value) {
+    try {
+      final util = PhoneNumberUtil.instance;
+      return util.format(util.parse(value, null), PhoneNumberFormat.e164);
+    } on NumberParseException {
+      // `parse` throws NumberParseException for incomplete input while the user is
+      // typing; preserve the raw value and let the API decide validity on submit.
+      // Other exceptions are intentionally not caught.
+      return value;
     }
   }
 
@@ -115,7 +137,14 @@ class _PhoneNumberFieldState extends State<PhoneNumberField> {
                   if (!RegExp(r'^[0-9]+$').hasMatch(value)) {
                     return S.of(context).registerPhoneNumberOnlyDigits;
                   }
-                  // Length is validated by the API (libphonenumber); the client
+                  final canonical = _canonicalize('$prefix$value');
+                  if (_trunkZeroPrefixes.any(
+                    (countryPrefix) => canonical.startsWith('${countryPrefix}0'),
+                  )) {
+                    return S.of(context).registerPhoneNumberLeadingZero;
+                  }
+                  // Apart from the explicit trunk-zero canonicality check above,
+                  // length is validated by the API (libphonenumber); the client
                   // must not gate on it — see CONTRIBUTING "the API decides".
                   return null;
                 },

@@ -16,8 +16,8 @@ Column meaning:
   screen, or `—` if the screen has no Golden baseline. Each slot is a
   Visual-Regression Golden under `test/goldens/`, mapped to its handbook
   position by `scripts/assemble-handbook-screenshots.sh`. The handbook now
-  covers **all 284 Golden baselines** — every screen **plus every tested
-  state variant** (Default / Loading / Error / Snackbar / Dropdown /
+  covers **all 284 Golden baselines mapped to the handbook** — every mapped
+  screen and mapped state variant (Default / Loading / Error / Snackbar / Dropdown /
   Validation / Confirm / Success / Failure …), including the areas that were
   previously absent: Support (email capture, tickets, chat), Settings
   User-Data and its edit sub-pages, Settings Security, Receive, the BitBox
@@ -28,8 +28,10 @@ Column meaning:
   and `debugAuth` (a `kDebugMode`-only dev tool). Each row lists **all** the
   slots whose Golden renders that widget — a screen usually has several (its
   default plus its state variants), so most cells now carry a range rather
-  than a single anchor. One Golden is a shared form widget rather than a
-  screen: slot `268` is `PhoneNumberField` under `test/goldens/widgets/form/`.
+  than a single anchor. Exactly one handbook slot is a shared form widget
+  rather than a screen: slot `268` is `PhoneNumberField` under
+  `test/goldens/widgets/form/`. That path also holds two error-state
+  baselines (German and English) that are not mapped to a handbook slot.
   Only `WebViewPage` (no active Golden) and `KycPageManager` (the orchestrator
   has no Golden of its own — its states are the individual KYC pages) still
   carry `—`. Slot ↔ Golden mapping in
@@ -117,7 +119,9 @@ Column meaning:
 | Shared widgets | `PhoneNumberField` | — | — | `268` |
 
 76 screens — 44 routed (`GoRoute`) + 32 non-routed. The table also carries
-one shared form-widget baseline (`PhoneNumberField`), which is not a screen.
+one shared form-widget slot (`PhoneNumberField`), which is not a screen;
+three Golden baselines sit under `test/goldens/widgets/form/`, of which
+only slot `268` is a handbook entry.
 
 ## Notes
 
