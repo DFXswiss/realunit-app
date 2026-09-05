@@ -14,6 +14,7 @@
 # Abstract interfaces / ports (implementations live elsewhere and are tested):
 lib/packages/io/backup_exclusion_port.dart
 lib/packages/io/documents_directory_port.dart
+lib/packages/io/install_referrer_port.dart
 lib/packages/service/biometric/biometric_port.dart
 lib/packages/service/price_service.dart
 lib/screens/kyc/steps/ident/cubits/kyc_ident/sumsub_ident_port.dart
