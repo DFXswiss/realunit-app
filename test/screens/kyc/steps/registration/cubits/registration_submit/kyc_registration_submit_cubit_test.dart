@@ -127,6 +127,9 @@ void main() {
           () => registrationService.completeRegistration(captureAny()),
         ).captured.single as Registration;
 
+        // Guard against changing the phone number while assembling the Registration.
+        // The mocked Page test and direct Service test would not observe that mutation.
+        expect(captured.phoneNumber, '+41791234567');
         expect(captured.swissTaxResidence, isFalse);
         expect(captured.countryAndTINs, hasLength(1));
         expect(captured.countryAndTINs!.single.country, 'DE');
