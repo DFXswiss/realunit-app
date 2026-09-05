@@ -10,6 +10,7 @@ Widget _host(Widget child) => MaterialApp(
       localizationsDelegates: const [
         S.delegate,
         GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: S.delegate.supportedLocales,
       home: Scaffold(body: child),

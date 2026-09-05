@@ -18,4 +18,7 @@
 
 # SumSub SDK general keep rules                                     
 -keep class com.sumsub.** { *; }                                    
--dontwarn com.sumsub.**  
+-dontwarn com.sumsub.**
+
+# Play Install Referrer (invite code across a fresh Android install)
+-keep class com.android.installreferrer.** { *; }  

@@ -169,6 +169,7 @@ void main() {
             localizationsDelegates: const [
               S.delegate,
               GlobalMaterialLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
@@ -199,6 +200,7 @@ void main() {
             localizationsDelegates: const [
               S.delegate,
               GlobalMaterialLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],

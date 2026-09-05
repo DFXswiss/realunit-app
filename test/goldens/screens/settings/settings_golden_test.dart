@@ -1,8 +1,11 @@
+import 'package:alchemist/alchemist.dart' as alchemist;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get_it/get_it.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:realunit_wallet/packages/service/dfx/models/referral/dto/referral_summary_dto.dart';
+import 'package:realunit_wallet/packages/service/dfx/real_unit_referral_service.dart';
 import 'package:realunit_wallet/packages/wallet/wallet.dart';
 import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/settings/bloc/settings_bloc.dart';
@@ -27,6 +30,9 @@ void main() {
 
   setUpAll(() {
     GetIt.instance.registerSingleton<SettingsBloc>(MockSettingsBloc());
+    GetIt.instance.registerSingleton<RealUnitReferralService>(
+      MockRealUnitReferralService(),
+    );
   });
 
   tearDownAll(() async {
@@ -65,6 +71,34 @@ void main() {
         final bitbox = MockBitboxWallet();
         when(() => bitbox.walletType).thenReturn(WalletType.bitbox);
         when(() => homeBloc.state).thenReturn(HomeState(openWallet: bitbox));
+        return buildSubject();
+      },
+    );
+
+    goldenTest(
+      'shows Empfehlungen when eligible',
+      fileName: 'settings_page_referral_eligible',
+      constraints: const BoxConstraints.tightFor(width: 390, height: 844),
+      pumpBeforeTest: (tester) async {
+        await alchemist.precacheImages(tester);
+        await tester.pumpAndSettle();
+      },
+      builder: () {
+        final referral = MockRealUnitReferralService();
+        when(() => referral.getSummary()).thenAnswer(
+          (_) async => const ReferralSummaryDto(
+            eligible: true,
+            termsAccepted: true,
+            openCount: 0,
+            creditedCount: 0,
+            realuSum: 0,
+            chfSum: 0,
+          ),
+        );
+        if (GetIt.instance.isRegistered<RealUnitReferralService>()) {
+          GetIt.instance.unregister<RealUnitReferralService>();
+        }
+        GetIt.instance.registerSingleton<RealUnitReferralService>(referral);
         return buildSubject();
       },
     );

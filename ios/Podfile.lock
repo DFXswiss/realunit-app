@@ -12,8 +12,6 @@ PODS:
   - flutter_inappwebview_ios/Core (0.0.1):
     - Flutter
     - OrderedSet (~> 6.0.3)
-  - flutter_native_splash (2.4.3):
-    - Flutter
   - flutter_secure_storage (6.0.0):
     - Flutter
   - IdensicMobileSDK (1.42.0):
@@ -21,43 +19,17 @@ PODS:
   - IdensicMobileSDK/Core (1.42.0)
   - IdensicMobileSDK/Default (1.42.0):
     - IdensicMobileSDK/Core
-  - image_picker_ios (0.0.1):
-    - Flutter
-  - local_auth_darwin (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - mobile_scanner (7.0.0):
-    - Flutter
-    - FlutterMacOS
-  - no_screenshot (0.10.0):
-    - Flutter
   - open_file_ios (1.0.3):
     - Flutter
   - OrderedSet (6.0.3)
-  - path_provider_foundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - shared_preferences_foundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - url_launcher_ios (0.0.1):
-    - Flutter
 
 DEPENDENCIES:
   - bitbox_flutter (from `.symlinks/plugins/bitbox_flutter/ios`)
   - Flutter (from `Flutter`)
   - flutter_idensic_mobile_sdk_plugin (from `.symlinks/plugins/flutter_idensic_mobile_sdk_plugin/ios`)
   - flutter_inappwebview_ios (from `.symlinks/plugins/flutter_inappwebview_ios/ios`)
-  - flutter_native_splash (from `.symlinks/plugins/flutter_native_splash/ios`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
-  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
-  - local_auth_darwin (from `.symlinks/plugins/local_auth_darwin/darwin`)
-  - mobile_scanner (from `.symlinks/plugins/mobile_scanner/darwin`)
-  - no_screenshot (from `.symlinks/plugins/no_screenshot/ios`)
   - open_file_ios (from `.symlinks/plugins/open_file_ios/ios`)
-  - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
-  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
-  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
 
 SPEC REPOS:
   https://github.com/SumSubstance/Specs.git:
@@ -74,45 +46,21 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/flutter_idensic_mobile_sdk_plugin/ios"
   flutter_inappwebview_ios:
     :path: ".symlinks/plugins/flutter_inappwebview_ios/ios"
-  flutter_native_splash:
-    :path: ".symlinks/plugins/flutter_native_splash/ios"
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
-  image_picker_ios:
-    :path: ".symlinks/plugins/image_picker_ios/ios"
-  local_auth_darwin:
-    :path: ".symlinks/plugins/local_auth_darwin/darwin"
-  mobile_scanner:
-    :path: ".symlinks/plugins/mobile_scanner/darwin"
-  no_screenshot:
-    :path: ".symlinks/plugins/no_screenshot/ios"
   open_file_ios:
     :path: ".symlinks/plugins/open_file_ios/ios"
-  path_provider_foundation:
-    :path: ".symlinks/plugins/path_provider_foundation/darwin"
-  shared_preferences_foundation:
-    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
-  url_launcher_ios:
-    :path: ".symlinks/plugins/url_launcher_ios/ios"
 
 SPEC CHECKSUMS:
   bitbox_flutter: fdc8a31424da25cdb5004a33e593aaf77edb2d0b
-  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_idensic_mobile_sdk_plugin: 99510fa7e95f6825ce63feaa3ca638a8b696b47d
   flutter_inappwebview_ios: b89ba3482b96fb25e00c967aae065701b66e9b99
-  flutter_native_splash: c32d145d68aeda5502d5f543ee38c192065986cf
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   IdensicMobileSDK: a8ec2cf5c216ae138b00e2ff32e0e31c5e366cec
-  image_picker_ios: e0ece4aa2a75771a7de3fa735d26d90817041326
-  local_auth_darwin: c3ee6cce0a8d56be34c8ccb66ba31f7f180aaebb
-  mobile_scanner: 9157936403f5a0644ca3779a38ff8404c5434a93
-  no_screenshot: 03c8ac6586f9652cd45e3d12d74e5992256403ac
   open_file_ios: 46184d802ee7959203f6392abcfa0dd49fdb5be0
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
-  path_provider_foundation: bb55f6dbba17d0dccd6737fe6f7f34fbd0376880
-  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
-  url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
 
 PODFILE CHECKSUM: 55e9da7f5c3e910c15c7cf840ae7c6a785e95b52
 
-COCOAPODS: 1.16.2
+COCOAPODS: 1.17.0

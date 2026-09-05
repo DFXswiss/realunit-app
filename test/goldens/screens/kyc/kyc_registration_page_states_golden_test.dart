@@ -25,6 +25,7 @@ import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_step/kyc_registration_step_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_submit/kyc_registration_submit_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/kyc_registration_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../helper/helper.dart';
 
@@ -153,6 +154,7 @@ void main() {
   // (which resolves a Bitbox/Wallet service on build). The country service is the
   // fixture-backed real service so the citizenship/residence dropdowns populate.
   setUpAll(() {
+    SharedPreferences.setMockInitialValues({});
     final getIt = GetIt.instance;
     getIt.registerSingleton<RealUnitRegistrationService>(
       _MockRealUnitRegistrationService(),
@@ -227,13 +229,17 @@ void main() {
       'prefilled form — initialUserData seeds the personal step',
       fileName: 'kyc_registration_page_prefilled',
       constraints: phoneConstraints,
-      // Real `KycRegistrationPage`: the scalar fields seed synchronously in
-      // initState and the two country symbols resolve through the
+      // Keep the pager on personal so this golden still captures the seeded
+      // name/address fields. The live page now starts on the optional
+      // referral step (Entwurf 4). Country symbols resolve through the
       // fixture-backed DfxCountryService; the default `precacheImages`
       // pump-and-settle lets both country lookups complete before capture.
-      builder: () => wrapForGolden(
-        const KycRegistrationPage(initialUserData: _fixtureUserData),
-      ),
+      builder: () {
+        when(() => registrationStepCubit.state).thenReturn(personalState);
+        return buildView(
+          const KycRegistrationView(initialUserData: _fixtureUserData),
+        );
+      },
     );
 
     goldenTest(

@@ -41,6 +41,7 @@ void main() {
           localizationsDelegates: const [
             S.delegate,
             GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: S.delegate.supportedLocales,
         ),

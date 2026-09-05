@@ -37,6 +37,40 @@ void main() {
       expect(tx.isOutbound(_wallet), isFalse);
     });
 
+    test('isOutbound is false for a referral payout with empty sender', () {
+      final tx = Transaction(
+        height: 0,
+        txId: 'referral-payout-1',
+        chainId: realUnitAsset.chainId,
+        senderAddress: '',
+        receiverAddress: _wallet,
+        amount: BigInt.from(20),
+        asset: realUnitAsset,
+        type: TransactionTypes.referralPayout,
+        note: '',
+        data: '246.50',
+        timestamp: DateTime.utc(2026, 8, 24, 10),
+      );
+      expect(tx.isOutbound(_wallet), isFalse);
+    });
+
+    test('isOutbound is false for a referral payout from the zero address', () {
+      final tx = Transaction(
+        height: 0,
+        txId: 'referral-payout-1',
+        chainId: realUnitAsset.chainId,
+        senderAddress: kReferralPayoutSenderAddress,
+        receiverAddress: _wallet,
+        amount: BigInt.from(20),
+        asset: realUnitAsset,
+        type: TransactionTypes.referralPayout,
+        note: '',
+        data: '246.50',
+        timestamp: DateTime.utc(2026, 8, 24, 10),
+      );
+      expect(tx.isOutbound(_wallet), isFalse);
+    });
+
     test('isOutbound normalises hex-digit case via EIP-55 on both sides', () {
       // EIP-55 keeps the literal `0x` prefix but mixes hex-digit case
       // deterministically. The helper round-trips through fromHex/hexEip55
@@ -50,15 +84,16 @@ void main() {
   });
 
   group('$TransactionTypes', () {
-    test('exposes the five expected entries (catches accidental additions)', () {
+    test('exposes the six expected entries (catches accidental additions)', () {
       // A new type added without updating the rendering switch would
       // silently break the UI. Pin the count.
-      expect(TransactionTypes.values, hasLength(5));
+      expect(TransactionTypes.values, hasLength(6));
       expect(TransactionTypes.values, contains(TransactionTypes.transfer));
       expect(TransactionTypes.values, contains(TransactionTypes.tokenTransfer));
       expect(TransactionTypes.values, contains(TransactionTypes.savingsAdd));
       expect(TransactionTypes.values, contains(TransactionTypes.savingsRemove));
       expect(TransactionTypes.values, contains(TransactionTypes.genericContractCall));
+      expect(TransactionTypes.values, contains(TransactionTypes.referralPayout));
     });
   });
 }

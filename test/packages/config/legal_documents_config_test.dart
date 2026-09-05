@@ -109,6 +109,7 @@ Widget _harness(GoRouter router) {
     localizationsDelegates: const [
       S.delegate,
       GlobalMaterialLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
     ],
     supportedLocales: S.delegate.supportedLocales,
   );

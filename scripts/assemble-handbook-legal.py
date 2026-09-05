@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate the handbook legal-downloads block from the in-app legal Markdown.
 
-The Markdown under assets/legal/ is the single source of truth for the three
-RealUnit documents that the app renders in-app (LegalDocumentPage reads
-assets/legal/<base>_<lang>.md via rootBundle). The handbook section at
+The Markdown under assets/legal/ is the single source of truth for the
+RealUnit documents that the app renders in-app (LegalDocumentPage and the
+referral terms page read assets/legal/<base>_<lang>.md via rootBundle). The
+handbook section at
 handbook.realunit.app is a *derived export* of those files — never hand-edited.
 This mirrors the upstream/downstream relationship that the store-listing and
 mails/ sections already have.
@@ -49,10 +50,15 @@ from pathlib import Path
 BEGIN = "<!-- BEGIN:legal-downloads -->"
 END = "<!-- END:legal-downloads -->"
 
-# The exact three in-app documents rendered from repo-local Markdown. DFX,
-# Aktionariat and the externally-hosted corporate PDFs are out of scope — they
-# have no Markdown source in the repo and cannot be a derived export.
-BASES = ["privacy_policy", "terms_of_use", "registration_agreement"]
+# In-app documents rendered from repo-local Markdown. DFX, Aktionariat and the
+# externally-hosted corporate PDFs are out of scope — they have no Markdown
+# source in the repo and cannot be a derived export.
+BASES = [
+    "privacy_policy",
+    "terms_of_use",
+    "registration_agreement",
+    "referral_terms",
+]
 
 # Maps each document base to the ARB key the app uses for its title, so the
 # handbook label matches what the user sees in-app.
@@ -60,6 +66,7 @@ TITLE_KEYS = {
     "privacy_policy": "legalDisclaimerCheckboxPrivacyPolicy",
     "terms_of_use": "termsOfUse",
     "registration_agreement": "legalDisclaimerCheckboxRegistrationAgreement",
+    "referral_terms": "referralTermsTitle",
 }
 
 # Languages are discovered, never hardcoded; this only validates that a token

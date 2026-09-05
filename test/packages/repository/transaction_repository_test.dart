@@ -7,6 +7,7 @@ import 'package:realunit_wallet/models/transaction.dart';
 import 'package:realunit_wallet/packages/repository/asset_repository.dart';
 import 'package:realunit_wallet/packages/repository/transaction_repository.dart';
 import 'package:realunit_wallet/packages/storage/database.dart';
+import 'package:realunit_wallet/packages/storage/dfx_transaction_storage.dart';
 
 void main() {
   late AppDatabase db;
@@ -142,6 +143,33 @@ void main() {
       },
     );
 
+    test(
+      'insertTransaction writes a prize onto a mixed-case stored hash instead of a second row',
+      () async {
+        await repo.insertTransaction(
+          buildTokenTransfer(txId: '0xAbC', height: 1),
+        );
+
+        expect(
+          await repo.insertTransaction(
+            buildTokenTransfer(
+              txId: '0xabc',
+              height: 1,
+              type: TransactionTypes.referralPayout,
+              data: '246.50',
+            ),
+          ),
+          1,
+        );
+
+        final all = await repo.allTransactions;
+        expect(all, hasLength(1));
+        expect(all.single.txId, '0xAbC');
+        expect(all.single.type, TransactionTypes.referralPayout);
+        expect(all.single.data, '246.50');
+      },
+    );
+
     test('updateTransaction mutates the row identified by txId', () async {
       await repo.insertTransaction(
         buildTokenTransfer(txId: 'tx-1', height: 1, amount: BigInt.from(1)),
@@ -163,8 +191,157 @@ void main() {
       expect(all.single.note, 'updated');
     });
 
+    test(
+      'updateTransaction writes a prize onto a mixed-case stored hash',
+      () async {
+        await repo.insertTransaction(
+          buildTokenTransfer(txId: '0xAbC', height: 1),
+        );
+
+        expect(
+          await repo.updateTransaction(
+            buildTokenTransfer(
+              txId: '0xabc',
+              height: 1,
+              type: TransactionTypes.referralPayout,
+              data: '246.50',
+            ),
+          ),
+          1,
+        );
+
+        final all = await repo.allTransactions;
+        expect(all, hasLength(1));
+        expect(all.single.txId, '0xAbC');
+        expect(all.single.type, TransactionTypes.referralPayout);
+        expect(all.single.data, '246.50');
+      },
+    );
+
     test('existsTransaction returns false for an unknown txId', () async {
       expect(await repo.existsTransaction('nope'), isFalse);
+    });
+
+    test('findTxIdIgnoreCase returns the stored casing of a hex hash', () async {
+      await repo.insertTransaction(
+        buildTokenTransfer(txId: '0xAbC', height: 1),
+      );
+
+      expect(await repo.findTxIdIgnoreCase('0xabc'), '0xAbC');
+      expect(await repo.findTxIdIgnoreCase('0xABC'), '0xAbC');
+      expect(await repo.findTxIdIgnoreCase('0xAbC'), '0xAbC');
+      expect(await repo.findTxIdIgnoreCase('0xdef'), isNull);
+    });
+
+    test('isReferralPayoutIgnoreCase is true only for stored prize rows', () async {
+      await repo.insertTransaction(
+        buildTokenTransfer(
+          txId: '0xAbC',
+          height: 1,
+          type: TransactionTypes.referralPayout,
+          data: '246.50',
+        ),
+      );
+      await repo.insertTransaction(
+        buildTokenTransfer(txId: '0xdef', height: 2),
+      );
+
+      expect(await repo.isReferralPayoutIgnoreCase('0xabc'), isTrue);
+      expect(await repo.isReferralPayoutIgnoreCase('0xDEF'), isFalse);
+      expect(await repo.isReferralPayoutIgnoreCase('0xmissing'), isFalse);
+    });
+
+    test('deleteTransaction removes the row so a hashed prize can replace it', () async {
+      await repo.insertTransaction(
+        buildTokenTransfer(txId: 'referral-payout-9', height: 1),
+      );
+      expect(await repo.existsTransaction('referral-payout-9'), isTrue);
+
+      expect(await repo.deleteTransaction('referral-payout-9'), 1);
+      expect(await repo.existsTransaction('referral-payout-9'), isFalse);
+    });
+
+    test(
+      'deleteTransaction drops leftover DFX Beleg details so SQLite FK cannot block the leftover synthetic delete',
+      () async {
+        final dfxTx = DfxTransaction(
+          dfxId: 42,
+          rate: 1.38,
+          height: 1,
+          txId: 'referral-payout-9',
+          chainId: 1,
+          senderAddress: sender,
+          receiverAddress: receiver,
+          amount: BigInt.from(20),
+          asset: tokenAssetMainnet,
+          type: TransactionTypes.tokenTransfer,
+          note: null,
+          data: null,
+          timestamp: DateTime.utc(2026, 8, 24),
+        );
+        await repo.insertDfxTransaction(dfxTx);
+
+        expect(await repo.deleteTransaction('referral-payout-9'), 1);
+        expect(await repo.existsTransaction('referral-payout-9'), isFalse);
+        expect(await repo.allTransactions, isEmpty);
+        expect(await db.allDfxTransactionDetails, isEmpty);
+      },
+    );
+
+    test(
+      'deleteTransaction matches a mixed-case leftover hash and drops its Beleg details',
+      () async {
+        final dfxTx = DfxTransaction(
+          dfxId: 7,
+          rate: 1.25,
+          height: 1,
+          txId: '0xAbC',
+          chainId: 1,
+          senderAddress: sender,
+          receiverAddress: receiver,
+          amount: BigInt.from(20),
+          asset: tokenAssetMainnet,
+          type: TransactionTypes.tokenTransfer,
+          note: null,
+          data: null,
+          timestamp: DateTime.utc(2026, 8, 24),
+        );
+        await repo.insertDfxTransaction(dfxTx);
+
+        expect(await repo.deleteTransaction('0xabc'), 1);
+        expect(await repo.existsTransaction('0xAbC'), isFalse);
+        expect(await repo.allTransactions, isEmpty);
+        expect(await db.allDfxTransactionDetails, isEmpty);
+      },
+    );
+
+    test('insertDfxTransaction updates the DFX details when they already exist', () async {
+      DfxTransaction dfx(int dfxId, double rate) => DfxTransaction(
+        dfxId: dfxId,
+        rate: rate,
+        inputTxId: 'in-$dfxId',
+        outputTxId: 'out-$dfxId',
+        height: 1,
+        txId: 'tx-dfx-existing',
+        chainId: 1,
+        senderAddress: sender,
+        receiverAddress: receiver,
+        amount: BigInt.from(0x100),
+        asset: tokenAssetMainnet,
+        type: TransactionTypes.tokenTransfer,
+        note: null,
+        data: null,
+        timestamp: DateTime.utc(2025, 1, 1),
+      );
+
+      await repo.insertDfxTransaction(dfx(1, 1.0));
+      await repo.insertDfxTransaction(dfx(2, 2.5));
+
+      final fetched = (await repo.allTransactions).single as DfxTransaction;
+      expect(fetched.dfxId, 2);
+      expect(fetched.rate, 2.5);
+      expect(fetched.inputTxId, 'in-2');
+      expect(fetched.outputTxId, 'out-2');
     });
 
     test('insertDfxTransaction writes both the transaction row and its DFX details', () async {
@@ -200,6 +377,82 @@ void main() {
       expect(fetchedDfx.inputTxId, 'input-1');
       expect(fetchedDfx.outputTxId, 'output-1');
     });
+
+    test(
+      'insertDfxTransaction attaches Beleg details to a mixed-case stored hash',
+      () async {
+        await repo.insertTransaction(
+          buildTokenTransfer(txId: '0xAbC', height: 1),
+        );
+
+        await repo.insertDfxTransaction(
+          DfxTransaction(
+            dfxId: 42,
+            rate: 1.25,
+            inputTxId: 'input-1',
+            outputTxId: 'output-1',
+            height: 1,
+            txId: '0xabc',
+            chainId: 1,
+            senderAddress: sender,
+            receiverAddress: receiver,
+            amount: BigInt.from(0x100),
+            asset: tokenAssetMainnet,
+            type: TransactionTypes.tokenTransfer,
+            note: null,
+            data: null,
+            timestamp: DateTime.utc(2025, 1, 1),
+          ),
+        );
+
+        final all = await repo.allTransactions;
+        expect(all, hasLength(1));
+        expect(all.single.txId, '0xAbC');
+        expect(all.single, isA<DfxTransaction>());
+        expect((all.single as DfxTransaction).dfxId, 42);
+        final details = await db.allDfxTransactionDetails;
+        expect(details, hasLength(1));
+        expect(details.single.txId, '0xAbC');
+      },
+    );
+
+    test(
+      'deleteDfxTransactionDetailsIgnoreCase leaves a prize as a plain row',
+      () async {
+        final dfxTx = DfxTransaction(
+          dfxId: 42,
+          rate: 1.38,
+          height: 1,
+          txId: '0xAbC',
+          chainId: 1,
+          senderAddress: sender,
+          receiverAddress: receiver,
+          amount: BigInt.from(20),
+          asset: tokenAssetMainnet,
+          type: TransactionTypes.tokenTransfer,
+          note: null,
+          data: null,
+          timestamp: DateTime.utc(2026, 8, 24),
+        );
+        await repo.insertDfxTransaction(dfxTx);
+        await repo.updateTransaction(
+          buildTokenTransfer(
+            txId: '0xAbC',
+            height: 1,
+            type: TransactionTypes.referralPayout,
+            data: '246.50',
+          ),
+        );
+
+        expect(await repo.deleteDfxTransactionDetailsIgnoreCase('0xabc'), 1);
+
+        final all = await repo.allTransactions;
+        expect(all, hasLength(1));
+        expect(all.single, isNot(isA<DfxTransaction>()));
+        expect(all.single.type, TransactionTypes.referralPayout);
+        expect(all.single.data, '246.50');
+      },
+    );
 
     test('updateDfxTransaction overwrites the DFX details for an existing tx', () async {
       final original = DfxTransaction(
@@ -252,6 +505,58 @@ void main() {
       expect(fetched.outputTxId, 'output-2');
       expect(fetched.note, 'updated');
     });
+
+    test(
+      'updateDfxTransaction matches a mixed-case leftover Beleg hash',
+      () async {
+        final original = DfxTransaction(
+          dfxId: 42,
+          rate: 1.25,
+          inputTxId: 'input-1',
+          outputTxId: 'output-1',
+          height: 1,
+          txId: '0xAbC',
+          chainId: 1,
+          senderAddress: sender,
+          receiverAddress: receiver,
+          amount: BigInt.from(0x100),
+          asset: tokenAssetMainnet,
+          type: TransactionTypes.tokenTransfer,
+          note: null,
+          data: null,
+          timestamp: DateTime.utc(2025, 1, 1),
+        );
+        await repo.insertDfxTransaction(original);
+
+        await repo.updateDfxTransaction(
+          DfxTransaction(
+            dfxId: 42,
+            rate: 2.5,
+            inputTxId: 'input-2',
+            outputTxId: 'output-2',
+            height: 2,
+            txId: '0xabc',
+            chainId: 1,
+            senderAddress: sender,
+            receiverAddress: receiver,
+            amount: BigInt.from(0x200),
+            asset: tokenAssetMainnet,
+            type: TransactionTypes.tokenTransfer,
+            note: 'updated',
+            data: null,
+            timestamp: DateTime.utc(2025, 1, 2),
+          ),
+        );
+
+        final all = await repo.allTransactions;
+        expect(all, hasLength(1));
+        expect(all.single.txId, '0xAbC');
+        final fetched = all.single as DfxTransaction;
+        expect(fetched.rate, 2.5);
+        expect(fetched.inputTxId, 'input-2');
+        expect(fetched.height, 2);
+      },
+    );
 
     test('allTransactions resolves transfer-type rows to the chain native asset', () async {
       // The transformer takes the `type == transfer` branch and uses
@@ -425,6 +730,53 @@ void main() {
       expect(first.map((t) => t.txId), ['tx-mine']);
     });
 
+    test(
+      'watchTransactionsOfAssets includes referral payouts with frozen CHF',
+      () async {
+        await repo.insertTransaction(
+          buildTokenTransfer(
+            txId: 'tx-prize',
+            height: 1,
+            type: TransactionTypes.referralPayout,
+            senderOverride: kReferralPayoutSenderAddress,
+            receiverOverride: 'wallet-address',
+            data: '246.50',
+            timestamp: DateTime.utc(2026, 8, 24, 10),
+          ),
+        );
+        await repo.insertTransaction(
+          buildTokenTransfer(
+            txId: 'tx-buy',
+            height: 2,
+            senderOverride: 'someone-else',
+            receiverOverride: 'wallet-address',
+            timestamp: DateTime.utc(2026, 8, 24, 9),
+          ),
+        );
+        await repo.insertTransaction(
+          buildTokenTransfer(
+            txId: 'tx-savings',
+            height: 3,
+            type: TransactionTypes.savingsAdd,
+            senderOverride: 'wallet-address',
+            timestamp: DateTime.utc(2026, 8, 24, 11),
+          ),
+        );
+
+        final history = await repo.watchTransactionsOfAssets([
+          tokenAssetMainnet,
+        ], 'wallet-address').first;
+        expect(history.map((t) => t.txId), ['tx-prize', 'tx-buy']);
+        expect(history.first.type, TransactionTypes.referralPayout);
+        expect(history.first.data, '246.50');
+
+        final dashboard = await repo
+            .watchTransactionsOfAssets([tokenAssetMainnet], 'wallet-address', 3)
+            .first;
+        expect(dashboard.map((t) => t.txId), ['tx-prize', 'tx-buy']);
+      },
+    );
+
     test('watchTransactionsOfAssets with a limit caps the result list', () async {
       for (var i = 0; i < 3; i++) {
         await repo.insertTransaction(
@@ -466,12 +818,21 @@ void main() {
           senderOverride: 'wallet-address',
         ),
       );
-      // tokenTransfer type → must NOT appear in the savings stream.
+      // tokenTransfer / referralPayout → must NOT appear in the savings stream.
       await repo.insertTransaction(
         buildTokenTransfer(
           txId: 'tx-token',
           height: 3,
           senderOverride: 'wallet-address',
+        ),
+      );
+      await repo.insertTransaction(
+        buildTokenTransfer(
+          txId: 'tx-prize',
+          height: 4,
+          type: TransactionTypes.referralPayout,
+          senderOverride: kReferralPayoutSenderAddress,
+          receiverOverride: 'wallet-address',
         ),
       );
 

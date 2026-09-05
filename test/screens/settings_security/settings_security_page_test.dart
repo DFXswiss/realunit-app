@@ -86,6 +86,7 @@ void main() {
         localizationsDelegates: const [
           S.delegate,
           GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: S.delegate.supportedLocales,
       ),
@@ -107,6 +108,7 @@ void main() {
           localizationsDelegates: const [
             S.delegate,
             GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: S.delegate.supportedLocales,
           home: const SettingsSecurityPage(),
