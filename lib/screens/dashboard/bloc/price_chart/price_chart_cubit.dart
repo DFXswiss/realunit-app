@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:realunit_wallet/models/price_point.dart';
@@ -42,7 +43,7 @@ class PriceChartCubit extends Cubit<PriceChartState> {
       return;
     }
 
-    final now = DateTime.now();
+    final now = clock.now();
 
     // Calculate minX and maxXbased on selected period
     final minX = switch (state.selectedPeriod) {

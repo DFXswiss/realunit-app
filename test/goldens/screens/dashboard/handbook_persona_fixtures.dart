@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:clock/clock.dart';
 import 'package:realunit_wallet/models/portfolio_value_point.dart';
 
 /// Frozen handbook personas — synthetic, not live accounts.
@@ -12,9 +13,13 @@ import 'package:realunit_wallet/models/portfolio_value_point.dart';
 /// share count. The spot price path ends at 153 rappen so the last point
 /// matches `balance * DashboardState.price`.
 ///
-/// Trade-table labels are derived from these timestamps. They must not
-/// follow `DateTime.now()` or the goldens go red at midnight.
-DateTime _today() => DateTime(2026, 8, 28);
+/// Trade-table labels and the MAX axis end are pinned via `package:clock`
+/// in the golden test, so the `daysAgo` data anchor and the chart's `now`
+/// endpoint stay byte-stable between the regenerate run and the compare run.
+DateTime _today() {
+  final now = clock.now();
+  return DateTime(now.year, now.month, now.day);
+}
 
 /// REALU price in rappen. 153 today, ~118 a year ago, with a mid-year
 /// peak and dip so a flat holding is not a straight line.
