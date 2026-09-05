@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:clock/clock.dart';
 import 'package:equatable/equatable.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -49,7 +48,7 @@ class PortfolioChartCubit extends Cubit<PortfolioChartState> {
       return;
     }
 
-    final now = clock.now();
+    final now = DateTime.now();
 
     // Calculate minX and maxXbased on selected period
     final firstPriceX = _prices.first.time.millisecondsSinceEpoch.toDouble();

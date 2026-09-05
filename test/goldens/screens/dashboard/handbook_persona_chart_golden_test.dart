@@ -1,6 +1,4 @@
-import 'package:alchemist/alchemist.dart' show precacheImages;
 import 'package:bloc_test/bloc_test.dart';
-import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -68,12 +66,13 @@ void main() {
     );
   }
 
-  DashboardState dashboardState(List<PortfolioValuePoint> history) => DashboardState(
-    price: price,
-    priceChart: priceChart,
-    portfolioHistory: history,
-    currency: Currency.chf,
-  );
+  DashboardState dashboardState(List<PortfolioValuePoint> history) =>
+      DashboardState(
+        price: price,
+        priceChart: priceChart,
+        portfolioHistory: history,
+        currency: Currency.chf,
+      );
 
   setUpAll(() {
     final getIt = GetIt.instance;
@@ -97,20 +96,19 @@ void main() {
     when(() => pendingTxCubit.state).thenReturn(const <TransactionDto>[]);
     when(() => settingsBloc.state).thenReturn(const SettingsState());
     when(() => balanceCubit.asset).thenReturn(realUnitAsset);
-    when(
-      () => transactionRepository.watchTransactionsOfAssets(any(), any(), any()),
-    ).thenAnswer((_) => const Stream<List<Transaction>>.empty());
+    when(() => transactionRepository.watchTransactionsOfAssets(any(), any(), any()))
+        .thenAnswer((_) => const Stream<List<Transaction>>.empty());
   });
 
   Widget buildSubject() => MultiBlocProvider(
-    providers: [
-      BlocProvider<SettingsBloc>.value(value: settingsBloc),
-      BlocProvider<DashboardBloc>.value(value: dashboardBloc),
-      BlocProvider<BalanceCubit>.value(value: balanceCubit),
-      BlocProvider<PendingTransactionsCubit>.value(value: pendingTxCubit),
-    ],
-    child: const DashboardView(),
-  );
+        providers: [
+          BlocProvider<SettingsBloc>.value(value: settingsBloc),
+          BlocProvider<DashboardBloc>.value(value: dashboardBloc),
+          BlocProvider<BalanceCubit>.value(value: balanceCubit),
+          BlocProvider<PendingTransactionsCubit>.value(value: pendingTxCubit),
+        ],
+        child: const DashboardView(),
+      );
 
   /// Dashboard shows the three newest on-chain transfers under Bestand
   /// (`watchTransfersOfAssetsLimit(..., 3)`), newest first. Zero-delta
@@ -146,77 +144,75 @@ void main() {
   void stubHistory(List<PortfolioValuePoint> history) {
     when(() => dashboardBloc.state).thenReturn(dashboardState(history));
     when(() => balanceCubit.state).thenReturn(balanceFor(history));
-    when(
-      () => transactionRepository.watchTransactionsOfAssets(any(), any(), any()),
-    ).thenAnswer((_) => Stream.value(latestDashboardTxs(history)));
+    when(() => transactionRepository.watchTransactionsOfAssets(any(), any(), any()))
+        .thenAnswer((_) => Stream.value(latestDashboardTxs(history)));
   }
-
-  // The portfolio/price chart cubits and the persona fixtures read the wall
-  // clock (MAX axis end + `daysAgo` data anchor), which otherwise drifts
-  // between the regenerate run and the compare run. Pin it so the render is
-  // byte-stable, mirroring the settings_tax_report golden tests.
-  final pinnedClock = Clock.fixed(DateTime.utc(2026, 6, 15));
-  Widget pinnedSubject(List<PortfolioValuePoint> Function() historyFn) =>
-      withClock(pinnedClock, () {
-        stubHistory(historyFn());
-        return wrapForGolden(buildSubject());
-      });
-  Future<void> pinnedPump(WidgetTester tester) =>
-      withClock(pinnedClock, () => precacheImages(tester));
 
   group('handbook personas', () {
     goldenTest(
       'K1 Monatskäufer — MAX staircase of twelve equal buys',
       fileName: 'handbook_persona_dca',
       constraints: phoneConstraints,
-      pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaDcaHistory),
+      builder: () {
+        stubHistory(personaDcaHistory());
+        return wrapForGolden(buildSubject());
+      },
     );
 
     goldenTest(
       'K2 Einmalkauf — MAX lump then small top-ups',
       fileName: 'handbook_persona_lump',
       constraints: phoneConstraints,
-      pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaLumpHistory),
+      builder: () {
+        stubHistory(personaLumpHistory());
+        return wrapForGolden(buildSubject());
+      },
     );
 
     goldenTest(
       'K3 Verkauf auf 0 — MAX rise then drop to a visible zero line',
       fileName: 'handbook_persona_exit',
       constraints: phoneConstraints,
-      pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaExitHistory),
+      builder: () {
+        stubHistory(personaExitHistory());
+        return wrapForGolden(buildSubject());
+      },
     );
 
     goldenTest(
       'K3 Verkauf auf 0 — 1J still shows the sell-down inside the year',
       fileName: 'handbook_persona_exit_1j',
       constraints: phoneConstraints,
-      pumpBeforeTest: pinnedPump,
-      whilePerforming: (tester) => withClock(pinnedClock, () async {
+      whilePerforming: (tester) async {
         await tester.tap(find.widgetWithText(TimePeriodSelectionButton, '1J'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 400));
         return null;
-      }),
-      builder: () => pinnedSubject(personaExitHistory),
+      },
+      builder: () {
+        stubHistory(personaExitHistory());
+        return wrapForGolden(buildSubject());
+      },
     );
 
     goldenTest(
       'K4 Mix — MAX interleaved buys and partial sells',
       fileName: 'handbook_persona_mix',
       constraints: phoneConstraints,
-      pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaMixHistory),
+      builder: () {
+        stubHistory(personaMixHistory());
+        return wrapForGolden(buildSubject());
+      },
     );
 
     goldenTest(
       'K5 Aufstocken — MAX rising buys',
       fileName: 'handbook_persona_scale',
       constraints: phoneConstraints,
-      pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaScaleHistory),
+      builder: () {
+        stubHistory(personaScaleHistory());
+        return wrapForGolden(buildSubject());
+      },
     );
   });
 }
