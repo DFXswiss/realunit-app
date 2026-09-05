@@ -324,6 +324,39 @@ void main() {
       verifyNever(() => txRepo.insertDfxTransaction(any()));
     });
 
+    test('a settled payout with no txHash gets a synthetic id-based txId', () async {
+      sessionCache.setAuthToken('jwt-1');
+      final client = MockClient((request) async {
+        if (request.url.path.endsWith('/history')) {
+          return http.Response(jsonEncode(_accountHistory([])), 200);
+        }
+        if (request.url.path.contains('/referral/payouts')) {
+          return http.Response(
+            jsonEncode([
+              {
+                'id': 9,
+                'amount': 20,
+                'chfValue': 246.5,
+                'created': '2026-08-24T10:00:00Z',
+                'kind': 'Invite',
+                'status': 'Complete',
+              },
+            ]),
+            200,
+          );
+        }
+        return http.Response('[]', 200);
+      });
+
+      await build(client).apiBasedSync();
+
+      final captured =
+          verify(() => txRepo.insertTransaction(captureAny())).captured.single
+              as Transaction;
+      expect(captured.txId, 'referral-payout-9');
+      expect(captured.type, TransactionTypes.referralPayout);
+    });
+
     test('writes referral payouts with frozen CHF even when chain history is empty', () async {
       sessionCache.setAuthToken('jwt-1');
       final client = MockClient((request) async {

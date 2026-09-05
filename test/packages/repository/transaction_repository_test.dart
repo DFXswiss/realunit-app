@@ -315,6 +315,35 @@ void main() {
       },
     );
 
+    test('insertDfxTransaction updates the DFX details when they already exist', () async {
+      DfxTransaction dfx(int dfxId, double rate) => DfxTransaction(
+        dfxId: dfxId,
+        rate: rate,
+        inputTxId: 'in-$dfxId',
+        outputTxId: 'out-$dfxId',
+        height: 1,
+        txId: 'tx-dfx-existing',
+        chainId: 1,
+        senderAddress: sender,
+        receiverAddress: receiver,
+        amount: BigInt.from(0x100),
+        asset: tokenAssetMainnet,
+        type: TransactionTypes.tokenTransfer,
+        note: null,
+        data: null,
+        timestamp: DateTime.utc(2025, 1, 1),
+      );
+
+      await repo.insertDfxTransaction(dfx(1, 1.0));
+      await repo.insertDfxTransaction(dfx(2, 2.5));
+
+      final fetched = (await repo.allTransactions).single as DfxTransaction;
+      expect(fetched.dfxId, 2);
+      expect(fetched.rate, 2.5);
+      expect(fetched.inputTxId, 'in-2');
+      expect(fetched.outputTxId, 'out-2');
+    });
+
     test('insertDfxTransaction writes both the transaction row and its DFX details', () async {
       final dfxTx = DfxTransaction(
         dfxId: 42,
