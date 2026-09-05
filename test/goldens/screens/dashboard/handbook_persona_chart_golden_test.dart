@@ -154,7 +154,7 @@ void main() {
   // clock (MAX axis end + `daysAgo` data anchor), which otherwise drifts
   // between the regenerate run and the compare run. Pin it so the render is
   // byte-stable, mirroring the settings_tax_report golden tests.
-  final pinnedClock = Clock.fixed(DateTime.utc(2026, 6, 15));
+  final pinnedClock = Clock.fixed(DateTime(2026, 8, 28));
   Widget pinnedSubject(List<PortfolioValuePoint> history) => withClock(
     pinnedClock,
     () {
