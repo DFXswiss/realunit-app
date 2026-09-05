@@ -170,6 +170,36 @@ void main() {
   );
 
   blocTest<ReferralEligibilityCubit, ReferralEligibilityState>(
+    'load does not emit after the cubit is closed mid-flight',
+    build: () {
+      loadRelease = Completer<ReferralSummaryDto>();
+      when(() => service.getSummary()).thenAnswer((_) => loadRelease.future);
+      return ReferralEligibilityCubit(service);
+    },
+    act: (cubit) async {
+      final pending = cubit.load();
+      await cubit.close();
+      loadRelease.complete(
+        const ReferralSummaryDto(
+          eligible: true,
+          termsAccepted: true,
+          openCount: 0,
+          creditedCount: 0,
+          realuSum: 0,
+          chfSum: 0,
+        ),
+      );
+      await pending;
+    },
+    // Only the synchronous Loading survives: the post-await emit is guarded by
+    // `isClosed`, so no ReferralEligibilityLoaded is emitted after close (and
+    // no emit-after-close StateError is thrown).
+    expect: () => const [
+      ReferralEligibilityLoading(),
+    ],
+  );
+
+  blocTest<ReferralEligibilityCubit, ReferralEligibilityState>(
     'reload opens the gate after a failed first load',
     build: () {
       var calls = 0;

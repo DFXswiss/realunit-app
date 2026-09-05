@@ -15,6 +15,9 @@ Rect shareReferralInviteOrigin(BuildContext context) {
 /// (Android chooser / Web Share) and the email subject. A platform throw
 /// is returned as [ShareResultStatus.unavailable] so the share button can
 /// show its error state.
+// @no-integration-test: thin wrapper around `package:share_plus`; the invite
+//   copy/share behaviour is covered by referral_copy_share_e2e_test.dart via a
+//   mocked platform channel, and the OS share sheet itself has no headless CI device.
 Future<ShareResult> shareReferralInvite({
   required BuildContext context,
   required String text,

@@ -23,8 +23,10 @@ class ReferralEligibilityCubit extends Cubit<ReferralEligibilityState> {
     emit(const ReferralEligibilityLoading());
     try {
       final summary = await _service.getSummary();
+      if (isClosed) return;
       emit(ReferralEligibilityLoaded(eligible: summary.eligible));
     } on TimeoutException {
+      if (isClosed) return;
       emit(
         const ReferralEligibilityLoaded(eligible: false, unavailable: true),
       );
@@ -32,8 +34,10 @@ class ReferralEligibilityCubit extends Cubit<ReferralEligibilityState> {
       // One retry so a transient summary outage does not hide the card.
       try {
         final summary = await _service.getSummary();
+        if (isClosed) return;
         emit(ReferralEligibilityLoaded(eligible: summary.eligible));
       } catch (_) {
+        if (isClosed) return;
         emit(
           const ReferralEligibilityLoaded(eligible: false, unavailable: true),
         );

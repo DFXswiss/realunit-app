@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:realunit_wallet/packages/io/normalize_referral_code.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -63,10 +64,12 @@ Future<String?> peekPendingReferralCode() async {
 
 /// Synchronous in-memory peek for redirect tests / warm paths that already
 /// stashed in this process. Does not read SharedPreferences.
+@visibleForTesting
 String? peekPendingReferralCodeSync() =>
     referralCodeFromInput(_pendingReferralCode);
 
 /// Test-only: seed the in-memory stash without touching SharedPreferences.
+@visibleForTesting
 void debugSetPendingReferralCodeSync(String? code) {
   _pendingReferralCode = code;
   _takingPendingReferralCode = false;

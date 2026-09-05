@@ -22,10 +22,10 @@ import 'package:realunit_wallet/screens/home/bloc/home_bloc.dart';
 import 'package:realunit_wallet/screens/kyc/cubits/kyc/kyc_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_step/kyc_registration_step_cubit.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/cubits/registration_submit/kyc_registration_submit_cubit.dart';
+import 'package:realunit_wallet/screens/kyc/steps/registration/stash_resolved_referral_code.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_address_step.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_personal_step.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_referral_step.dart';
-import 'package:realunit_wallet/screens/kyc/steps/registration/stash_resolved_referral_code.dart';
 import 'package:realunit_wallet/screens/kyc/steps/registration/steps/kyc_registration_tax_step.dart';
 import 'package:realunit_wallet/setup/di.dart';
 import 'package:realunit_wallet/setup/routing/referral_pending_code.dart';
@@ -102,17 +102,6 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
         curve: Curves.easeOut,
       );
     });
-
-    // Prefill a deeplink-stashed invite/promo code (same field for both).
-    // Do not refill after Skip/Next — the stash still binds post-auth.
-    unawaited(
-      peekPendingReferralCode().then((code) {
-        if (!mounted || code == null || code.isEmpty) return;
-        final step = context.read<KycRegistrationStepCubit>().state.step;
-        if (step != KycRegistrationStep.referral) return;
-        if (referralCodeCtrl.text.isEmpty) referralCodeCtrl.text = code;
-      }),
-    );
 
     // Seed the form synchronously from whatever the parent cubit handed in.
     // The non-country scalars are available immediately; the two country
@@ -327,11 +316,24 @@ class _KycRegistrationViewState extends State<KycRegistrationView> {
   Widget _buildStep(KycRegistrationStep step) {
     switch (step) {
       case KycRegistrationStep.referral:
-        return KycRegistrationReferralStep(
-          referralCodeCtrl: referralCodeCtrl,
-          onResolved: (code) => _resolvedReferralCode = code,
-          autoPasteOnEmpty: true,
-        );
+        {
+          // Hand the deeplink stash to the field only while the referral step
+          // is the one the user is on. This mirrors the old initState guard so
+          // a skipped-past step is not silently prefilled (the stash still
+          // binds post-auth); when active, the field owns the deeplink-stash-
+          // over-clipboard precedence instead of racing a prefill in initState.
+          // The PageView builds its children once, so the active step at mount
+          // is the right gate. Clipboard auto-paste stays unconditional.
+          final isReferralActive =
+              context.read<KycRegistrationStepCubit>().state.step ==
+              KycRegistrationStep.referral;
+          return KycRegistrationReferralStep(
+            referralCodeCtrl: referralCodeCtrl,
+            onResolved: (code) => _resolvedReferralCode = code,
+            pendingCode: isReferralActive ? peekPendingReferralCode : null,
+            autoPasteOnEmpty: true,
+          );
+        }
 
       case KycRegistrationStep.personal:
         return KycRegistrationPersonalStep(
