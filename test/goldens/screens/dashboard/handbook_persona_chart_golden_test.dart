@@ -156,13 +156,11 @@ void main() {
   // between the regenerate run and the compare run. Pin it so the render is
   // byte-stable, mirroring the settings_tax_report golden tests.
   final pinnedClock = Clock.fixed(DateTime.utc(2026, 6, 15));
-  Widget pinnedSubject(List<PortfolioValuePoint> history) => withClock(
-    pinnedClock,
-    () {
-      stubHistory(history);
-      return wrapForGolden(buildSubject());
-    },
-  );
+  Widget pinnedSubject(List<PortfolioValuePoint> Function() historyFn) =>
+      withClock(pinnedClock, () {
+        stubHistory(historyFn());
+        return wrapForGolden(buildSubject());
+      });
   Future<void> pinnedPump(WidgetTester tester) =>
       withClock(pinnedClock, () => precacheImages(tester));
 
@@ -172,7 +170,7 @@ void main() {
       fileName: 'handbook_persona_dca',
       constraints: phoneConstraints,
       pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaDcaHistory()),
+      builder: () => pinnedSubject(personaDcaHistory),
     );
 
     goldenTest(
@@ -180,7 +178,7 @@ void main() {
       fileName: 'handbook_persona_lump',
       constraints: phoneConstraints,
       pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaLumpHistory()),
+      builder: () => pinnedSubject(personaLumpHistory),
     );
 
     goldenTest(
@@ -188,7 +186,7 @@ void main() {
       fileName: 'handbook_persona_exit',
       constraints: phoneConstraints,
       pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaExitHistory()),
+      builder: () => pinnedSubject(personaExitHistory),
     );
 
     goldenTest(
@@ -202,7 +200,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 400));
         return null;
       }),
-      builder: () => pinnedSubject(personaExitHistory()),
+      builder: () => pinnedSubject(personaExitHistory),
     );
 
     goldenTest(
@@ -210,7 +208,7 @@ void main() {
       fileName: 'handbook_persona_mix',
       constraints: phoneConstraints,
       pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaMixHistory()),
+      builder: () => pinnedSubject(personaMixHistory),
     );
 
     goldenTest(
@@ -218,7 +216,7 @@ void main() {
       fileName: 'handbook_persona_scale',
       constraints: phoneConstraints,
       pumpBeforeTest: pinnedPump,
-      builder: () => pinnedSubject(personaScaleHistory()),
+      builder: () => pinnedSubject(personaScaleHistory),
     );
   });
 }
